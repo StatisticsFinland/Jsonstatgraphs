@@ -1,0 +1,209 @@
+{
+  "version": "2.0",
+  "class": "dataset",
+  "id": [
+    "alue",
+    "taloustoimi",
+    "toimiala",
+    "sektori",
+    "vuosi",
+    "tiedot"
+  ],
+  "label": "12bd -- Income and production by area, annually, 2000-2024*",
+  "note": [
+    "<A HREF='https://stat.fi/en/statistics/documentation/altp' TARGET=_blank>Documentation of statistics</A>##... confidential#... confidential"
+  ],
+  "source": "Statistics Finland, regional accounts",
+  "updated": "2025-11-28T08:00:00",
+  "dimension": {
+    "alue": {
+      "label": "Area",
+      "category": {
+        "index": [
+          "SSS"
+        ],
+        "label": {
+          "SSS": "WHOLE COUNTRY"
+        }
+      }
+    },
+    "taloustoimi": {
+      "label": "Transaction",
+      "category": {
+        "index": [
+          "B1GMH"
+        ],
+        "label": {
+          "B1GMH": "B1GMH Gross domestic product at market prices"
+        }
+      }
+    },
+    "toimiala": {
+      "label": "Industry",
+      "category": {
+        "index": [
+          "SSS"
+        ],
+        "label": {
+          "SSS": "Total"
+        }
+      }
+    },
+    "sektori": {
+      "label": "Sector",
+      "category": {
+        "index": [
+          "S1"
+        ],
+        "label": {
+          "S1": "S1 Total economy"
+        }
+      }
+    },
+    "vuosi": {
+      "label": "Year",
+      "note": [
+        "* preliminary data"
+      ],
+      "category": {
+        "index": [
+          "2000",
+          "2001",
+          "2002",
+          "2003",
+          "2004",
+          "2005",
+          "2006",
+          "2007",
+          "2008",
+          "2009",
+          "2010",
+          "2011",
+          "2012",
+          "2013",
+          "2014",
+          "2015",
+          "2016",
+          "2017",
+          "2018",
+          "2019",
+          "2020",
+          "2021",
+          "2022",
+          "2023",
+          "2024"
+        ],
+        "label": {
+          "2000": "2000",
+          "2001": "2001",
+          "2002": "2002",
+          "2003": "2003",
+          "2004": "2004",
+          "2005": "2005",
+          "2006": "2006",
+          "2007": "2007",
+          "2008": "2008",
+          "2009": "2009",
+          "2010": "2010",
+          "2011": "2011",
+          "2012": "2012",
+          "2013": "2013",
+          "2014": "2014",
+          "2015": "2015",
+          "2016": "2016",
+          "2017": "2017",
+          "2018": "2018",
+          "2019": "2019",
+          "2020": "2020",
+          "2021": "2021",
+          "2022": "2022",
+          "2023": "2023",
+          "2024": "2024*"
+        },
+        "note": {
+          "2024": [
+            "* preliminary data"
+          ]
+        }
+      }
+    },
+    "tiedot": {
+      "label": "Information",
+      "category": {
+        "index": [
+          "vol_muutos"
+        ],
+        "label": {
+          "vol_muutos": "Changes in volume, %"
+        },
+        "unit": {
+          "vol_muutos": {
+            "label": "%",
+            "decimals": 1
+          }
+        }
+      }
+    }
+  },
+  "value": [
+    null,
+    2.64,
+    1.687,
+    2.012,
+    4.006,
+    2.777,
+    4.02,
+    5.313,
+    0.784,
+    -8.076,
+    3.168,
+    2.39,
+    -1.523,
+    -0.98,
+    -0.478,
+    0.466,
+    2.572,
+    3.303,
+    1.193,
+    1.35,
+    -2.491,
+    2.677,
+    0.763,
+    -0.939,
+    null
+  ],
+  "status": {
+    "0": "1",
+    "24": "1"
+  },
+  "extension": {
+    "missingValueDescriptions": {
+      "1": "Missing",
+      "2": "Not applicable",
+      "3": "Data is subject to secrecy",
+      "4": "Not available",
+      "5": "Not asked",
+      "6": "......",
+      "7": "Magnitude nil"
+    }
+  },
+  "size": [
+    1,
+    1,
+    1,
+    1,
+    25,
+    1
+  ],
+  "role": {
+    "time": [
+      "vuosi"
+    ],
+    "metric": [
+      "tiedot"
+    ],
+    "geo": [
+      "alue"
+    ]
+  }
+}

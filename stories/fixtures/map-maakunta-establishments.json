@@ -1,0 +1,158 @@
+{
+  "version": "2.0",
+  "class": "dataset",
+  "id": [
+    "vuosi",
+    "julkisyhteisotyyppi",
+    "maakunta",
+    "tiedot"
+  ],
+  "label": "11ge -- General government establishments by region and general government type, 2013-2024",
+  "note": [
+    "<A HREF='https://stat.fi/en/statistics/documentation/alyr' TARGET=_blank>Documentation of statistics</A>##... confidential"
+  ],
+  "source": "Statistics Finland, regional statistics on entrepreneurial activity",
+  "updated": "2025-12-19T08:00:00",
+  "dimension": {
+    "vuosi": {
+      "label": "Year",
+      "category": {
+        "index": [
+          "2024"
+        ],
+        "label": {
+          "2024": "2024"
+        }
+      }
+    },
+    "julkisyhteisotyyppi": {
+      "label": "General government type",
+      "category": {
+        "index": [
+          "SSS"
+        ],
+        "label": {
+          "SSS": "Total"
+        }
+      }
+    },
+    "maakunta": {
+      "label": "Region",
+      "category": {
+        "index": [
+          "MK01",
+          "MK02",
+          "MK04",
+          "MK05",
+          "MK06",
+          "MK07",
+          "MK08",
+          "MK09",
+          "MK10",
+          "MK11",
+          "MK12",
+          "MK13",
+          "MK14",
+          "MK15",
+          "MK16",
+          "MK17",
+          "MK18",
+          "MK19",
+          "MK21"
+        ],
+        "label": {
+          "MK01": "MK01 Uusimaa",
+          "MK02": "MK02 Southwest Finland",
+          "MK04": "MK04 Satakunta",
+          "MK05": "MK05 Kanta-Häme",
+          "MK06": "MK06 Pirkanmaa",
+          "MK07": "MK07 Päijät-Häme",
+          "MK08": "MK08 Kymenlaakso",
+          "MK09": "MK09 South Karelia",
+          "MK10": "MK10 South Savo",
+          "MK11": "MK11 North Savo",
+          "MK12": "MK12 North Karelia",
+          "MK13": "MK13 Central Finland",
+          "MK14": "MK14 South Ostrobothnia",
+          "MK15": "MK15 Ostrobothnia",
+          "MK16": "MK16 Central Ostrobothnia",
+          "MK17": "MK17 North Ostrobothnia",
+          "MK18": "MK18 Kainuu",
+          "MK19": "MK19 Lapland",
+          "MK21": "MK21 Åland"
+        }
+      }
+    },
+    "tiedot": {
+      "label": "Information",
+      "category": {
+        "index": [
+          "Tplukumaara3"
+        ],
+        "label": {
+          "Tplukumaara3": "General government establishments (number)"
+        },
+        "note": {
+          "Tplukumaara3": [
+            "General government establishments (number)"
+          ]
+        },
+        "unit": {
+          "Tplukumaara3": {
+            "label": "Number",
+            "decimals": 0
+          }
+        }
+      }
+    }
+  },
+  "value": [
+    4891,
+    1729,
+    1085,
+    662,
+    1723,
+    615,
+    573,
+    424,
+    680,
+    898,
+    683,
+    1184,
+    974,
+    794,
+    369,
+    1556,
+    351,
+    1098,
+    290
+  ],
+  "extension": {
+    "missingValueDescriptions": {
+      "1": "Missing",
+      "2": "Not applicable",
+      "3": "Data is subject to secrecy",
+      "4": "Not available",
+      "5": "Not asked",
+      "6": "......",
+      "7": "Magnitude nil"
+    }
+  },
+  "size": [
+    1,
+    1,
+    19,
+    1
+  ],
+  "role": {
+    "time": [
+      "vuosi"
+    ],
+    "metric": [
+      "tiedot"
+    ],
+    "geo": [
+      "maakunta"
+    ]
+  }
+}

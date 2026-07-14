@@ -1,0 +1,239 @@
+{
+  "version": "2.0",
+  "class": "dataset",
+  "id": [
+    "alue",
+    "taloustoimi",
+    "toimiala",
+    "sektori",
+    "vuosi",
+    "tiedot"
+  ],
+  "label": "12bd -- Income and production by area, annually, 2000-2024*",
+  "note": [
+    "<A HREF='https://stat.fi/en/statistics/documentation/altp' TARGET=_blank>Documentation of statistics</A>##... confidential#... confidential"
+  ],
+  "source": "Statistics Finland, regional accounts",
+  "updated": "2025-11-28T08:00:00",
+  "dimension": {
+    "alue": {
+      "label": "Area",
+      "category": {
+        "index": [
+          "SSS"
+        ],
+        "label": {
+          "SSS": "WHOLE COUNTRY"
+        }
+      }
+    },
+    "taloustoimi": {
+      "label": "Transaction",
+      "category": {
+        "index": [
+          "P1R"
+        ],
+        "label": {
+          "P1R": "P1R Output at basic prices, income"
+        }
+      }
+    },
+    "toimiala": {
+      "label": "Industry",
+      "category": {
+        "index": [
+          "SSS",
+          "A",
+          "A01",
+          "A02_A03",
+          "BTF",
+          "B",
+          "C10TC12",
+          "C13TC15",
+          "C16TC18",
+          "C16",
+          "C17_C18",
+          "C19TC22",
+          "C23",
+          "C24TC30",
+          "C24_C25",
+          "C26_C27",
+          "C28",
+          "C29_C30",
+          "C31TC33",
+          "B05TB09_C13TC15_C19TC23_C31TE39",
+          "D_E",
+          "F",
+          "GTT",
+          "G",
+          "H",
+          "I",
+          "J",
+          "K",
+          "L681_L68209_L683_M_N",
+          "L681_L68209_L683",
+          "L68201_L68202",
+          "M",
+          "N",
+          "O",
+          "P",
+          "Q",
+          "R_S",
+          "T"
+        ],
+        "label": {
+          "SSS": "Total",
+          "A": "A Agriculture, forestry and fishing (01-03)",
+          "A01": "01 Crop and animal production, hunting and related service activities",
+          "A02_A03": "02, 03 Forestry; Fishing",
+          "BTF": "B-F Secondary production (05-43)",
+          "B": "B Mining and quarrying (05-09)",
+          "C10TC12": "10-12 Food industry etc.",
+          "C13TC15": "13-15 Textile, clothing and leather industry",
+          "C16TC18": "16-18 Manufacture of wood products, paper and paper products; printing and reproduction of recorded media",
+          "C16": "16 Manufacture of wood and of products of wood and cork, except furniture; manufacture of articles of straw and plaiting materials",
+          "C17_C18": "17, 18 Paper industry; Printing",
+          "C19TC22": "19-22 Chemical industry",
+          "C23": "23 Manufacture of other non-metallic mineral products",
+          "C24TC30": "24-30 Metal industry",
+          "C24_C25": "24-25 Manufacture of basic metals and fabricated metal products, except machinery and equipment",
+          "C26_C27": "26, 27 Manufacture of electrical and electronic products",
+          "C28": "28 Manufacture of machinery and equipment n.e.c.",
+          "C29_C30": "29, 30 Manufacture of transport equipment",
+          "C31TC33": "31-33 Manufacture of furniture, other manufacturing; repair and installation of machinery and equipment",
+          "B05TB09_C13TC15_C19TC23_C31TE39": "05-09, 13-15, 19-23, 31-39 Other industry",
+          "D_E": "D, E Electricity, gas, steam and air conditioning and water supply; sewerage and waste management (35-39)",
+          "F": "F Construction (41-43)",
+          "GTT": "G-T Services (45-98)",
+          "G": "G Wholesale and retail trade; repair of motor vehicles and motorcycles (45-47)",
+          "H": "H Transportation and storage (49-53)",
+          "I": "I Accommodation and food service activities (55-56)",
+          "J": "J Information and communication (58-63)",
+          "K": "K Financial and insurance activities (64-66)",
+          "L681_L68209_L683_M_N": "681, 68209, 683, M, N Real estate activities; Professional, scientific and technical activities;  Office administrative and other",
+          "L681_L68209_L683": "681, 68209, 683 Other real estate activities",
+          "L68201_L68202": "68201, 68202 Letting and operation of dwellings",
+          "M": "M Professional, scientific and technical activities (69-75)",
+          "N": "N Administrative and support service activities (77-82)",
+          "O": "O Public administration and defence; compulsory social security (84)",
+          "P": "P Education (85)",
+          "Q": "Q Human health and social work activities (86-88)",
+          "R_S": "R, S Other service activities (90-96)",
+          "T": "T Activities of households as employers; undifferentiated goods- and services-producing activities of households for own use(97-98)"
+        }
+      }
+    },
+    "sektori": {
+      "label": "Sector",
+      "category": {
+        "index": [
+          "S1"
+        ],
+        "label": {
+          "S1": "S1 Total economy"
+        }
+      }
+    },
+    "vuosi": {
+      "label": "Year",
+      "note": [
+        "* preliminary data"
+      ],
+      "category": {
+        "index": [
+          "2023"
+        ],
+        "label": {
+          "2023": "2023"
+        }
+      }
+    },
+    "tiedot": {
+      "label": "Information",
+      "category": {
+        "index": [
+          "CP"
+        ],
+        "label": {
+          "CP": "At current prices, millions of euro"
+        },
+        "unit": {
+          "CP": {
+            "label": "Million euros",
+            "decimals": 1
+          }
+        }
+      }
+    }
+  },
+  "value": [
+    525501,
+    12844,
+    5743,
+    7101,
+    209343,
+    2841,
+    13999,
+    1198,
+    23184,
+    7175,
+    16009,
+    30773,
+    3393,
+    68487,
+    23247,
+    19801,
+    19802,
+    5637,
+    6261,
+    62370,
+    17904,
+    41303,
+    303314,
+    39633,
+    28746,
+    10512,
+    29343,
+    18165,
+    47881,
+    8198,
+    31467,
+    23539,
+    16144,
+    21393,
+    18877,
+    42751,
+    14251,
+    295
+  ],
+  "extension": {
+    "missingValueDescriptions": {
+      "1": "Missing",
+      "2": "Not applicable",
+      "3": "Data is subject to secrecy",
+      "4": "Not available",
+      "5": "Not asked",
+      "6": "......",
+      "7": "Magnitude nil"
+    }
+  },
+  "size": [
+    1,
+    1,
+    38,
+    1,
+    1,
+    1
+  ],
+  "role": {
+    "time": [
+      "vuosi"
+    ],
+    "metric": [
+      "tiedot"
+    ],
+    "geo": [
+      "alue"
+    ]
+  }
+}

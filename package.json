@@ -1,0 +1,79 @@
+{
+  "name": "@statisticsfinland/jsonstat-chart",
+  "version": "0.1.0",
+  "description": "Render JSON-stat 2.0 datasets as interactive, accessible SVG charts",
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "author": "Statistics Finland",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/StatisticsFinland/Jsonstatgraphs.git"
+  },
+  "homepage": "https://github.com/StatisticsFinland/Jsonstatgraphs",
+  "bugs": {
+    "url": "https://github.com/StatisticsFinland/Jsonstatgraphs/issues"
+  },
+  "keywords": [
+    "json-stat",
+    "charts",
+    "visualization",
+    "d3",
+    "statistics",
+    "svg",
+    "accessible"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "license": "Apache-2.0",
+  "scripts": {
+    "build": "vite build",
+    "lint": "eslint src stories tests",
+    "test": "jest",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build",
+    "pack": "npm run build && npm pack"
+  },
+  "dependencies": {
+    "d3-array": "^3.2.4",
+    "d3-axis": "^3.0.0",
+    "d3-format": "^3.1.0",
+    "d3-geo": "^3.1.1",
+    "d3-scale": "^4.0.2",
+    "d3-selection": "^3.0.0",
+    "d3-shape": "^3.2.0",
+    "simple-statistics": "^7.9.0"
+  },
+  "devDependencies": {
+    "eslint": "^9.0.0",
+    "typescript-eslint": "^8.0.0",
+    "@storybook/addon-docs": "^10.4.2",
+    "@storybook/html-vite": "^10.4.2",
+    "@types/d3-array": "^3.2.1",
+    "@types/d3-axis": "^3.0.6",
+    "@types/d3-format": "^3.0.4",
+    "@types/d3-geo": "^3.1.0",
+    "@types/d3-scale": "^4.0.8",
+    "@types/d3-selection": "^3.0.11",
+    "@types/d3-shape": "^3.1.6",
+    "@types/jest": "^30.0.0",
+    "jest": "^30.4.2",
+    "jest-environment-jsdom": "^30.4.1",
+    "storybook": "^10.4.2",
+    "ts-jest": "^29.4.11",
+    "ts-node": "^10.9.2",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.16",
+    "vite-plugin-dts": "^5.0.2"
+  }
+}

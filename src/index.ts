@@ -1,0 +1,864 @@
+// Re-export types
+export type {
+  JsonStatCategory,
+  JsonStatDimension,
+  JsonStatDataset,
+  ChartType,
+  ChartTypeResult,
+  FooterItem,
+  ThemeConfig,
+  ChartConfig,
+  ResolvedTheme,
+  DataPoint,
+  DataSeries,
+  ChartData,
+  ScatterDataPoint,
+  ScatterChartData,
+  PyramidChartData,
+  ZoneType,
+  ZoneConfig,
+  ZoneRect,
+  LayoutResult,
+  ChartInstance,
+  TableData,
+  TableLayout,
+  TableDimension,
+  MapConfig,
+  MapProvider,
+  MapChartData,
+  MapRegionData,
+  MapClassBreak,
+  ClassificationMethod,
+  MapClassification,
+  GeoJsonFeature,
+  GeoJsonFeatureCollection,
+} from './types';
+
+import { buildHeader } from './data/header-builder';
+export { getSeriesColor } from './theme/palette';
+
+// Internal imports
+import type {
+  JsonStatDataset,
+  ChartConfig,
+  ChartInstance,
+  ChartType,
+  ChartTypeResult,
+  DimensionMeta,
+  DimensionType,
+  ResolvedTheme,
+  ScatterChartData,
+  PyramidChartData,
+  GeoJsonFeatureCollection,
+} from './types';
+import { validateDataset } from './data/validate';
+import {
+  transformDataset,
+  transformScatterData,
+  transformPyramidData,
+  getOrderedCodes,
+} from './data/transform';
+import { transformTableData } from './data/table-transform';
+import { getApplicableChartTypes, selectDefaultChartType, CHART_TYPE_ORDER, ChartRejectionReason } from './data/chart-selector';
+import type { DataProperties, ChartSelectorOptions } from './data/chart-selector';
+import { resolveTheme } from './theme/theme';
+import { createBarChart } from './charts/bar';
+import { createLineChart } from './charts/line';
+import { createGroupedBarChart } from './charts/grouped-bar';
+import { createStackedBarChart } from './charts/stacked-bar';
+import { createPieChart } from './charts/pie';
+import { createScatterChart } from './charts/scatter';
+import { createPyramidChart } from './charts/pyramid';
+import { createTableChart } from './charts/table';
+import { createKeyFigureChart } from './charts/key-figure';
+import { createMapChart } from './charts/map';
+import { transformMapData } from './data/map-transform';
+
+import { getLocaleStrings } from './locale/strings';
+import type { NiceSkipOptions } from './layout/label-fitting';
+
+// Re-export used-internally utilities
+export { validateDataset } from './data/validate';
+export { transformDataset } from './data/transform';
+export { transformTableData } from './data/table-transform';
+export { getApplicableChartTypes, selectDefaultChartType } from './data/chart-selector';
+export type { ChartSelectorOptions, DataProperties } from './data/chart-selector';
+export { resolveTheme } from './theme/theme';
+export { transformMapData } from './data/map-transform';
+
+// --- Internal helpers ---
+
+import { checkTimeIrregularity, getTimePeriodInfo } from './data/time-regularity';
+
+function deriveDataProperties(dataset: JsonStatDataset): DataProperties {
+  let hasActualData = false;
+  let hasMissingData = false;
+  let hasNegativeData = false;
+  for (const v of dataset.value) {
+    if (v === null || typeof v === 'string') {
+      hasMissingData = true;
+    } else {
+      hasActualData = true;
+      if (v < 0) hasNegativeData = true;
+    }
+  }
+  return { hasActualData, hasMissingData, hasNegativeData };
+}
+
+function resolveLocale(cfgLocale?: string, navigatorLanguage?: string): string {
+  return cfgLocale ?? navigatorLanguage ?? 'en';
+}
+
+function deriveDimensionMeta(dataset: JsonStatDataset): DimensionMeta[] {
+  return dataset.id.map((dimId, i) => {
+    let type: DimensionType = 'Other';
+    if (dataset.role?.time?.includes(dimId)) type = 'Time';
+    else if (dataset.role?.metric?.includes(dimId)) type = 'Content';
+    else if (dataset.role?.geo?.includes(dimId)) type = 'Geo';
+
+    const dim = dataset.dimension[dimId];
+    const codes = getOrderedCodes(dim.category.index);
+    const values = codes.map(code => ({
+      code,
+      name: dim.category.label?.[code] ?? code,
+    }));
+
+    const eliminationValueCode = codes.includes('SSS') ? 'SSS' : undefined;
+    const isIrregular = type === 'Time' ? checkTimeIrregularity(codes) : undefined;
+
+    let numberOfUnits: number | undefined;
+    if (type === 'Content' && dim.category.unit) {
+      const unitLabels = new Set(
+        codes.map(code => dim.category.unit![code]?.label).filter(Boolean)
+      );
+      numberOfUnits = unitLabels.size || 1;
+    }
+
+    return {
+      code: dimId,
+      type,
+      size: dataset.size[i],
+      name: dim.label ?? dimId,
+      values,
+      ...(eliminationValueCode !== undefined ? { eliminationValueCode } : {}),
+      ...(isIrregular !== undefined ? { isIrregular } : {}),
+      ...(numberOfUnits !== undefined ? { numberOfUnits } : {}),
+    };
+  });
+}
+
+/**
+ * Returns all chart types with validity status and rejection reasons for a JSON-stat dataset.
+ *
+ * When `options.mapAvailable` is omitted, map eligibility is based on structural constraints only
+ * (geo dimension exists, correct sizes) without confirming geometry availability.
+ * Set `mapAvailable: true` or `false` for a definitive answer on map eligibility.
+ *
+ * Note: Elimination value detection uses a heuristic (code 'SSS') that works for Statistics Finland
+ * datasets. For other data sources, use the lower-level `getApplicableChartTypes()` with manually
+ * constructed `DimensionMeta[]` for precise control.
+ */
+export function getChartTypesForDataset(
+  dataset: JsonStatDataset,
+  options?: ChartSelectorOptions,
+): ChartTypeResult[] {
+  const validation = validateDataset(dataset);
+  if (!validation.valid) {
+    return CHART_TYPE_ORDER.map(type => ({
+      type,
+      valid: false,
+      rejectionReasons: [ChartRejectionReason.InvalidDataset],
+    }));
+  }
+  const dataProps = deriveDataProperties(dataset);
+  const dimMeta = deriveDimensionMeta(dataset);
+  return getApplicableChartTypes(dataProps, dimMeta, options);
+}
+
+/**
+ * Selects the best chart type for a JSON-stat dataset using priority-based automatic selection.
+ *
+ * When `options.mapAvailable` is omitted, map is eligible based on structural constraints only.
+ * See `getChartTypesForDataset` for full details on map handling.
+ *
+ * Note: Elimination value detection uses a heuristic (code 'SSS') suited for Statistics Finland data.
+ */
+export function selectChartTypeForDataset(
+  dataset: JsonStatDataset,
+  options?: ChartSelectorOptions,
+): ChartType {
+  const validation = validateDataset(dataset);
+  if (!validation.valid) {
+    return 'table';
+  }
+  const dataProps = deriveDataProperties(dataset);
+  const dimMeta = deriveDimensionMeta(dataset);
+  return selectDefaultChartType(dataProps, dimMeta, options);
+}
+
+function renderError(container: HTMLElement, message: string, theme: ResolvedTheme): void {
+  container.innerHTML = '';
+  const errDiv = document.createElement('div');
+  errDiv.className = 'jsc-error';
+  errDiv.setAttribute('role', 'alert');
+  errDiv.style.color = theme.colorError;
+  errDiv.style.padding = '16px';
+  errDiv.style.fontFamily = theme.fontFamily;
+  errDiv.style.fontSize = theme.fontSizeLabel;
+  errDiv.style.border = `1px solid ${theme.colorError}`;
+  errDiv.style.borderRadius = theme.borderRadius;
+  errDiv.textContent = message;
+  container.appendChild(errDiv);
+}
+
+function createSrOnlyElement(tag: string, text: string): HTMLElement {
+  const el = document.createElement(tag);
+  el.className = 'jsc-sr-only';
+  el.style.position = 'absolute';
+  el.style.width = '1px';
+  el.style.height = '1px';
+  el.style.padding = '0';
+  el.style.margin = '-1px';
+  el.style.overflow = 'hidden';
+  el.style.clip = 'rect(0,0,0,0)';
+  el.style.whiteSpace = 'nowrap';
+  el.style.border = '0';
+  el.textContent = text;
+  return el;
+}
+
+const LOADING_STRINGS: Record<string, string> = { en: 'Loading', fi: 'Ladataan', sv: 'Laddar' };
+function getLoadingLabel(locale: string): string {
+  const lang = locale.substring(0, 2).toLowerCase();
+  return LOADING_STRINGS[lang] ?? LOADING_STRINGS['en'];
+}
+
+function renderLoadingIndicator(container: HTMLElement, theme: ResolvedTheme, ariaLabel: string): void {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'jsc-loading';
+  wrapper.setAttribute('role', 'status');
+  wrapper.setAttribute('aria-label', ariaLabel);
+  wrapper.setAttribute('aria-live', 'polite');
+  wrapper.setAttribute('aria-atomic', 'true');
+  wrapper.style.display = 'flex';
+  wrapper.style.alignItems = 'center';
+  wrapper.style.justifyContent = 'center';
+  wrapper.style.width = '100%';
+  wrapper.style.height = '100%';
+  wrapper.style.minHeight = '100px';
+  wrapper.style.fontFamily = theme.fontFamily;
+
+  const spinner = document.createElement('div');
+  spinner.className = 'jsc-spinner';
+  spinner.style.width = '32px';
+  spinner.style.height = '32px';
+  spinner.style.border = `3px solid ${theme.colorTick}`;
+  spinner.style.borderTopColor = theme.colorTextSecondary;
+  spinner.style.borderRadius = '50%';
+  spinner.style.animation = 'jsc-spin 0.8s linear infinite';
+
+  // Inject keyframes if not already present
+  if (!document.getElementById('jsc-spinner-keyframes')) {
+    const style = document.createElement('style');
+    style.id = 'jsc-spinner-keyframes';
+    style.textContent = '@keyframes jsc-spin { to { transform: rotate(360deg); } } @media (prefers-reduced-motion: reduce) { .jsc-spinner { animation: none !important; } }';
+    document.head.appendChild(style);
+  }
+
+  wrapper.appendChild(spinner);
+  wrapper.appendChild(createSrOnlyElement('span', ariaLabel));
+  container.appendChild(wrapper);
+}
+
+function transformScatterDataForChart(dataset: JsonStatDataset, cfg: ChartConfig): ScatterChartData {
+  const contentDimId =
+    dataset.role?.metric?.[0] ??
+    dataset.id.find((dimId) => {
+      const idx = dataset.id.indexOf(dimId);
+      return !dataset.role?.time?.includes(dimId) && dataset.size[idx] > 1;
+    }) ??
+    dataset.id[0];
+
+  const contentDim = dataset.dimension[contentDimId];
+  const contentCodes = getOrderedCodes(contentDim.category.index);
+
+  if (contentCodes.length < 2) {
+    return { points: [], xLabel: '', yLabel: '' };
+  }
+
+  return transformScatterData(dataset, {
+    xContentValue: contentCodes[0],
+    yContentValue: contentCodes[1],
+    observationDimension: cfg.xDimension,
+  });
+}
+
+function transformPyramidDataForChart(dataset: JsonStatDataset, _cfg: ChartConfig): PyramidChartData {
+  const dimSizes = dataset.id.map((dimId, i) => ({ id: dimId, size: dataset.size[i] }));
+  const splitDim = dimSizes.find((d) => d.size === 2);
+  const catDim =
+    dimSizes.find((d) => d.id !== splitDim?.id && d.size > 1) ??
+    dimSizes.find((d) => d.id !== splitDim?.id);
+
+  return transformPyramidData(dataset, {
+    categoryDimension: catDim?.id ?? dataset.id[0],
+    splitDimension: splitDim?.id ?? dataset.id[1],
+  });
+}
+
+/** Key figure requires all dimensions to have exactly one category. */
+function isKeyFigureCompatible(dataset: JsonStatDataset): boolean {
+  return dataset.size.length > 0 && dataset.size.every(s => s === 1);
+}
+
+function extractKeyFigureData(dataset: JsonStatDataset): { value: number | null; unit: string; decimals?: number } {
+  // Find the first non-null numeric value, or null if all are null
+  let value: number | null = null;
+  for (const v of dataset.value) {
+    if (v !== null && typeof v !== 'string') {
+      value = v;
+      break;
+    }
+  }
+
+  // Extract unit from content dimension
+  let unit = '';
+  let decimals: number | undefined;
+  const contentDimId = dataset.role?.metric?.[0] ?? dataset.id[0];
+  const contentDim = dataset.dimension[contentDimId];
+  if (contentDim?.category?.unit) {
+    const codes = getOrderedCodes(contentDim.category.index);
+    const unitInfo = contentDim.category.unit[codes[0]];
+    if (unitInfo) {
+      unit = unitInfo.label ?? '';
+      decimals = unitInfo.decimals;
+    }
+  }
+
+  return { value, unit, decimals };
+}
+
+const NICE_INTERVALS: Record<string, number[]> = {
+  Y: [1, 2, 5, 10, 25, 50, 100, 250, 500, 1000],
+  H: [1, 2, 4, 10, 20, 50, 100],
+  Q: [1, 2, 4, 8, 20, 40, 100],
+  M: [1, 2, 3, 6, 12, 24, 60, 120],
+  W: [1, 2, 4, 13, 26, 52, 104],
+  D: [1, 2, 7, 14, 30, 90, 365],
+};
+
+function computeTimeSeriesLabels(
+  dims: DimensionMeta[],
+  dataset: JsonStatDataset,
+  xDimension?: string,
+): NiceSkipOptions | undefined {
+  const xDimId = xDimension ?? dataset.id.find((id) => dataset.role?.time?.includes(id));
+  if (!xDimId) return undefined;
+
+  const dimMeta = dims.find(d => d.code === xDimId);
+  if (dimMeta?.type !== 'Time' || dimMeta?.isIrregular) return undefined;
+
+  const dim = dataset.dimension[xDimId];
+  const codes = getOrderedCodes(dim.category.index);
+  const periodInfo = getTimePeriodInfo(codes);
+  if (!periodInfo) return undefined;
+
+  const intervals = NICE_INTERVALS[periodInfo.periodType];
+  if (!intervals) return undefined;
+
+  return {
+    intervals,
+    firstAbsoluteIndex: periodInfo.firstAbsoluteIndex,
+  };
+}
+
+function createRenderer(
+  type: ChartType,
+  container: HTMLElement,
+  dataset: JsonStatDataset,
+  cfg: ChartConfig,
+  timeSeriesLabels?: NiceSkipOptions,
+  mapGeometry?: GeoJsonFeatureCollection,
+): { destroy(): void } {
+  const xDim = cfg.xDimension;
+  const yDim = cfg.yDimension;
+
+  switch (type) {
+    case 'line':
+      return createLineChart({
+        container,
+        data: transformDataset(dataset, { xDimension: xDim, seriesDimension: yDim }),
+        config: cfg,
+        timeSeriesLabels,
+      });
+    case 'verticalBar':
+    case 'horizontalBar':
+      return createBarChart({
+        container,
+        data: transformDataset(dataset, { xDimension: xDim, seriesDimension: yDim }),
+        config: cfg,
+        chartType: type,
+        timeSeriesLabels,
+      });
+    case 'groupedVerticalBar':
+    case 'groupedHorizontalBar':
+      return createGroupedBarChart({
+        container,
+        data: transformDataset(dataset, { xDimension: xDim, seriesDimension: yDim }),
+        config: cfg,
+        chartType: type,
+        timeSeriesLabels,
+      });
+    case 'stackedVerticalBar':
+    case 'stackedHorizontalBar':
+    case 'percentVerticalBar':
+    case 'percentHorizontalBar':
+      return createStackedBarChart({
+        container,
+        data: transformDataset(dataset, { xDimension: xDim, seriesDimension: yDim }),
+        config: cfg,
+        chartType: type,
+        timeSeriesLabels,
+      });
+    case 'pie':
+      return createPieChart({
+        container,
+        data: transformDataset(dataset, { xDimension: xDim }),
+        config: cfg,
+      });
+    case 'scatterPlot':
+      return createScatterChart({
+        container,
+        data: transformScatterDataForChart(dataset, cfg),
+        config: cfg,
+      });
+    case 'pyramid':
+      return createPyramidChart({
+        container,
+        data: transformPyramidDataForChart(dataset, cfg),
+        config: cfg,
+      });
+    case 'keyFigure': {
+      const kfData = extractKeyFigureData(dataset);
+      return createKeyFigureChart({
+        container,
+        value: kfData.value,
+        unit: kfData.unit,
+        decimals: kfData.decimals,
+        config: cfg,
+      });
+    }
+    case 'table':
+      return createTableChart({
+        container,
+        data: transformTableData(dataset, { tableLayout: cfg.tableLayout }),
+        config: cfg,
+      });
+    case 'map': {
+      if (!mapGeometry) {
+        throw new Error('[JsonStatChart] Map chart requires mapProvider to supply geometry');
+      }
+      const theme = resolveTheme(container, cfg.theme);
+      const mapData = transformMapData(dataset, mapGeometry, cfg.map ?? {}, theme);
+      return createMapChart({
+        container,
+        data: mapData,
+        config: cfg,
+      });
+    }
+  }
+}
+
+// --- Main API ---
+
+export function createChart(
+  container: HTMLElement,
+  dataset: JsonStatDataset,
+  config?: ChartConfig,
+): ChartInstance {
+  if (!(container instanceof HTMLElement)) {
+    throw new TypeError('[JsonStatChart] container must be an HTMLElement');
+  }
+
+  let currentDataset = dataset;
+  let currentConfig: ChartConfig = config ?? {};
+  let currentChartType: ChartType = 'table';
+  let currentRenderer: { destroy(): void } | null = null;
+  let destroyed = false;
+  let chartTypeOverride: ChartType | null = null;
+  let generation = 0;
+  let pendingAbort: AbortController | null = null;
+  let pendingSpinnerRaf: number | null = null;
+  let lastMapAvailable = false;
+  let resolvedMapGeometry: GeoJsonFeatureCollection | null = null;
+
+  function rebuildPipeline(ds: JsonStatDataset, cfg: ChartConfig): void {
+    // Increment generation to invalidate any pending async callbacks
+    generation++;
+    const currentGen = generation;
+
+    // Cancel any pending map provider resolution
+    if (pendingAbort) {
+      pendingAbort.abort();
+      pendingAbort = null;
+    }
+    if (pendingSpinnerRaf !== null) {
+      cancelAnimationFrame(pendingSpinnerRaf);
+      pendingSpinnerRaf = null;
+    }
+    // Clear stale map state — will be set again when provider resolves or sync path completes
+    resolvedMapGeometry = null;
+    lastMapAvailable = false;
+
+    // Always destroy previous renderer first
+    if (currentRenderer) {
+      currentRenderer.destroy();
+      currentRenderer = null;
+    }
+
+    const theme = resolveTheme(container, cfg.theme);
+    if (cfg.theme?.colorFocusRing) {
+      container.style.setProperty('--jsc-color-focus-ring', theme.colorFocusRing);
+    } else {
+      container.style.removeProperty('--jsc-color-focus-ring');
+    }
+
+    // Validate
+    const validation = validateDataset(ds);
+    if (!validation.valid) {
+      container.innerHTML = '';
+      renderError(container, validation.errors[0].message, theme);
+      return;
+    }
+
+    // Derive data properties
+    const dataProps = deriveDataProperties(ds);
+
+    // Resolve locale once
+    const resolvedLocale = resolveLocale(
+      cfg.locale,
+      typeof navigator === 'undefined' ? undefined : navigator.language,
+    );
+
+    // Derive dimension meta
+    const dimMeta = deriveDimensionMeta(ds);
+
+    // Check if async map provider resolution is needed
+    const geoDimId = ds.role?.geo?.find(id => {
+      const idx = ds.id.indexOf(id);
+      return idx >= 0 && ds.size[idx] > 1;
+    }) ?? ds.role?.geo?.[0];
+
+    const hasGeo = !!geoDimId;
+    const hasMapProvider = typeof cfg.mapProvider === 'function';
+
+    // Early validation: explicit map type without provider
+    if ((cfg.chartType === 'map' || chartTypeOverride === 'map') && !hasMapProvider) {
+      container.innerHTML = '';
+      throw new Error('[JsonStatChart] Map chart requires config.mapProvider');
+    }
+
+    const explicitType = chartTypeOverride ?? cfg.chartType;
+    const timeDimForMap = dimMeta.find(d => d.type === 'Time');
+    const mapTimeConstraintOk = timeDimForMap?.size === 1;
+    let needsMapResolution = false;
+    if (hasGeo && hasMapProvider) {
+      if (explicitType === 'map') {
+        needsMapResolution = true;
+      } else if (explicitType === undefined && mapTimeConstraintOk) {
+        // In auto mode, only call the provider if map would be selected
+        // assuming geometry is available. Avoids unnecessary async work
+        // when a higher-priority chart type (e.g. horizontalBar) will win.
+        const bestCase = selectDefaultChartType(dataProps, dimMeta, { mapAvailable: true });
+        needsMapResolution = bestCase === 'map';
+      }
+    }
+
+    if (needsMapResolution) {
+      // Async path: resolve map provider
+      const dim = ds.dimension[geoDimId!];
+      const geoCodes = getOrderedCodes(dim.category.index);
+      const timeCode = timeDimForMap
+        ? getOrderedCodes(ds.dimension[timeDimForMap.code].category.index)[0]
+        : undefined;
+
+      const abort = new AbortController();
+      pendingAbort = abort;
+
+      // Defer spinner insertion via rAF — if provider resolves before rAF fires,
+      // the spinner is never inserted (no flicker for cached/preloaded maps)
+      container.innerHTML = '';
+      if (cfg.height) {
+        container.style.height = `${cfg.height}px`;
+      }
+      const loadingLabel = getLoadingLabel(resolvedLocale);
+      pendingSpinnerRaf = requestAnimationFrame(() => {
+        pendingSpinnerRaf = null;
+        if (currentGen !== generation || destroyed) return;
+        renderLoadingIndicator(container, theme, loadingLabel);
+      });
+
+      cfg.mapProvider!(geoDimId!, geoCodes, abort.signal, timeCode)
+        .then(geometry => {
+          if (currentGen !== generation || destroyed) return;
+          pendingAbort = null;
+          if (pendingSpinnerRaf !== null) {
+            cancelAnimationFrame(pendingSpinnerRaf);
+            pendingSpinnerRaf = null;
+          }
+
+          let effectiveCfg = cfg;
+          let mapAvailable = false;
+          if (geometry) {
+            effectiveCfg = { ...cfg, map: { ...(cfg.map ?? {}), geoDimensionId: geoDimId! } };
+            resolvedMapGeometry = geometry;
+            mapAvailable = true;
+          } else if (cfg.chartType === 'map' || chartTypeOverride === 'map') {
+            // Provider returned null but map was explicitly requested — fall back
+            console.warn('[JsonStatChart] mapProvider returned null for explicit map chart type, falling back');
+            if (chartTypeOverride === 'map') chartTypeOverride = null;
+            effectiveCfg = { ...cfg, chartType: undefined };
+          }
+
+          lastMapAvailable = mapAvailable;
+          try {
+            container.innerHTML = '';
+            finishRebuild(ds, effectiveCfg, dataProps, dimMeta, resolvedLocale, theme, mapAvailable);
+            const announcement = createSrOnlyElement('div', 'Chart loaded');
+            announcement.setAttribute('role', 'status');
+            announcement.setAttribute('aria-live', 'polite');
+            container.appendChild(announcement);
+            setTimeout(() => announcement.remove(), 1000);
+          } catch (err) {
+            console.warn('[JsonStatChart]', err);
+            renderError(container, err instanceof Error ? err.message : 'An unexpected error occurred', theme);
+          }
+        })
+        .catch(err => {
+          if (currentGen !== generation || destroyed) return;
+          pendingAbort = null;
+          if (pendingSpinnerRaf !== null) {
+            cancelAnimationFrame(pendingSpinnerRaf);
+            pendingSpinnerRaf = null;
+          }
+          console.warn('[JsonStatChart] mapProvider failed:', err);
+
+          if (chartTypeOverride === 'map') chartTypeOverride = null;
+          const catchCfg = (cfg.chartType === 'map') ? { ...cfg, chartType: undefined } : cfg;
+          lastMapAvailable = false;
+          try {
+            container.innerHTML = '';
+            finishRebuild(ds, catchCfg, dataProps, dimMeta, resolvedLocale, theme, false);
+            const announcement = createSrOnlyElement('div', 'Chart loaded');
+            announcement.setAttribute('role', 'status');
+            announcement.setAttribute('aria-live', 'polite');
+            container.appendChild(announcement);
+            setTimeout(() => announcement.remove(), 1000);
+          } catch (finishErr) {
+            console.warn('[JsonStatChart]', finishErr);
+            renderError(container, finishErr instanceof Error ? finishErr.message : 'An unexpected error occurred', theme);
+          }
+        });
+
+      return; // Exit — rendering happens in the callback
+    }
+
+    // Sync path
+    lastMapAvailable = false;
+    resolvedMapGeometry = null;
+    const syncCfg = cfg;
+    container.innerHTML = '';
+    finishRebuild(ds, syncCfg, dataProps, dimMeta, resolvedLocale, theme, false);
+  }
+
+  function finishRebuild(
+    ds: JsonStatDataset,
+    cfg: ChartConfig,
+    dataProps: DataProperties,
+    dimMeta: DimensionMeta[],
+    resolvedLocale: string,
+    theme: ResolvedTheme,
+    mapAvailable: boolean,
+  ): void {
+    // Select chart type
+    const resolvedType = chartTypeOverride ?? cfg.chartType
+      ?? selectDefaultChartType(dataProps, dimMeta, { mapAvailable });
+
+    // keyFigure requires single-cell data; fall back to table otherwise
+    const effectiveType: ChartType = resolvedType === 'keyFigure' && !isKeyFigureCompatible(ds)
+      ? 'table'
+      : resolvedType;
+
+    // Set container height if specified
+    if (cfg.height) {
+      container.style.height = `${cfg.height}px`;
+    }
+
+    // Auto header building
+    const resolvedConfig = { ...cfg };
+    resolvedConfig.locale = resolvedLocale;
+    if (resolvedConfig.showHeader === undefined) resolvedConfig.showHeader = true;
+    if (resolvedConfig.showHeader && resolvedConfig.title === undefined) {
+      if (resolvedConfig.autoTitle !== false) {
+        const headerResult = buildHeader(dimMeta, { locale: resolvedLocale });
+        const autoTitle = headerResult.header.trim();
+        resolvedConfig.title = autoTitle || ds.label || '';
+      } else if (ds.label) {
+        resolvedConfig.title = ds.label;
+      }
+    }
+
+    // Auto-populate footer from dataset metadata
+    const strings = getLocaleStrings(resolvedLocale);
+
+    // Auto-populate unit from content dimension (skip for keyFigure which shows unit inline)
+    const hasUnit = resolvedConfig.footerItems?.some(f => f.type === 'unit');
+    if (!hasUnit && effectiveType !== 'keyFigure') {
+      const metricDimId = ds.role?.metric?.[0] ??
+        ds.id.find(dimId => ds.dimension[dimId].category.unit != null);
+      if (metricDimId) {
+        const metricDim = ds.dimension[metricDimId];
+        const codes = getOrderedCodes(metricDim.category.index);
+        const unitEntries: { valueName: string; unitLabel: string }[] = [];
+        for (const code of codes) {
+          const unitInfo = metricDim.category.unit?.[code];
+          if (unitInfo?.label) {
+            unitEntries.push({
+              valueName: metricDim.category.label?.[code] ?? code,
+              unitLabel: unitInfo.label,
+            });
+          }
+        }
+        if (unitEntries.length > 0) {
+          let unitText: string;
+          if (unitEntries.length === 1) {
+            unitText = unitEntries[0].unitLabel;
+          } else {
+            unitText = unitEntries.map(e => `${e.valueName}: ${e.unitLabel}`).join(', ');
+          }
+          resolvedConfig.footerItems = [
+            { type: 'unit' as const, label: `${strings.unit}:`, value: unitText },
+            ...(resolvedConfig.footerItems ?? []),
+          ];
+        }
+      }
+    }
+
+    const hasSource = resolvedConfig.footerItems?.some(f => f.type === 'source');
+    if (ds.source && !hasSource) {
+      resolvedConfig.footerItems = [
+        ...(resolvedConfig.footerItems ?? []),
+        { type: 'source' as const, label: `${strings.source}:`, value: ds.source },
+      ];
+    }
+
+    const hasUpdated = resolvedConfig.footerItems?.some(f => f.type === 'updated');
+    if (ds.updated && !hasUpdated) {
+      const date = new Date(ds.updated);
+      let updatedText: string;
+      if (!Number.isNaN(date.getTime())) {
+        updatedText = date.toLocaleDateString(resolvedLocale, {
+          year: 'numeric',
+          month: 'numeric',
+          day: 'numeric',
+          timeZone: 'UTC',
+        });
+      } else {
+        updatedText = ds.updated;
+      }
+      resolvedConfig.footerItems = [
+        ...(resolvedConfig.footerItems ?? []),
+        { type: 'updated' as const, label: `${strings.updated}:`, value: updatedText },
+      ];
+    }
+
+    // Create renderer
+    const timeSeriesLabels = computeTimeSeriesLabels(dimMeta, ds, resolvedConfig.xDimension);
+    currentRenderer = createRenderer(effectiveType, container, ds, resolvedConfig, timeSeriesLabels, resolvedMapGeometry ?? undefined);
+
+    // Store state
+    currentChartType = effectiveType;
+  }
+
+  try {
+    rebuildPipeline(dataset, currentConfig);
+  } catch (err) {
+    console.warn('[JsonStatChart]', err);
+    const theme = resolveTheme(container, currentConfig.theme);
+    renderError(
+      container,
+      err instanceof Error ? err.message : 'An unexpected error occurred',
+      theme,
+    );
+  }
+
+  return {
+    update(newDataset: JsonStatDataset, newConfig?: ChartConfig): void {
+      if (destroyed) return;
+      currentDataset = newDataset;
+      if (newConfig !== undefined) {
+        currentConfig = newConfig;
+        if (newConfig.chartType !== undefined) {
+          chartTypeOverride = newConfig.chartType;
+        }
+      }
+      try {
+        rebuildPipeline(currentDataset, currentConfig);
+      } catch (err) {
+        console.warn('[JsonStatChart]', err);
+        const theme = resolveTheme(container, currentConfig.theme);
+        renderError(
+          container,
+          err instanceof Error ? err.message : 'An unexpected error occurred',
+          theme,
+        );
+      }
+    },
+
+    destroy(): void {
+      if (destroyed) return;
+      destroyed = true;
+      // Cancel pending map resolution
+      if (pendingAbort) {
+        pendingAbort.abort();
+        pendingAbort = null;
+      }
+      if (pendingSpinnerRaf !== null) {
+        cancelAnimationFrame(pendingSpinnerRaf);
+        pendingSpinnerRaf = null;
+      }
+      if (currentRenderer) {
+        currentRenderer.destroy();
+        currentRenderer = null;
+      }
+      container.innerHTML = '';
+    },
+
+    setChartType(type: ChartType): void {
+      if (destroyed) return;
+      chartTypeOverride = type;
+      try {
+        rebuildPipeline(currentDataset, currentConfig);
+      } catch (err) {
+        console.warn('[JsonStatChart]', err);
+        const theme = resolveTheme(container, currentConfig.theme);
+        renderError(
+          container,
+          err instanceof Error ? err.message : 'An unexpected error occurred',
+          theme,
+        );
+      }
+    },
+
+    getChartType(): ChartType {
+      return currentChartType;
+    },
+
+    getApplicableChartTypes(): ChartTypeResult[] {
+      if (destroyed) return [];
+      const dataProps = deriveDataProperties(currentDataset);
+      const dimMeta = deriveDimensionMeta(currentDataset);
+      return getApplicableChartTypes(dataProps, dimMeta, { mapAvailable: lastMapAvailable });
+    },
+  };
+}

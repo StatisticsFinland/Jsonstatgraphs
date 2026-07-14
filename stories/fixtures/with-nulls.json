@@ -1,0 +1,161 @@
+{
+  "version": "2.0",
+  "class": "dataset",
+  "id": [
+    "vuosineljannes",
+    "energialahde",
+    "tiedot"
+  ],
+  "label": "12st -- Total energy consumption by energy source, 2010Q1-2025Q4*",
+  "note": [
+    "<A HREF='https://example.com/docs/ehk' TARGET=_blank>Documentation of statistics</A>##.. not applicable##Consumption of natural gas exclusive of uses as raw material.##Hydro power, wind power and imported electricity have been made commensurate with fuels according to directly obtained electricity (3,6 TJ/GWh) and nuclear power at the efficiency ratio of 33 per cent (10,91 TJ/GWh)."
+  ],
+  "source": "Example Institute, energy supply and consumption",
+  "updated": "2026-04-16T08:00:00",
+  "dimension": {
+    "vuosineljannes": {
+      "label": "Quarter",
+      "note": [
+        "* preliminary data"
+      ],
+      "category": {
+        "index": [
+          "2010Q1",
+          "2010Q2",
+          "2010Q3",
+          "2010Q4",
+          "2011Q1",
+          "2011Q2",
+          "2011Q3",
+          "2011Q4",
+          "2012Q1",
+          "2012Q2",
+          "2012Q3",
+          "2012Q4"
+        ],
+        "label": {
+          "2010Q1": "2010Q1",
+          "2010Q2": "2010Q2",
+          "2010Q3": "2010Q3",
+          "2010Q4": "2010Q4",
+          "2011Q1": "2011Q1",
+          "2011Q2": "2011Q2",
+          "2011Q3": "2011Q3",
+          "2011Q4": "2011Q4",
+          "2012Q1": "2012Q1",
+          "2012Q2": "2012Q2",
+          "2012Q3": "2012Q3",
+          "2012Q4": "2012Q4"
+        }
+      }
+    },
+    "energialahde": {
+      "label": "Energy source",
+      "category": {
+        "index": [
+          "SSS",
+          "1",
+          "2"
+        ],
+        "label": {
+          "1": "1 Renewable energy",
+          "2": "2 Fossil fuels and peat",
+          "SSS": "SSS TOTAL ENERGY CONSUMPTION"
+        }
+      }
+    },
+    "tiedot": {
+      "label": "Information",
+      "category": {
+        "index": [
+          "vuosimuutos_maara"
+        ],
+        "label": {
+          "vuosimuutos_maara": "Quantity, year-on-year change (%)"
+        },
+        "unit": {
+          "vuosimuutos_maara": {
+            "label": "Per cent",
+            "decimals": 1
+          }
+        }
+      }
+    }
+  },
+  "value": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    -1.31,
+    -1.12,
+    -1.63,
+    -0.04,
+    -1.18,
+    -1.25,
+    -3.23,
+    4.49,
+    -13.17,
+    -14.51,
+    -2.56,
+    -27.41,
+    -5.85,
+    7.02,
+    -18.28,
+    -3.18,
+    6.16,
+    -12.46,
+    -0.1,
+    9.42,
+    -3.33,
+    4.78,
+    13.47,
+    2.09
+  ],
+  "status": {
+    "0": "2",
+    "1": "2",
+    "2": "2",
+    "3": "2",
+    "4": "2",
+    "5": "2",
+    "6": "2",
+    "7": "2",
+    "8": "2",
+    "9": "2",
+    "10": "2",
+    "11": "2"
+  },
+  "extension": {
+    "missingValueDescriptions": {
+      "1": "Missing",
+      "2": "Not applicable",
+      "3": "Data is subject to secrecy",
+      "4": "Not available",
+      "5": "Not asked",
+      "6": "......",
+      "7": "Magnitude nil"
+    }
+  },
+  "size": [
+    12,
+    3,
+    1
+  ],
+  "role": {
+    "time": [
+      "vuosineljannes"
+    ],
+    "metric": [
+      "tiedot"
+    ]
+  }
+}

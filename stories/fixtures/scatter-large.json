@@ -1,0 +1,165 @@
+{
+  "version": "2.0",
+  "class": "dataset",
+  "id": [
+    "alue",
+    "vuosi",
+    "tiedot"
+  ],
+  "label": "12bc -- Gross domestic product per capita by area, annually, 2000-2023",
+  "note": [
+    "<A HREF='https://stat.fi/en/statistics/documentation/altp' TARGET=_blank>Documentation of statistics</A>"
+  ],
+  "source": "Statistics Finland, regional accounts",
+  "updated": "2025-11-28T08:00:00",
+  "dimension": {
+    "alue": {
+      "label": "Area",
+      "category": {
+        "index": [
+          "MK01",
+          "MK02",
+          "MK04",
+          "MK05",
+          "MK06",
+          "MK07",
+          "MK08",
+          "MK09",
+          "MK10",
+          "MK11",
+          "MK12",
+          "MK13",
+          "MK14",
+          "MK15",
+          "MK16",
+          "MK17",
+          "MK18",
+          "MK19",
+          "MK21"
+        ],
+        "label": {
+          "MK01": "MK01 Uusimaa",
+          "MK02": "MK02 Southwest Finland",
+          "MK04": "MK04 Satakunta",
+          "MK05": "MK05 Kanta-Häme",
+          "MK06": "MK06 Pirkanmaa",
+          "MK07": "MK07 Päijät-Häme",
+          "MK08": "MK08 Kymenlaakso",
+          "MK09": "MK09 South Karelia",
+          "MK10": "MK10 South Savo",
+          "MK11": "MK11 North Savo",
+          "MK12": "MK12 North Karelia",
+          "MK13": "MK13 Central Finland",
+          "MK14": "MK14 South Ostrobothnia",
+          "MK15": "MK15 Ostrobothnia",
+          "MK16": "MK16 Central Ostrobothnia",
+          "MK17": "MK17 North Ostrobothnia",
+          "MK18": "MK18 Kainuu",
+          "MK19": "MK19 Lapland",
+          "MK21": "MK21 Åland"
+        }
+      }
+    },
+    "vuosi": {
+      "label": "Year",
+      "category": {
+        "index": [
+          "2023"
+        ],
+        "label": {
+          "2023": "2023"
+        }
+      }
+    },
+    "tiedot": {
+      "label": "Information",
+      "category": {
+        "index": [
+          "GDPcap",
+          "EP"
+        ],
+        "label": {
+          "GDPcap": "At current prices, euro",
+          "EP": "Population"
+        },
+        "unit": {
+          "GDPcap": {
+            "label": "Euros",
+            "decimals": 1
+          },
+          "EP": {
+            "label": "henkilöä",
+            "decimals": 0
+          }
+        }
+      }
+    }
+  },
+  "value": [
+    62093.364,
+    1746285,
+    45556.138,
+    488177,
+    46184.47,
+    212148,
+    41105.305,
+    169542,
+    45705.516,
+    535990,
+    37213.34,
+    204504,
+    42840.392,
+    159073,
+    37688.146,
+    125258,
+    38404.187,
+    130183,
+    41361.438,
+    247940,
+    37688.018,
+    162431,
+    40167.674,
+    272854,
+    39673.143,
+    190657,
+    49187.291,
+    176963,
+    45675.734,
+    67771,
+    42483.87,
+    417374,
+    37805.295,
+    70343,
+    44869.686,
+    175973,
+    53681.846,
+    30450
+  ],
+  "extension": {
+    "missingValueDescriptions": {
+      "1": "Missing",
+      "2": "Not applicable",
+      "3": "Data is subject to secrecy",
+      "4": "Not available",
+      "5": "Not asked",
+      "6": "......",
+      "7": "Magnitude nil"
+    }
+  },
+  "size": [
+    19,
+    1,
+    2
+  ],
+  "role": {
+    "time": [
+      "vuosi"
+    ],
+    "metric": [
+      "tiedot"
+    ],
+    "geo": [
+      "alue"
+    ]
+  }
+}

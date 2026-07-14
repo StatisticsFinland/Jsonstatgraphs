@@ -1,0 +1,90 @@
+import { Meta, Canvas } from '@storybook/addon-docs/blocks';
+import * as HeaderFooterStories from './HeaderFooter.stories';
+
+<Meta of={HeaderFooterStories} />
+
+# Header & Footer
+
+Charts can display a title, subtitle, and footer items for context. These are configured via `ChartConfig` properties.
+
+---
+
+## Title & Subtitle
+
+Set `showHeader: true` to enable the header area. Provide `title` and optionally `subtitle`:
+
+```ts
+createChart(container, dataset, {
+  showHeader: true,
+  title: 'Gross domestic product per capita',
+  subtitle: '5 regions · 2019–2023',
+});
+```
+
+<Canvas of={HeaderFooterStories.WithTitleSubtitle} />
+
+---
+
+## Auto-generated Title
+
+When `showHeader: true` is set without a `title`, the library automatically builds a title from the dataset metadata — content dimension labels, single-value dimension values, and time ranges.
+
+Set `autoTitle: false` to disable this and use the raw `dataset.label` instead.
+
+<Canvas of={HeaderFooterStories.AutoTitle} />
+
+---
+
+## Footer Items
+
+Footer items appear below the chart. Each item has a `label` and `value`, and an optional `type` for semantic meaning:
+
+```ts
+createChart(container, dataset, {
+  footerItems: [
+    { label: 'Source:', value: 'Statistics Finland', type: 'source' },
+    { label: 'Updated:', value: '2025-03-15', type: 'updated' },
+  ],
+});
+```
+
+Available footer item types: `'source'`, `'updated'`, `'unit'`, `'custom'`.
+
+<Canvas of={HeaderFooterStories.WithFooter} />
+
+---
+
+## Source Link
+
+When `sourceLink` is provided, the source footer item's value becomes a clickable link:
+
+```ts
+createChart(container, dataset, {
+  footerItems: [
+    { label: 'Source:', value: 'Statistics Finland', type: 'source' },
+  ],
+  sourceLink: 'https://stat.fi',
+});
+```
+
+<Canvas of={HeaderFooterStories.SourceAsLink} />
+
+---
+
+## Full Example
+
+Combining title, subtitle, legend, and footer:
+
+<Canvas of={HeaderFooterStories.FullConfiguration} />
+
+---
+
+## Configuration Reference
+
+- `showHeader` — enable the title/subtitle header area (default: `false`)
+- `title` — chart title text
+- `subtitle` — chart subtitle text
+- `autoTitle` — auto-generate title from dataset metadata when no `title` is provided (default: `true`)
+- `footerItems` — array of `{ label, value, type? }` items displayed below the chart
+- `sourceLink` — URL that makes the source footer item clickable
+- `showLegend` — show the legend for multi-series charts (default: `false`)

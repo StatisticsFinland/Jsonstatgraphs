@@ -1,0 +1,97 @@
+import { Meta, Canvas } from '@storybook/addon-docs/blocks';
+import * as MapStories from './Map.stories';
+
+<Meta of={MapStories} />
+
+# Map Visualization
+
+Choropleth maps display statistical data as colored geographic regions. The library handles geometry resolution, code matching, and data classification automatically.
+
+---
+
+## Map Provider
+
+Maps require a `mapProvider` callback that fetches GeoJSON boundary data. The provider is called when map rendering is requested — either via explicit `chartType: 'map'` or when auto-selection determines that a map is the best fit.
+
+```ts
+const mapProvider: MapProvider = async (dimensionId, geoCodes, signal, timeCode?) => {
+  const response = await fetch(`/api/geo/${dimensionId}?time=${timeCode}`, { signal });
+  return response.json();
+};
+
+createChart(container, dataset, {
+  mapProvider,
+});
+```
+
+The provider receives:
+
+- `dimensionId` — the geographic dimension identifier from the dataset
+- `geoCodes` — array of geo codes present in the data
+- `signal` — an `AbortSignal` for cancellation (e.g. when the chart is destroyed before loading completes)
+- `timeCode` — the selected time period code, so the provider can return boundaries valid at that point in time
+
+Return `null` if no geometry is available. The chart will fall back to automatic chart type selection based on the dataset shape.
+
+<Canvas of={MapStories.Regions} />
+
+---
+
+## Geo Code Matching
+
+The library matches dataset dimension codes to GeoJSON feature properties. Three mechanisms control this:
+
+- **`geoIdProperty`** — which GeoJSON feature property contains the region code (default: auto-detected)
+- **`geoCodeMapper`** — transforms dataset codes before matching, e.g. stripping prefixes
+- **Auto-detection** — known Statistics Finland prefixes (`KU`, `MK`, `SK`, `HVA`, `HA`, `SA`, `EL`) are stripped automatically
+
+```ts
+createChart(container, dataset, {
+  mapProvider,
+  map: {
+    geoIdProperty: 'kunta',
+    geoCodeMapper: (code) => code.replace(/^KU/, ''),
+  },
+});
+```
+
+In most cases with Statistics Finland data, auto-detection handles prefix stripping without explicit configuration.
+
+<Canvas of={MapStories.Regions} />
+
+---
+
+## Classification Methods
+
+The `classificationMethod` option controls how values are grouped into color classes. Four methods are available:
+
+- **`jenks-nice`** (default) — Natural breaks (Jenks/ckmeans) snapped to round numbers. Best general-purpose choice.
+- **`jenks`** — Raw natural breaks via ckmeans. Optimizes within-class similarity but produces arbitrary boundaries.
+- **`even-ranges`** — Equal-width intervals with nice boundaries. Good when the distribution is relatively uniform.
+- **`linear`** — Continuous color gradient with no discrete classes. Best for smoothly varying data.
+
+The number of classes is set via `classCount` (default: 5).
+
+```ts
+createChart(container, dataset, {
+  mapProvider,
+  map: {
+    classificationMethod: 'even-ranges',
+    classCount: 7,
+  },
+});
+```
+
+<Canvas of={MapStories.ClassificationSwitcher} />
+
+---
+
+## Configuration Reference
+
+- `geoDimensionId` — override which dimension to use as the geographic dimension
+- `geoIdProperty` — GeoJSON feature property name for matching codes
+- `geoCodeMapper` — function to transform dataset codes before matching
+- `classCount` — number of classification classes (default: 5)
+- `classificationMethod` — `'jenks-nice'` | `'jenks'` | `'even-ranges'` | `'linear'`
+
+Map colors are configured via the theme — see the Theming page for `mapColors` and `--jsc-map-*` CSS properties.

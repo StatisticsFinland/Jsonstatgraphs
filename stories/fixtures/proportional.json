@@ -1,0 +1,100 @@
+{
+  "version": "2.0",
+  "class": "dataset",
+  "id": [
+    "vuosi",
+    "energian-loppukayton-sektori",
+    "tiedot"
+  ],
+  "label": "12vk -- Final energy consumption by sector, 1970-2024*",
+  "note": [
+    "<A HREF='https://example.com/docs/ehk' TARGET=_blank>Documentation of statistics</A>##.. not applicable##This table describes the end use of energy in different sectors (electricity, district heat, direct fuel use). End-use sectors do not comprise losses of electricity and heat generation and fuel refining.##'Others' sector contains consumption of electricity and fuels by households, #public and private services, agriculture and forestry, and construction.##Share of renewable energy according to RES-directive is calculated on the basis of gross final energy consumption #which differs from the content of this table conceptually."
+  ],
+  "source": "Example Institute, energy supply and consumption",
+  "updated": "2025-12-16T08:00:00",
+  "dimension": {
+    "vuosi": {
+      "label": "Year",
+      "note": [
+        "* preliminary data"
+      ],
+      "category": {
+        "index": [
+          "2024"
+        ],
+        "label": {
+          "2024": "2024*"
+        },
+        "note": {
+          "2024": [
+            "* preliminary data"
+          ]
+        }
+      }
+    },
+    "energian-loppukayton-sektori": {
+      "label": "Sektor",
+      "category": {
+        "index": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ],
+        "label": {
+          "A": "A Industry",
+          "B": "B Transport",
+          "C": "C Space heating",
+          "D": "D Others"
+        }
+      }
+    },
+    "tiedot": {
+      "label": "Information",
+      "category": {
+        "index": [
+          "maara_gwh"
+        ],
+        "label": {
+          "maara_gwh": "Quantity (GWh)"
+        },
+        "unit": {
+          "maara_gwh": {
+            "label": "GWh",
+            "decimals": 0
+          }
+        }
+      }
+    }
+  },
+  "value": [
+    120747.22,
+    44567.78,
+    75548.89,
+    38754.17
+  ],
+  "extension": {
+    "missingValueDescriptions": {
+      "1": "Missing",
+      "2": "Not applicable",
+      "3": "Data is subject to secrecy",
+      "4": "Not available",
+      "5": "Not asked",
+      "6": "......",
+      "7": "Magnitude nil"
+    }
+  },
+  "size": [
+    1,
+    4,
+    1
+  ],
+  "role": {
+    "time": [
+      "vuosi"
+    ],
+    "metric": [
+      "tiedot"
+    ]
+  }
+}

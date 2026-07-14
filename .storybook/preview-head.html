@@ -1,0 +1,10 @@
+<style>
+  /* Prevent scrollbars on Canvas story blocks in docs pages.
+     The .docs-story container (ChildrenContainer in addon-docs) defaults to
+     overflow:auto via styled-components, but has no fixed height — content
+     never truly overflows, yet sub-pixel rounding from the ZoomElement
+     ResizeObserver can trigger spurious scrollbars. */
+  .docs-story {
+    overflow: hidden !important;
+  }
+</style>

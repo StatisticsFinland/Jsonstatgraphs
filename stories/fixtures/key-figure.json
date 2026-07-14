@@ -1,0 +1,40 @@
+{
+  "version": "2.0",
+  "class": "dataset",
+  "id": ["vuosi", "alue", "tiedot"],
+  "label": "Population by region",
+  "source": "Example Institute, population statistics",
+  "updated": "2025-03-15T08:00:00",
+  "size": [1, 1, 1],
+  "dimension": {
+    "vuosi": {
+      "label": "Year",
+      "category": {
+        "index": ["2024"],
+        "label": { "2024": "2024" }
+      }
+    },
+    "alue": {
+      "label": "Region",
+      "category": {
+        "index": ["091"],
+        "label": { "091": "Helsinki" }
+      }
+    },
+    "tiedot": {
+      "label": "Information",
+      "category": {
+        "index": ["vaesto"],
+        "label": { "vaesto": "Population" },
+        "unit": {
+          "vaesto": { "label": "persons", "decimals": 0 }
+        }
+      }
+    }
+  },
+  "role": {
+    "time": ["vuosi"],
+    "metric": ["tiedot"]
+  },
+  "value": [674538]
+}

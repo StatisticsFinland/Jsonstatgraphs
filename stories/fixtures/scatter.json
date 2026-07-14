@@ -1,0 +1,114 @@
+{
+  "version": "2.0",
+  "class": "dataset",
+  "id": [
+    "vuosi",
+    "ika",
+    "tiedot"
+  ],
+  "label": "12dz -- Participation in adult education (incl. adult education and training related to work or occupation, personnel training and not related to work) by age group, 1990-2022",
+  "note": [
+    "<A HREF='https://example.com/docs/aku' TARGET=_blank>Documentation of statistics</A>"
+  ],
+  "source": "Example Institute, participation in adult education",
+  "updated": "2023-10-06T08:00:00",
+  "dimension": {
+    "vuosi": {
+      "label": "Year",
+      "category": {
+        "index": [
+          "2022"
+        ],
+        "label": {
+          "2022": "2022"
+        }
+      }
+    },
+    "ika": {
+      "label": "Age",
+      "category": {
+        "index": [
+          "18-24",
+          "25-34",
+          "35-44",
+          "45-54",
+          "55-64"
+        ],
+        "label": {
+          "18-24": "18 - 24",
+          "25-34": "25 - 34",
+          "35-44": "35 - 44",
+          "45-54": "45 - 54",
+          "55-64": "55 - 64"
+        }
+      }
+    },
+    "tiedot": {
+      "label": "Information",
+      "category": {
+        "index": [
+          "akuo_lkm",
+          "akuo_pros"
+        ],
+        "label": {
+          "akuo_lkm": "Participants in adult education and training, number",
+          "akuo_pros": "Participants in adult education and training, %"
+        },
+        "note": {
+          "akuo_lkm": [
+            "Participants in adult education and training, population aged 18 to 64.#Adult education refers to training arranged and organised specifically for adults. Includes studying abroad excl. the year 1990. Until 2017, only such training is included where participation was at least six hours."
+          ],
+          "akuo_pros": [
+            "Participants in adult education and training, population aged 18 to 64.#Adult education refers to training arranged and organised specifically for adults. Includes studying abroad excl. the year 1990. Until 2017, only such training is included where participation was at least six hours."
+          ]
+        },
+        "unit": {
+          "akuo_lkm": {
+            "label": "Number",
+            "decimals": 0
+          },
+          "akuo_pros": {
+            "label": "%",
+            "decimals": 0
+          }
+        }
+      }
+    }
+  },
+  "value": [
+    178091,
+    44,
+    291667,
+    48,
+    362093,
+    53,
+    341665,
+    54,
+    279325,
+    38
+  ],
+  "extension": {
+    "missingValueDescriptions": {
+      "1": "Missing",
+      "2": "Not applicable",
+      "3": "Data is subject to secrecy",
+      "4": "Not available",
+      "5": "Not asked",
+      "6": "......",
+      "7": "Magnitude nil"
+    }
+  },
+  "size": [
+    1,
+    5,
+    2
+  ],
+  "role": {
+    "time": [
+      "vuosi"
+    ],
+    "metric": [
+      "tiedot"
+    ]
+  }
+}

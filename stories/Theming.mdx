@@ -1,0 +1,111 @@
+import { Meta, Canvas } from '@storybook/addon-docs/blocks';
+import * as ThemingStories from './Theming.stories';
+
+<Meta of={ThemingStories} />
+
+# Theming
+
+The `@statisticsfinland/jsonstat-chart` library supports three ways to customize appearance:
+
+1. **JS config** — pass a `theme` object in `ChartConfig`
+2. **CSS custom properties** — set `--jsc-*` properties on the container or any ancestor
+3. **Built-in defaults** — applied when nothing else is specified
+
+**Resolution priority:** JS config > CSS custom properties > defaults.
+
+---
+
+## JavaScript Configuration (`ThemeConfig`)
+
+Pass a `theme` object when calling `createChart()`:
+
+```ts
+createChart(container, dataset, {
+  theme: {
+    colorBackground: '#1a1a2e',
+    colorText: '#e0e0e0',
+    seriesColors: ['#00d2ff', '#ff6b6b', '#ffd93d', '#6bcb77'],
+  },
+});
+```
+
+### Available properties
+
+#### Typography
+
+- `fontFamily` — Font stack for all chart text
+- `fontSizeTick` — Axis tick label size
+- `fontSizeLabel` — Data label size
+- `fontSizeTitle` — Chart title size
+- `fontWeightNormal` — Normal weight value
+- `fontWeightBold` — Bold weight value
+
+#### Colors
+
+- `colorBackground` — Chart background
+- `colorSurface` — Tooltip and panel background
+- `colorText` — Primary text color
+- `colorTextSecondary` — Secondary / muted text
+- `colorBorder` — Border and divider color
+- `colorTick` — Axis tick and grid line color
+- `colorError` — Error state color
+- `colorFocusRing` — Keyboard focus ring color
+- `colorLink` — Link color
+
+#### Layout
+
+- `borderRadius` — Corner radius for surfaces (px or CSS value)
+- `gridOpacity` — Grid line opacity (0–1)
+- `tooltipPadding` — Inner padding of tooltips
+- `tooltipBoxShadow` — Box-shadow for tooltips
+
+#### Palettes
+
+- `seriesColors` — Categorical palette for bars, lines, pie segments, etc.
+- `mapColors` — Sequential palette for choropleth maps, ordered light → dark
+
+<Canvas of={ThemingStories.DarkTheme} />
+
+---
+
+## CSS Custom Properties
+
+All scalar `ThemeConfig` properties can also be set via CSS custom properties on the container element (or any ancestor). The naming convention is `--jsc-{property-name}` in kebab-case.
+
+```css
+.my-chart-container {
+  --jsc-font-family: Georgia, serif;
+  --jsc-color-text: #1a1a1a;
+  --jsc-border-radius: 0;
+  --jsc-series-1: #e63946;
+  --jsc-series-2: #457b9d;
+}
+```
+
+Individual series colors use the `--jsc-series-1` through `--jsc-series-8` properties.
+
+**Note:** CSS custom properties are resolved at chart creation time. They do not reactively update — recreate the chart or call `instance.update(dataset)` with the current dataset to re-resolve theme values.
+
+<Canvas of={ThemingStories.CSSCustomProperties} />
+
+---
+
+## Color Palettes
+
+### `seriesColors` — categorical
+
+Used for bar, line, pie, and other multi-series charts. The palette accepts any number of colors. If more series exist than colors, the palette cycles. Via CSS custom properties, individual colors can be overridden using `--jsc-series-1` through `--jsc-series-8`.
+
+### `mapColors` — sequential
+
+Used by choropleth maps. Colors should be ordered light → dark. Provide one color per classification class (`config.map.classCount`, default: 5). Classification behavior (method, count) is configured separately under `config.map`.
+
+<Canvas of={ThemingStories.CustomColors} />
+
+---
+
+## Resolution Priority
+
+1. **`config.theme.*` (JS)** — highest priority, e.g. `theme: { colorText: '#fff' }`
+2. **CSS custom property** on the container, e.g. `--jsc-color-text: #fff`
+3. **Built-in defaults** — lowest priority

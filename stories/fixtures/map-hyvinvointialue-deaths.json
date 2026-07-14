@@ -1,0 +1,171 @@
+{
+  "version": "2.0",
+  "class": "dataset",
+  "id": [
+    "hyvinvointialue",
+    "tilaston-peruskuolemansyy-aikasarjaluokitus",
+    "vuosi",
+    "tiedot"
+  ],
+  "label": "13u5 -- Deaths by underlying cause of death (time series classification) and wellbeing services county, 1969-2024",
+  "note": [
+    "<A HREF='https://stat.fi/en/statistics/documentation/ksyyt' TARGET=_blank>Documentation of statistics</A>"
+  ],
+  "source": "Statistics Finland, causes of death",
+  "updated": "2025-10-29T08:00:00",
+  "dimension": {
+    "hyvinvointialue": {
+      "label": "Wellbeing services county",
+      "note": [
+        "These statistics apply the regional division of 1 January 2025 to the whole time series."
+      ],
+      "category": {
+        "index": [
+          "HVA01",
+          "HVA02",
+          "HVA03",
+          "HVA04",
+          "HVA05",
+          "HVA06",
+          "HVA07",
+          "HVA08",
+          "HVA09",
+          "HVA10",
+          "HVA11",
+          "HVA12",
+          "HVA13",
+          "HVA14",
+          "HVA15",
+          "HVA16",
+          "HVA17",
+          "HVA18",
+          "HVA19",
+          "HVA20",
+          "HVA21",
+          "HVA90",
+          "HVA91"
+        ],
+        "label": {
+          "HVA01": "HVA01 East Uusimaa wellbeing services county",
+          "HVA02": "HVA02 Central Uusimaa wellbeing services county",
+          "HVA03": "HVA03 West Uusimaa wellbeing services county",
+          "HVA04": "HVA04 Vantaa and Kerava wellbeing services county",
+          "HVA05": "HVA05 Southwest Finland wellbeing services county",
+          "HVA06": "HVA06 Satakunta wellbeing services county",
+          "HVA07": "HVA07 Kanta-Häme wellbeing services county",
+          "HVA08": "HVA08 Pirkanmaa wellbeing services county",
+          "HVA09": "HVA09 Päijät-Häme wellbeing services county",
+          "HVA10": "HVA10 Kymenlaakso wellbeing services county",
+          "HVA11": "HVA11 South Karelia wellbeing services county",
+          "HVA12": "HVA12 South Savo wellbeing services county",
+          "HVA13": "HVA13 North Savo wellbeing services county",
+          "HVA14": "HVA14 North Karelia wellbeing services county",
+          "HVA15": "HVA15 Central Finland wellbeing services county",
+          "HVA16": "HVA16 South Ostrobothnia wellbeing services county",
+          "HVA17": "HVA17 Ostrobothnia wellbeing services county",
+          "HVA18": "HVA18 Central Ostrobothnia wellbeing services county",
+          "HVA19": "HVA19 North Ostrobothnia wellbeing services county",
+          "HVA20": "HVA20 Kainuu wellbeing services county",
+          "HVA21": "HVA21 Lapland wellbeing services county",
+          "HVA90": "HVA90 City of Helsinki",
+          "HVA91": "HVA91 Åland"
+        }
+      }
+    },
+    "tilaston-peruskuolemansyy-aikasarjaluokitus": {
+      "label": "Underlying cause of death (time series classification)",
+      "note": [
+        "A change in the WHO coding rules has reduced pneumonia as an underlying cause since 2005, after which pneumonia appears in the statistics mainly as an immediate cause of death. The key between this short list and the different Classification of Diseases is described on the homepage of the statistics on causes of death under Classifications."
+      ],
+      "category": {
+        "index": [
+          "SSS"
+        ],
+        "label": {
+          "SSS": "00-54 Total"
+        }
+      }
+    },
+    "vuosi": {
+      "label": "Year",
+      "category": {
+        "index": [
+          "2024"
+        ],
+        "label": {
+          "2024": "2024"
+        }
+      }
+    },
+    "tiedot": {
+      "label": "Information",
+      "category": {
+        "index": [
+          "ksyylkm"
+        ],
+        "label": {
+          "ksyylkm": "Deaths"
+        },
+        "unit": {
+          "ksyylkm": {
+            "label": "Number",
+            "decimals": 0
+          }
+        }
+      }
+    }
+  },
+  "value": [
+    976,
+    1736,
+    3660,
+    2021,
+    5284,
+    2768,
+    1994,
+    5445,
+    2675,
+    2259,
+    1640,
+    2007,
+    3007,
+    2137,
+    2876,
+    2405,
+    1790,
+    727,
+    3864,
+    998,
+    2224,
+    5412,
+    309
+  ],
+  "extension": {
+    "missingValueDescriptions": {
+      "1": "Missing",
+      "2": "Not applicable",
+      "3": "Data is subject to secrecy",
+      "4": "Not available",
+      "5": "Not asked",
+      "6": "......",
+      "7": "Magnitude nil"
+    }
+  },
+  "size": [
+    23,
+    1,
+    1,
+    1
+  ],
+  "role": {
+    "time": [
+      "vuosi"
+    ],
+    "metric": [
+      "tiedot"
+    ],
+    "geo": [
+      "hyvinvointialue"
+    ]
+  }
+}

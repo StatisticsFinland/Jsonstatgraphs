@@ -1,0 +1,113 @@
+{
+  "version": "2.0",
+  "class": "dataset",
+  "id": [
+    "vuosi",
+    "adoptoitavan-vanhemmat",
+    "tiedot"
+  ],
+  "label": "13qh -- Adoptions according to the parents of the adopted person, 1999-2024",
+  "note": [
+    "<A HREF='https://example.com/docs/adopt' TARGET=_blank>Documentation of statistics</A>"
+  ],
+  "source": "Example Institute, adoptions",
+  "updated": "2025-08-29T08:00:00",
+  "dimension": {
+    "vuosi": {
+      "label": "Year",
+      "category": {
+        "index": [
+          "2015",
+          "2016",
+          "2017",
+          "2018",
+          "2019",
+          "2020",
+          "2021",
+          "2022",
+          "2023",
+          "2024"
+        ],
+        "label": {
+          "2015": "2015",
+          "2016": "2016",
+          "2017": "2017",
+          "2018": "2018",
+          "2019": "2019",
+          "2020": "2020",
+          "2021": "2021",
+          "2022": "2022",
+          "2023": "2023",
+          "2024": "2024"
+        }
+      }
+    },
+    "adoptoitavan-vanhemmat": {
+      "label": "Parents of the adopted person",
+      "note": [
+        "The parents of the adopted person refer to the situation of the parents after the adoption. In the statistics on adoptions, the adopted person may have one adoptive parent, two adoptive parents or an adoptive parent and a biological parent when the biological parent and the adoptive parent are married or in a registered partnership."
+      ],
+      "category": {
+        "index": [
+          "SSS"
+        ],
+        "label": {
+          "SSS": "TOTAL"
+        }
+      }
+    },
+    "tiedot": {
+      "label": "Information",
+      "category": {
+        "index": [
+          "vm61"
+        ],
+        "label": {
+          "vm61": "Adoptions"
+        },
+        "unit": {
+          "vm61": {
+            "label": "Number",
+            "decimals": 0
+          }
+        }
+      }
+    }
+  },
+  "value": [
+    407,
+    355,
+    396,
+    404,
+    370,
+    293,
+    239,
+    269,
+    252,
+    283
+  ],
+  "extension": {
+    "missingValueDescriptions": {
+      "1": "Missing",
+      "2": "Not applicable",
+      "3": "Data is subject to secrecy",
+      "4": "Not available",
+      "5": "Not asked",
+      "6": "......",
+      "7": "Magnitude nil"
+    }
+  },
+  "size": [
+    10,
+    1,
+    1
+  ],
+  "role": {
+    "time": [
+      "vuosi"
+    ],
+    "metric": [
+      "tiedot"
+    ]
+  }
+}

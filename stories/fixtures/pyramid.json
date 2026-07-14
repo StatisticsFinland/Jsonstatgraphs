@@ -1,0 +1,148 @@
+{
+  "version": "2.0",
+  "class": "dataset",
+  "id": [
+    "vuosi",
+    "ehdokkaan-sukupuoli",
+    "hyvinvointialue",
+    "ika-vaalipaivana",
+    "tiedot"
+  ],
+  "label": "13bm -- Candidates by age group, wellbeing services county and sex in the county elections, 2022",
+  "note": [
+    "<A HREF='https://example.com/docs/alvaa' TARGET=_blank>Documentation of statistics</A>"
+  ],
+  "source": "County elections, Example Institute",
+  "updated": "2022-01-14T08:00:00",
+  "dimension": {
+    "vuosi": {
+      "label": "Year",
+      "category": {
+        "index": [
+          "2022"
+        ],
+        "label": {
+          "2022": "2022"
+        }
+      }
+    },
+    "ehdokkaan-sukupuoli": {
+      "label": "Sex of candidate",
+      "category": {
+        "index": [
+          "1",
+          "2"
+        ],
+        "label": {
+          "1": "Males",
+          "2": "Females"
+        }
+      }
+    },
+    "hyvinvointialue": {
+      "label": "Wellbeing services county",
+      "category": {
+        "index": [
+          "00"
+        ],
+        "label": {
+          "00": "Total"
+        }
+      }
+    },
+    "ika-vaalipaivana": {
+      "label": "Age on election day",
+      "category": {
+        "index": [
+          "20-24",
+          "25-29",
+          "30-34",
+          "35-39",
+          "40-44",
+          "45-49",
+          "50-54",
+          "55-59",
+          "60-64",
+          "65-"
+        ],
+        "label": {
+          "20-24": "20 - 24",
+          "25-29": "25 - 29",
+          "30-34": "30 - 34",
+          "35-39": "35 - 39",
+          "40-44": "40 - 44",
+          "45-49": "45 - 49",
+          "50-54": "50 - 54",
+          "55-59": "55 - 59",
+          "60-64": "60 - 64",
+          "65-": "65 -"
+        }
+      }
+    },
+    "tiedot": {
+      "label": "Information",
+      "category": {
+        "index": [
+          "lkm_ehd"
+        ],
+        "label": {
+          "lkm_ehd": "Number of candidates"
+        },
+        "unit": {
+          "lkm_ehd": {
+            "label": "number",
+            "decimals": 0
+          }
+        }
+      }
+    }
+  },
+  "value": [
+    141,
+    231,
+    306,
+    503,
+    633,
+    659,
+    676,
+    696,
+    661,
+    1222,
+    144,
+    210,
+    304,
+    556,
+    644,
+    643,
+    612,
+    549,
+    449,
+    664
+  ],
+  "extension": {
+    "missingValueDescriptions": {
+      "1": "Missing",
+      "2": "Not applicable",
+      "3": "Data is subject to secrecy",
+      "4": "Not available",
+      "5": "Not asked",
+      "6": "......",
+      "7": "Magnitude nil"
+    }
+  },
+  "size": [
+    1,
+    2,
+    1,
+    10,
+    1
+  ],
+  "role": {
+    "time": [
+      "vuosi"
+    ],
+    "metric": [
+      "tiedot"
+    ]
+  }
+}

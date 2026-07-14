@@ -1,0 +1,141 @@
+import { Meta, Canvas } from '@storybook/addon-docs/blocks';
+import * as KeyFigureStories from './KeyFigure.stories';
+import * as LineStories from './Line.stories';
+import * as VerticalBarStories from './VerticalBar.stories';
+import * as GroupedVerticalBarStories from './GroupedVerticalBar.stories';
+import * as StackedVerticalBarStories from './StackedVerticalBar.stories';
+import * as PercentBarStories from './PercentBar.stories';
+import * as HorizontalBarStories from './HorizontalBar.stories';
+import * as GroupedHorizontalBarStories from './GroupedHorizontalBar.stories';
+import * as StackedHorizontalBarStories from './StackedHorizontalBar.stories';
+import * as PieStories from './Pie.stories';
+import * as ScatterPlotStories from './ScatterPlot.stories';
+import * as PyramidStories from './Pyramid.stories';
+import * as MapStories from '../Map.stories';
+import * as TablesStories from '../Tables.stories';
+
+<Meta title="Charts/Overview" />
+
+# Chart Types
+
+The library automatically selects the best visualization for your dataset based on its shape — number of dimensions, time series presence, and value characteristics. You can also force a specific chart type via `config.chartType`. Below is a reference of all available chart types.
+
+---
+
+### Key Figure
+
+Displays a single prominent number. **Best for:** datasets where all dimensions have exactly one selected value, resulting in a single data point.
+
+<Canvas of={KeyFigureStories.Default} />
+
+---
+
+### Line
+
+Shows trends over time or ordinal sequences. **Best for:** time series data with up to 10 series.
+
+<Canvas of={LineStories.Default} />
+
+---
+
+### Vertical Bar
+
+Compares values across a single categorical dimension. **Best for:** one dimension with categorical or time data.
+
+<Canvas of={VerticalBarStories.Default} />
+
+---
+
+### Grouped Vertical Bar
+
+Compares values across two dimensions side by side. **Best for:** two dimensions (up to 20 categories × 4 groups), with time or ordinal axis.
+
+<Canvas of={GroupedVerticalBarStories.Default} />
+
+---
+
+### Stacked Vertical Bar
+
+Shows composition of values across two dimensions. **Best for:** two dimensions with non-negative data, showing part-to-whole relationships over time.
+
+<Canvas of={StackedVerticalBarStories.Default} />
+
+---
+
+### Percent Vertical Bar
+
+Shows proportional composition normalized to 100%. **Best for:** same as stacked bar, emphasizing relative proportions rather than absolute values.
+
+<Canvas of={PercentBarStories.Vertical} />
+
+---
+
+### Horizontal Bar
+
+Compares values with categories on the Y axis. **Best for:** single categorical dimension at a single point in time (no time axis).
+
+<Canvas of={HorizontalBarStories.Default} />
+
+---
+
+### Grouped Horizontal Bar
+
+Side-by-side comparison with horizontal orientation. **Best for:** two dimensions without a time axis, with up to 20 categories × 4 groups.
+
+<Canvas of={GroupedHorizontalBarStories.Default} />
+
+---
+
+### Stacked Horizontal Bar
+
+Composition view with horizontal orientation. **Best for:** two non-negative dimensions without a time axis, showing part-to-whole.
+
+<Canvas of={StackedHorizontalBarStories.Default} />
+
+---
+
+### Percent Horizontal Bar
+
+Proportional composition normalized to 100% horizontally. **Best for:** same as stacked horizontal, emphasizing relative proportions.
+
+<Canvas of={PercentBarStories.Horizontal} />
+
+---
+
+### Pie
+
+Shows proportional composition as circular segments. **Best for:** single dimension with 2–10 non-negative categories at a single point in time.
+
+<Canvas of={PieStories.Default} />
+
+---
+
+### Scatter Plot
+
+Plots two measures against each other as points. **Best for:** datasets with exactly 2 content/metric values per observation.
+
+<Canvas of={ScatterPlotStories.Default} />
+
+---
+
+### Pyramid
+
+Back-to-back horizontal bars for comparing two groups along an ordinal dimension. **Best for:** one ordinal dimension (e.g. age groups) split by a binary dimension (e.g. male/female).
+
+<Canvas of={PyramidStories.Default} />
+
+---
+
+### Map
+
+Choropleth map showing geographic distribution. **Best for:** datasets with a geographic dimension at a single point in time, when map geometry is available via `mapProvider`.
+
+<Canvas of={MapStories.Regions} />
+
+---
+
+### Table
+
+N-dimensional pivot table as a fallback or explicit choice. **Best for:** any dataset structure — serves as the universal fallback when no visual chart type is applicable.
+
+<Canvas of={TablesStories.Table} />

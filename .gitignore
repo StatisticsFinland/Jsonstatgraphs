@@ -1,0 +1,11 @@
+node_modules/
+dist/
+coverage/
+*.tgz
+*.log
+.DS_Store
+
+# Agent working directory (temporary files from CI/agent workflows)
+agent_tmp/
+storybook-static/
+.vscode/settings.json

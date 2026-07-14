@@ -1,0 +1,256 @@
+{
+  "version": "2.0",
+  "class": "dataset",
+  "id": [
+    "vuosi",
+    "sektori",
+    "palkkausmuoto",
+    "sukupuoli",
+    "tiedot"
+  ],
+  "label": "13rv -- Index of wage and salary earnings, index of regular earnings and index of real wage and salary earnings by employer sector, 1995-2024*",
+  "note": [
+    "<A HREF='https://example.com/docs/ati' TARGET=_blank>Documentation of statistics</A>##* Preliminary figures"
+  ],
+  "source": "Example Institute, index of wage and salary earnings",
+  "updated": "2025-01-24T08:00:00",
+  "dimension": {
+    "vuosi": {
+      "label": "Year",
+      "note": [
+        "* preliminary data"
+      ],
+      "category": {
+        "index": [
+          "2020",
+          "2021",
+          "2022",
+          "2023",
+          "2024"
+        ],
+        "label": {
+          "2020": "2020",
+          "2021": "2021",
+          "2022": "2022",
+          "2023": "2023",
+          "2024": "2024*"
+        },
+        "note": {
+          "2024": [
+            "* preliminary data"
+          ]
+        }
+      }
+    },
+    "sektori": {
+      "label": "Sector",
+      "category": {
+        "index": [
+          "1",
+          "2",
+          "7",
+          "6"
+        ],
+        "label": {
+          "1": "Budget economy of central government",
+          "2": "Local government",
+          "6": "Others",
+          "7": "Private sector"
+        }
+      }
+    },
+    "palkkausmuoto": {
+      "label": "Base of payment",
+      "category": {
+        "index": [
+          "1",
+          "2"
+        ],
+        "label": {
+          "1": "Hourly paid employees",
+          "2": "Monthly paid employees"
+        }
+      }
+    },
+    "sukupuoli": {
+      "label": "Gender",
+      "category": {
+        "index": [
+          "1",
+          "2"
+        ],
+        "label": {
+          "1": "Males",
+          "2": "Females"
+        }
+      }
+    },
+    "tiedot": {
+      "label": "Information",
+      "category": {
+        "index": [
+          "ati_2015_100"
+        ],
+        "label": {
+          "ati_2015_100": "Index of wage and salary earnings 2015=100"
+        },
+        "unit": {
+          "ati_2015_100": {
+            "label": "Index point",
+            "decimals": 1
+          }
+        }
+      }
+    }
+  },
+  "value": [
+    null,
+    null,
+    null,
+    null,
+    106.62716,
+    108.52527,
+    104.659,
+    107.43205,
+    106.15357,
+    107.6447,
+    106.02784,
+    108.97478,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    109.06284,
+    110.40872,
+    106.85416,
+    110.01799,
+    108.27921,
+    109.9525,
+    108.93076,
+    111.50043,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    110.37607,
+    111.45389,
+    108.4962,
+    112.41277,
+    110.74506,
+    112.3862,
+    111.9257,
+    114.73525,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    115.88949,
+    116.18692,
+    114.05794,
+    118.91791,
+    114.18697,
+    116.51242,
+    115.71159,
+    119.86285,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    119.2366,
+    118.8221,
+    118.28646,
+    123.40199,
+    117.21577,
+    119.59821,
+    119.02554,
+    123.57,
+    null,
+    null,
+    null,
+    null
+  ],
+  "status": {
+    "0": "1",
+    "1": "1",
+    "2": "1",
+    "3": "1",
+    "12": "1",
+    "13": "1",
+    "14": "1",
+    "15": "1",
+    "16": "1",
+    "17": "1",
+    "18": "1",
+    "19": "1",
+    "28": "1",
+    "29": "1",
+    "30": "1",
+    "31": "1",
+    "32": "1",
+    "33": "1",
+    "34": "1",
+    "35": "1",
+    "44": "1",
+    "45": "1",
+    "46": "1",
+    "47": "1",
+    "48": "1",
+    "49": "1",
+    "50": "1",
+    "51": "1",
+    "60": "1",
+    "61": "1",
+    "62": "1",
+    "63": "1",
+    "64": "1",
+    "65": "1",
+    "66": "1",
+    "67": "1",
+    "76": "1",
+    "77": "1",
+    "78": "1",
+    "79": "1"
+  },
+  "extension": {
+    "missingValueDescriptions": {
+      "1": "Missing",
+      "2": "Not applicable",
+      "3": "Data is subject to secrecy",
+      "4": "Not available",
+      "5": "Not asked",
+      "6": "......",
+      "7": "Magnitude nil"
+    }
+  },
+  "size": [
+    5,
+    4,
+    2,
+    2,
+    1
+  ],
+  "role": {
+    "time": [
+      "vuosi"
+    ],
+    "metric": [
+      "tiedot"
+    ]
+  }
+}
