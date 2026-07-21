@@ -624,7 +624,10 @@ export class ChartScaffold {
       ? seriesNames
       : Array.from({ length: seriesCount }, (_, i) => `Series ${i + 1}`);
 
-    this.legend = new Legend(this.container, names, this.theme);
+    this.legend = new Legend(this.container, names, this.theme, {
+      accessibilityMode: this.config.accessibilityMode,
+      chartType: this.scaffoldConfig.chartType,
+    });
 
     const legendEl = this.container.querySelector('.jsc-legend') as HTMLDivElement | null;
     if (legendEl) {

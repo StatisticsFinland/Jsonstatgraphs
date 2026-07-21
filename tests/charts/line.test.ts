@@ -403,6 +403,21 @@ describe('createLineChart', () => {
     });
   });
 
+  it('accessibility mode renders marker shapes as path elements', () => {
+    createLineChart({
+      container,
+      data: multiSeriesData,
+      config: { ...defaultConfig, accessibilityMode: true },
+    });
+
+    const markerPaths = container.querySelectorAll('path.jsc-marker');
+    const markerCircles = container.querySelectorAll('circle.jsc-marker');
+    expect(markerPaths.length).toBeGreaterThan(0);
+    expect(markerCircles.length).toBe(0);
+    const firstMarkerPath = markerPaths[0] as SVGPathElement;
+    expect(firstMarkerPath.getAttribute('d')).toContain('5');
+  });
+
   it('marker stroke uses theme.colorSurface — custom dark theme is reflected on circle markers', () => {
     const darkColorSurface = '#1a1a2e';
     createLineChart({

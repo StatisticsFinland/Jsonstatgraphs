@@ -9,3 +9,4 @@ coverage/
 agent_tmp/
 storybook-static/
 .vscode/settings.json
+.vs/

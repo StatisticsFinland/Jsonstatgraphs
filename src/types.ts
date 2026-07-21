@@ -102,6 +102,24 @@ export interface FooterItem {
   value: string;
 }
 
+export interface FunctionalMenuItem {
+  text: string;
+  prefixIcon?: string;
+  suffixIcon?: string;
+  onClick: () => void;
+}
+
+export interface LinkMenuItem {
+  text: string;
+  prefixIcon?: string;
+  suffixIcon?: string;
+  url: string;
+  isExternal?: boolean;
+  openNewTab?: boolean;
+}
+
+export type BurgerMenuItemDefinition = FunctionalMenuItem | LinkMenuItem;
+
 export interface ThemeConfig {
   fontFamily?: string;
   fontSizeTick?: string;
@@ -122,12 +140,20 @@ export interface ThemeConfig {
   gridOpacity?: number;
   tooltipPadding?: string;
   tooltipBoxShadow?: string;
+  burgerMenuBackground?: string;
+  burgerMenuBorderColor?: string;
+  burgerMenuBorderRadius?: string;
+  burgerMenuShadow?: string;
+  burgerMenuItemHoverBackground?: string;
+  burgerMenuItemActiveBackground?: string;
+  burgerMenuItemSeparatorColor?: string;
   seriesColors?: string[];
   mapColors?: string[];
 }
 
 export interface ChartConfig {
   chartType?: ChartType;
+  accessibilityMode?: boolean;
   theme?: ThemeConfig;
   locale?: string;
   title?: string;
@@ -148,6 +174,8 @@ export interface ChartConfig {
   showHeader?: boolean;
   showLegend?: boolean;
   autoTitle?: boolean;
+  menuItemDefinitions?: BurgerMenuItemDefinition[];
+  menuIconInheritColor?: boolean;
 }
 
 // --- Resolved theme (all values present) ---
@@ -172,6 +200,13 @@ export interface ResolvedTheme {
   gridOpacity: number;
   tooltipPadding: string;
   tooltipBoxShadow: string;
+  burgerMenuBackground: string;
+  burgerMenuBorderColor: string;
+  burgerMenuBorderRadius: string;
+  burgerMenuShadow: string;
+  burgerMenuItemHoverBackground: string;
+  burgerMenuItemActiveBackground: string;
+  burgerMenuItemSeparatorColor: string;
   seriesColors: string[];
   mapColors: string[];
 }

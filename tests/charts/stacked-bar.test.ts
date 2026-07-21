@@ -354,4 +354,17 @@ describe('createStackedBarChart', () => {
     instance.update(twoSeriesData);
     expect(container.querySelectorAll('.jsc-bar').length).toBe(4);
   });
+
+  it('accessibility mode applies patterned fills to bars', () => {
+    createStackedBarChart({
+      container,
+      data: stackedData,
+      config: { ...defaultConfig, accessibilityMode: true },
+      chartType: 'stackedVerticalBar',
+    });
+
+    const firstBar = container.querySelector('.jsc-bar') as SVGRectElement;
+    expect(firstBar).not.toBeNull();
+    expect(firstBar.getAttribute('fill')).toContain('url(#jsc-pattern-');
+  });
 });

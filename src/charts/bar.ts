@@ -5,6 +5,7 @@ import type { NiceSkipOptions } from '../layout/label-fitting';
 import { bindInteractions, DataElementInfo, BoundInteractions } from './bindInteractions';
 import { applyChartAriaAttributes, applySeriesGroupAttributes } from '../a11y/aria';
 import { getSeriesColor } from '../theme/palette';
+import { getPatternFillUrl, injectPatternDefs } from '../a11y/patterns';
 
 export interface BarChartConfig {
   container: HTMLElement;
@@ -99,6 +100,12 @@ export function createBarChart(chartConfig: BarChartConfig): BarChartInstance {
     const plotAreaGroup = svg.select<SVGGElement>('.jsc-plot-area');
     const elements: DataElementInfo[] = [];
 
+    if (config.accessibilityMode) {
+      const defs = svg.select<SVGDefsElement>('defs');
+      const defsSelection = (defs.empty() ? svg.append('defs') : defs) as import('d3-selection').Selection<SVGDefsElement, unknown, null, undefined>;
+      injectPatternDefs(defsSelection, theme, 1);
+    }
+
     if (data.series.length === 0) {
       lastAllElements = elements;
       lastTheme = theme;
@@ -137,7 +144,7 @@ export function createBarChart(chartConfig: BarChartConfig): BarChartInstance {
         .attr('y', d => yScale(d.categoryCode)!)
         .attr('width', d => Math.abs(xScale(d.value) - xScale(0)))
         .attr('height', yScale.bandwidth())
-        .attr('fill', color)
+        .attr('fill', config.accessibilityMode ? getPatternFillUrl(si) : color)
         .attr('stroke', theme.colorBorder)
         .attr('stroke-width', '1')
         .attr('tabindex', '0');
@@ -154,7 +161,7 @@ export function createBarChart(chartConfig: BarChartConfig): BarChartInstance {
         .attr('y', d => d.value >= 0 ? yScale(d.value) : yScale(0))
         .attr('width', xScale.bandwidth())
         .attr('height', d => Math.abs(yScale(0) - yScale(d.value)))
-        .attr('fill', color)
+        .attr('fill', config.accessibilityMode ? getPatternFillUrl(si) : color)
         .attr('stroke', theme.colorBorder)
         .attr('stroke-width', '1')
         .attr('tabindex', '0');

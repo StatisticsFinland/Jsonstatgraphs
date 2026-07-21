@@ -1,5 +1,6 @@
-import { ResolvedTheme } from '../types';
+import { ChartType, ResolvedTheme } from '../types';
 import { getSeriesColor } from '../theme/palette';
+import { PATTERN_PATHS, getMarkerPath } from '../a11y/patterns';
 
 export interface LegendItem {
   name: string;
@@ -9,16 +10,36 @@ export interface LegendItem {
 
 export type LegendToggleCallback = (index: number, active: boolean) => void;
 
+export interface LegendOptions {
+  accessibilityMode?: boolean;
+  chartType?: ChartType;
+}
+
+function isPatternChartType(chartType?: ChartType): boolean {
+  return chartType === 'verticalBar'
+    || chartType === 'horizontalBar'
+    || chartType === 'groupedVerticalBar'
+    || chartType === 'groupedHorizontalBar'
+    || chartType === 'stackedVerticalBar'
+    || chartType === 'stackedHorizontalBar'
+    || chartType === 'percentVerticalBar'
+    || chartType === 'percentHorizontalBar'
+    || chartType === 'pie'
+    || chartType === 'pyramid';
+}
+
 export class Legend {
   private readonly container: HTMLElement;
   private readonly element: HTMLDivElement;
   private readonly items: LegendItem[];
   private readonly theme: ResolvedTheme;
+  private readonly options: LegendOptions;
   private onToggle: LegendToggleCallback | null = null;
 
-  constructor(container: HTMLElement, seriesNames: string[], theme: ResolvedTheme) {
+  constructor(container: HTMLElement, seriesNames: string[], theme: ResolvedTheme, options?: LegendOptions) {
     this.container = container;
     this.theme = theme;
+    this.options = options ?? {};
     this.items = seriesNames.map((name, index) => ({ name, index, active: true }));
 
     const el = document.createElement('div');
@@ -77,13 +98,62 @@ export class Legend {
       btn.setAttribute('aria-label', `Toggle series ${item.name}`);
 
       const swatch = document.createElement('span');
+      swatch.className = 'jsc-legend-swatch';
       swatch.style.display = 'inline-block';
-      swatch.style.width = '12px';
-      swatch.style.height = '12px';
+      swatch.style.width = '14px';
+      swatch.style.height = '14px';
       swatch.style.background = getSeriesColor(this.theme, item.index);
       swatch.style.borderRadius = '2px';
       swatch.style.marginRight = '4px';
       swatch.setAttribute('aria-hidden', 'true');
+
+      if (this.options.accessibilityMode) {
+        if (this.options.chartType === 'line') {
+          swatch.classList.add('jsc-legend-swatch--marker');
+          swatch.style.background = 'transparent';
+          swatch.style.display = 'inline-flex';
+          swatch.style.alignItems = 'center';
+          swatch.style.justifyContent = 'center';
+
+          const markerSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+          markerSvg.setAttribute('viewBox', '0 0 14 14');
+          markerSvg.setAttribute('width', '14');
+          markerSvg.setAttribute('height', '14');
+
+          const markerPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+          markerPath.setAttribute('d', getMarkerPath(item.index, 7, 7, 4));
+          markerPath.setAttribute('fill', getSeriesColor(this.theme, item.index));
+          markerPath.setAttribute('stroke', this.theme.colorSurface);
+          markerPath.setAttribute('stroke-width', '1.5');
+          markerSvg.appendChild(markerPath);
+          swatch.appendChild(markerSvg);
+        } else if (isPatternChartType(this.options.chartType)) {
+          swatch.classList.add('jsc-legend-swatch--pattern');
+          swatch.style.background = 'transparent';
+
+          const patternSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+          patternSvg.setAttribute('viewBox', '0 0 10 10');
+          patternSvg.setAttribute('width', '14');
+          patternSvg.setAttribute('height', '14');
+
+          const bgRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+          bgRect.setAttribute('x', '0');
+          bgRect.setAttribute('y', '0');
+          bgRect.setAttribute('width', '10');
+          bgRect.setAttribute('height', '10');
+          bgRect.setAttribute('fill', getSeriesColor(this.theme, item.index));
+          patternSvg.appendChild(bgRect);
+
+          const patternPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+          patternPath.setAttribute('d', PATTERN_PATHS[item.index % PATTERN_PATHS.length]);
+          patternPath.setAttribute('stroke', '#ffffff');
+          patternPath.setAttribute('stroke-width', '1.5');
+          patternPath.setAttribute('fill', 'none');
+          patternSvg.appendChild(patternPath);
+
+          swatch.appendChild(patternSvg);
+        }
+      }
 
       const label = document.createElement('span');
       label.textContent = item.name;

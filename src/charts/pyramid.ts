@@ -4,6 +4,7 @@ import { ChartScaffold, ScaffoldRenderContext } from './base';
 import { bindInteractions, DataElementInfo, BoundInteractions } from './bindInteractions';
 import { applyChartAriaAttributes, applySeriesGroupAttributes } from '../a11y/aria';
 import { getSeriesColor } from '../theme/palette';
+import { getPatternFillUrl, injectPatternDefs } from '../a11y/patterns';
 
 export interface PyramidChartConfig {
   container: HTMLElement;
@@ -83,6 +84,12 @@ export function createPyramidChart(chartConfig: PyramidChartConfig): PyramidChar
     const plotAreaGroup = svg.select<SVGGElement>('.jsc-plot-area');
     const elements: DataElementInfo[] = [];
 
+    if (config.accessibilityMode) {
+      const defs = svg.select<SVGDefsElement>('defs');
+      const defsSelection = (defs.empty() ? svg.append('defs') : defs) as import('d3-selection').Selection<SVGDefsElement, unknown, null, undefined>;
+      injectPatternDefs(defsSelection, theme, 2);
+    }
+
     const seriesList = [
       { series: data.leftSeries, index: 0, isLeft: true },
       { series: data.rightSeries, index: 1, isLeft: false },
@@ -115,7 +122,7 @@ export function createPyramidChart(chartConfig: PyramidChartConfig): PyramidChar
           .attr('y', d => yScale(d.categoryCode)!)
           .attr('width', d => xScale(0) - xScale(-d.value))
           .attr('height', yScale.bandwidth())
-          .attr('fill', color)
+          .attr('fill', config.accessibilityMode ? getPatternFillUrl(si) : color)
           .attr('stroke', theme.colorBorder)
           .attr('stroke-width', '1')
           .attr('tabindex', '0');
@@ -130,7 +137,7 @@ export function createPyramidChart(chartConfig: PyramidChartConfig): PyramidChar
           .attr('y', d => yScale(d.categoryCode)!)
           .attr('width', d => xScale(d.value) - xScale(0))
           .attr('height', yScale.bandwidth())
-          .attr('fill', color)
+          .attr('fill', config.accessibilityMode ? getPatternFillUrl(si) : color)
           .attr('stroke', theme.colorBorder)
           .attr('stroke-width', '1')
           .attr('tabindex', '0');

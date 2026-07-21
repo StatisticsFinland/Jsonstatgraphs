@@ -315,4 +315,26 @@ describe('KeyboardNavigator', () => {
 
     removeElements(elements);
   });
+
+  it('ignores keydown events originating inside burger menu', () => {
+    navigator = new KeyboardNavigator(container);
+    const elements = createMockElements(1, 3);
+    navigator.setElements(elements);
+    navigator.attach();
+
+    const menuRoot = document.createElement('div');
+    menuRoot.className = 'jsc-burger-menu';
+    const menuItem = document.createElement('li');
+    menuItem.className = 'jsc-burger-menu-item';
+    menuRoot.appendChild(menuItem);
+    container.appendChild(menuRoot);
+
+    const focusSpy = jest.spyOn(elements[0][1].element as HTMLElement, 'focus');
+    menuItem.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+
+    expect(focusSpy).not.toHaveBeenCalled();
+
+    menuRoot.remove();
+    removeElements(elements);
+  });
 });
