@@ -1,4 +1,10 @@
-import { exportSvg, findExportableSvg, serializeSvg, supportsSvgExport } from '../../src/interaction/svgUtils';
+import {
+  buildExportableSvg,
+  exportSvg,
+  findExportableSvg,
+  serializeSvg,
+  supportsSvgExport,
+} from '../../src/interaction/svgUtils';
 import { JsonStatDataset } from '../../src/types';
 
 const NativeBlob = globalThis.Blob;
@@ -47,6 +53,92 @@ describe('svgUtils', () => {
     const svg = findExportableSvg(container);
     expect(svg).not.toBeNull();
     expect(svg?.id).toBe('one');
+  });
+
+  it('builds exportable SVG with legend content when legend exists', () => {
+    container.innerHTML = [
+      '<svg width="120" height="90" viewBox="0 0 120 90"><rect width="120" height="90"/></svg>',
+      '<div class="jsc-legend">',
+      '  <button class="jsc-legend-item" style="opacity: 0.4; color: rgb(51, 51, 51);">',
+      '    <span class="jsc-legend-swatch" style="display:inline-block;width:14px;height:14px;background: rgb(78, 121, 167);border-radius:2px;"></span>',
+      '    <span style="text-decoration: line-through;">Series A</span>',
+      '  </button>',
+      '</div>',
+    ].join('');
+
+    const svg = container.querySelector('svg') as SVGSVGElement;
+    const legend = container.querySelector('.jsc-legend') as HTMLElement;
+    const item = container.querySelector('.jsc-legend-item') as HTMLElement;
+    const swatch = container.querySelector('.jsc-legend-swatch') as HTMLElement;
+    const label = item.querySelector('span:last-child') as HTMLElement;
+
+    Object.defineProperty(svg, 'clientWidth', { value: 120, configurable: true });
+    Object.defineProperty(svg, 'clientHeight', { value: 90, configurable: true });
+    jest.spyOn(svg, 'getBoundingClientRect').mockReturnValue({
+      x: 0,
+      y: 0,
+      width: 120,
+      height: 90,
+      top: 0,
+      right: 120,
+      bottom: 90,
+      left: 0,
+      toJSON: () => ({}),
+    } as DOMRect);
+    Object.defineProperty(legend, 'offsetHeight', { value: 20, configurable: true });
+    jest.spyOn(legend, 'getBoundingClientRect').mockReturnValue({
+      x: 0,
+      y: 90,
+      width: 120,
+      height: 20,
+      top: 90,
+      right: 120,
+      bottom: 110,
+      left: 0,
+      toJSON: () => ({}),
+    } as DOMRect);
+    jest.spyOn(item, 'getBoundingClientRect').mockReturnValue({
+      x: 0,
+      y: 90,
+      width: 100,
+      height: 16,
+      top: 90,
+      right: 100,
+      bottom: 106,
+      left: 0,
+      toJSON: () => ({}),
+    } as DOMRect);
+    jest.spyOn(swatch, 'getBoundingClientRect').mockReturnValue({
+      x: 0,
+      y: 91,
+      width: 14,
+      height: 14,
+      top: 91,
+      right: 14,
+      bottom: 105,
+      left: 0,
+      toJSON: () => ({}),
+    } as DOMRect);
+    jest.spyOn(label, 'getBoundingClientRect').mockReturnValue({
+      x: 18,
+      y: 90,
+      width: 56,
+      height: 16,
+      top: 90,
+      right: 74,
+      bottom: 106,
+      left: 18,
+      toJSON: () => ({}),
+    } as DOMRect);
+
+    const exportableSvg = buildExportableSvg(container);
+    expect(exportableSvg).not.toBeNull();
+    expect(exportableSvg).not.toBe(svg);
+    expect(exportableSvg?.querySelector('[data-jsc-export-legend="true"]')).not.toBeNull();
+    expect(exportableSvg?.getAttribute('viewBox')).toBe('0 0 120 90');
+    expect(exportableSvg?.getAttribute('height')).toBe('90');
+    expect(exportableSvg?.getAttribute('width')).toBe('120');
+    expect(exportableSvg?.querySelector('text')?.textContent).toBe('Series A');
   });
 
   it('serializes SVG element using XMLSerializer', () => {

@@ -7,7 +7,7 @@ import { bindInteractions, DataElementInfo, BoundInteractions } from './bindInte
 import { applyChartAriaAttributes, applySeriesGroupAttributes } from '../a11y/aria';
 import { getSeriesColor } from '../theme/palette';
 import { resolveTheme } from '../theme/theme';
-import { getPatternFillUrl, injectPatternDefs } from '../a11y/patterns';
+import { ensureDefs, getPatternFillUrl, injectPatternDefs } from '../a11y/patterns';
 
 export interface StackedBarChartConfig {
   container: HTMLElement;
@@ -156,9 +156,8 @@ export function createStackedBarChart(chartConfig: StackedBarChartConfig): Stack
     const elements: DataElementInfo[] = [];
 
     if (config.accessibilityMode) {
-      const defs = svg.select<SVGDefsElement>('defs');
-      const defsSelection = (defs.empty() ? svg.append('defs') : defs) as import('d3-selection').Selection<SVGDefsElement, unknown, null, undefined>;
-      injectPatternDefs(defsSelection, theme, data.series.length);
+      const defs = ensureDefs(svg);
+      injectPatternDefs(defs, theme, data.series.length);
     }
 
     const visibleData = getVisibleData();

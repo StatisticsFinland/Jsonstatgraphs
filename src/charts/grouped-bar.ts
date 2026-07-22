@@ -5,7 +5,7 @@ import type { NiceSkipOptions } from '../layout/label-fitting';
 import { bindInteractions, DataElementInfo, BoundInteractions } from './bindInteractions';
 import { applyChartAriaAttributes, applySeriesGroupAttributes } from '../a11y/aria';
 import { getSeriesColor } from '../theme/palette';
-import { getPatternFillUrl, injectPatternDefs } from '../a11y/patterns';
+import { ensureDefs, getPatternFillUrl, injectPatternDefs } from '../a11y/patterns';
 
 export interface GroupedBarChartConfig {
   container: HTMLElement;
@@ -93,9 +93,8 @@ export function createGroupedBarChart(chartConfig: GroupedBarChartConfig): Group
     const elements: DataElementInfo[] = [];
 
     if (config.accessibilityMode) {
-      const defs = svg.select<SVGDefsElement>('defs');
-      const defsSelection = (defs.empty() ? svg.append('defs') : defs) as import('d3-selection').Selection<SVGDefsElement, unknown, null, undefined>;
-      injectPatternDefs(defsSelection, theme, data.series.length);
+      const defs = ensureDefs(svg);
+      injectPatternDefs(defs, theme, data.series.length);
     }
 
     const visibleSeriesNames = data.series

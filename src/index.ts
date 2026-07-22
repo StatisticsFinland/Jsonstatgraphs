@@ -313,7 +313,7 @@ function isKeyFigureCompatible(dataset: JsonStatDataset): boolean {
 }
 
 function isChartVisualizationType(type: ChartType): boolean {
-  return type !== 'table' && type !== 'keyFigure';
+  return type !== 'table' && type !== 'keyFigure' && type !== 'map';
 }
 
 function extractKeyFigureData(dataset: JsonStatDataset): { value: number | null; unit: string; decimals?: number } {

@@ -15,6 +15,8 @@ export interface LegendOptions {
   chartType?: ChartType;
 }
 
+let legendStyleRefCount = 0;
+
 function isPatternChartType(chartType?: ChartType): boolean {
   return chartType === 'verticalBar'
     || chartType === 'horizontalBar'
@@ -55,12 +57,13 @@ export class Legend {
     container.appendChild(el);
     this.element = el;
 
-    if (!document.querySelector('#jsc-legend-styles')) {
+    if (legendStyleRefCount === 0) {
       const style = document.createElement('style');
       style.id = 'jsc-legend-styles';
       style.textContent = `.jsc-legend-item:focus-visible { outline: 2px solid var(--jsc-color-focus-ring, #0066cc); outline-offset: 2px; } .jsc-legend-item:focus:not(:focus-visible) { outline: none; }`;
       document.head.appendChild(style);
     }
+    legendStyleRefCount++;
   }
 
   setToggleCallback(callback: LegendToggleCallback): void {
@@ -183,6 +186,10 @@ export class Legend {
   }
 
   destroy(): void {
+    legendStyleRefCount = Math.max(0, legendStyleRefCount - 1);
+    if (legendStyleRefCount === 0) {
+      document.getElementById('jsc-legend-styles')?.remove();
+    }
     this.element.remove();
   }
 }

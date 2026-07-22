@@ -3,10 +3,10 @@ import {
   exportCsv,
   formatNumericCsvValue,
   getCsvDelimiter,
-  getMetricUnit,
   quoteCsv,
   renderCsvRow,
 } from '../../src/interaction/csvUtils';
+import { getMetricUnit, product } from '../../src/interaction/exportTableUtils';
 import { JsonStatDataset } from '../../src/types';
 
 const NativeBlob = globalThis.Blob;
@@ -93,6 +93,15 @@ describe('csvUtils', () => {
     expect(csv).toContain('1,5;2,75');
     expect(csv).toContain('"Yksikkö: persons"');
     expect(csv).toContain('"Lähde: Statistics Finland"');
+  });
+
+  it('renders empty output cells for null values in dataset data', () => {
+    const csv = createCsvContent(createDataset({ value: [1.5, null] }), 'en');
+    expect(csv).toContain('1.5,');
+  });
+
+  it('returns one for product of an empty array', () => {
+    expect(product([])).toBe(1);
   });
 
   it('exportCsv creates UTF-8 BOM blob and triggers download with csv extension', () => {

@@ -4,7 +4,7 @@ import { ChartScaffold, ScaffoldRenderContext } from './base';
 import { bindInteractions, DataElementInfo, BoundInteractions } from './bindInteractions';
 import { applyChartAriaAttributes, applySeriesGroupAttributes } from '../a11y/aria';
 import { getSeriesColor } from '../theme/palette';
-import { getPatternFillUrl, injectPatternDefs } from '../a11y/patterns';
+import { ensureDefs, getPatternFillUrl, injectPatternDefs } from '../a11y/patterns';
 
 export interface PieChartConfig {
   container: HTMLElement;
@@ -110,9 +110,8 @@ export function createPieChart(chartConfig: PieChartConfig): PieChartInstance {
     const pieData = pieGen(visiblePoints);
 
     if (config.accessibilityMode) {
-      const defs = svg.select<SVGDefsElement>('defs');
-      const defsSelection = (defs.empty() ? svg.append('defs') : defs) as import('d3-selection').Selection<SVGDefsElement, unknown, null, undefined>;
-      injectPatternDefs(defsSelection, theme, nonNullPoints.length);
+      const defs = ensureDefs(svg);
+      injectPatternDefs(defs, theme, nonNullPoints.length);
     }
 
     // Create a series group for ARIA

@@ -1,6 +1,6 @@
 import { ChartType, JsonStatDataset } from '../types';
 import { buildExportFilename, downloadBlob } from './exportUtils';
-import { findExportableSvg, supportsSvgExport } from './svgUtils';
+import { buildExportableSvg, supportsSvgExport } from './svgUtils';
 
 function createSvgBlobUrl(svg: SVGSVGElement): string {
   const serializer = new XMLSerializer();
@@ -18,7 +18,7 @@ export function exportPng(
     return Promise.resolve(false);
   }
 
-  const svg = findExportableSvg(container);
+  const svg = buildExportableSvg(container);
   if (!svg) {
     return Promise.resolve(false);
   }
@@ -33,6 +33,7 @@ export function exportPng(
 
   return new Promise<boolean>((resolve) => {
     const image = new Image();
+    image.crossOrigin = 'anonymous';
 
     image.onload = () => {
       URL.revokeObjectURL(svgUrl);
@@ -47,16 +48,26 @@ export function exportPng(
         return;
       }
 
-      context.drawImage(image, 0, 0, canvas.width, canvas.height);
-      canvas.toBlob(blob => {
-        if (!blob) {
-          resolve(false);
-          return;
-        }
+      try {
+        context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      } catch {
+        resolve(false);
+        return;
+      }
 
-        downloadBlob(blob, buildExportFilename(dataset, 'png'));
-        resolve(true);
-      }, 'image/png');
+      try {
+        canvas.toBlob(blob => {
+          if (!blob) {
+            resolve(false);
+            return;
+          }
+
+          downloadBlob(blob, buildExportFilename(dataset, 'png'));
+          resolve(true);
+        }, 'image/png');
+      } catch {
+          resolve(false);
+      }
     };
 
     image.onerror = () => {

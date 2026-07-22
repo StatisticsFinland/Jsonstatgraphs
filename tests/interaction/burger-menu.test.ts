@@ -12,6 +12,41 @@ function setupContainer(): HTMLElement {
   return container;
 }
 
+function createDataset() {
+  return {
+    label: 'Population by Region',
+    source: 'Statistics Finland',
+    id: ['Region', 'Year', 'Content'],
+    size: [1, 2, 1],
+    dimension: {
+      Region: {
+        label: 'Region',
+        category: {
+          index: ['HEL'],
+          label: { HEL: 'Helsinki' },
+        },
+      },
+      Year: {
+        label: 'Year',
+        category: {
+          index: ['2020', '2021'],
+          label: { '2020': '2020', '2021': '2021' },
+        },
+      },
+      Content: {
+        label: 'Content',
+        category: {
+          index: ['POP'],
+          label: { POP: 'Population' },
+          unit: { POP: { label: 'persons' } },
+        },
+      },
+    },
+    value: [1.5, 2.75],
+    role: { time: ['Year'], metric: ['Content'] },
+  };
+}
+
 describe('BurgerMenu assertion tests', () => {
   let container: HTMLElement;
   let menu: BurgerMenu;
@@ -73,7 +108,7 @@ describe('BurgerMenu assertion tests', () => {
   });
 
   it('supports keyboard navigation, escape close, and roving tabindex', () => {
-    menu = new BurgerMenu({ container, locale: 'en' });
+    menu = new BurgerMenu({ container, locale: 'en', dataset: createDataset() });
 
     const button = container.querySelector('.jsc-burger-menu-button') as HTMLButtonElement;
     const list = container.querySelector('.jsc-burger-menu-list') as HTMLUListElement;
@@ -123,7 +158,7 @@ describe('BurgerMenu assertion tests', () => {
 
     const openSpy = jest.spyOn(window, 'open').mockImplementation(() => null);
 
-    menu = new BurgerMenu({ container, locale: 'en', menuItemDefinitions: customItems });
+    menu = new BurgerMenu({ container, locale: 'en', dataset: createDataset(), menuItemDefinitions: customItems });
 
     const button = container.querySelector('.jsc-burger-menu-button') as HTMLButtonElement;
     const list = container.querySelector('.jsc-burger-menu-list') as HTMLUListElement;
@@ -147,9 +182,7 @@ describe('BurgerMenu assertion tests', () => {
     expect(openSpy).toHaveBeenCalledWith('https://example.com', '_blank', 'noopener,noreferrer');
   });
 
-  it('shows selected built-in label in not-implemented alert', () => {
-    const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
-
+  it('hides built-in export items when dataset is not provided', () => {
     menu = new BurgerMenu({ container, locale: 'en' });
     const button = container.querySelector('.jsc-burger-menu-button') as HTMLButtonElement;
     const list = container.querySelector('.jsc-burger-menu-list') as HTMLUListElement;
@@ -157,13 +190,17 @@ describe('BurgerMenu assertion tests', () => {
     button.click();
     const items = Array.from(list.querySelectorAll('.jsc-burger-menu-item')) as HTMLLIElement[];
     const csvItem = items.find(item => item.textContent?.includes('Download table (csv)'));
-    expect(csvItem).toBeDefined();
+    const xlsxItem = items.find(item => item.textContent?.includes('Download table (xlsx)'));
+    const svgItem = items.find(item => item.textContent?.includes('Download figure (svg)'));
+    const pngItem = items.find(item => item.textContent?.includes('Download figure (png)'));
 
-    csvItem!.click();
-    expect(alertSpy).toHaveBeenCalledWith('Not implemented yet: Download table (csv)');
+    expect(csvItem).toBeUndefined();
+    expect(xlsxItem).toBeUndefined();
+    expect(svgItem).toBeUndefined();
+    expect(pngItem).toBeUndefined();
   });
 
-  it('exports XLSX when item is clicked and dataset exists', () => {
+  it('exports XLSX when item is clicked and dataset exists', async () => {
     jest.useFakeTimers().setSystemTime(new Date('2026-11-05T14:30:22'));
 
     const createObjectURLMock = jest.fn((_blob: Blob) => 'blob:xlsx');
@@ -191,38 +228,7 @@ describe('BurgerMenu assertion tests', () => {
     menu = new BurgerMenu({
       container,
       locale: 'en',
-      dataset: {
-        label: 'Population by Region',
-        source: 'Statistics Finland',
-        id: ['Region', 'Year', 'Content'],
-        size: [1, 2, 1],
-        dimension: {
-          Region: {
-            label: 'Region',
-            category: {
-              index: ['HEL'],
-              label: { HEL: 'Helsinki' },
-            },
-          },
-          Year: {
-            label: 'Year',
-            category: {
-              index: ['2020', '2021'],
-              label: { '2020': '2020', '2021': '2021' },
-            },
-          },
-          Content: {
-            label: 'Content',
-            category: {
-              index: ['POP'],
-              label: { POP: 'Population' },
-              unit: { POP: { label: 'persons' } },
-            },
-          },
-        },
-        value: [1.5, 2.75],
-        role: { time: ['Year'], metric: ['Content'] },
-      },
+      dataset: createDataset(),
     });
 
     const button = container.querySelector('.jsc-burger-menu-button') as HTMLButtonElement;
@@ -235,6 +241,9 @@ describe('BurgerMenu assertion tests', () => {
 
     expect(xlsxItem).toBeDefined();
     xlsxItem!.click();
+    for (let i = 0; i < 10; i++) {
+      await Promise.resolve();
+    }
 
     expect(blobCtor).toHaveBeenCalledTimes(1);
     expect(createObjectURLMock).toHaveBeenCalledTimes(1);
@@ -251,7 +260,7 @@ describe('BurgerMenu assertion tests', () => {
     const outsideKeydown = jest.fn();
     document.addEventListener('keydown', outsideKeydown);
 
-    menu = new BurgerMenu({ container, locale: 'en' });
+    menu = new BurgerMenu({ container, locale: 'en', dataset: createDataset() });
     const button = container.querySelector('.jsc-burger-menu-button') as HTMLButtonElement;
     const list = container.querySelector('.jsc-burger-menu-list') as HTMLUListElement;
 
@@ -421,6 +430,7 @@ describe('BurgerMenu assertion tests', () => {
     menu = new BurgerMenu({
       container,
       locale: 'en',
+      dataset: createDataset(),
       theme: {
         ...DEFAULT_THEME,
         colorText: '#121212',

@@ -115,6 +115,11 @@ Built-in item order:
 6. Show symbols in the figure
 7. View table / View chart
 
+Built-in export items are shown only when export is actionable:
+
+- Table exports (CSV, XLSX) are shown only when a dataset is available.
+- Figure exports (SVG, PNG) are shown only when both a dataset is available and the current chart type supports SVG export.
+
 CSV export behavior:
 
 - **Download table (csv)** now exports current dataset data as CSV.
@@ -135,7 +140,8 @@ XLSX export behavior:
 - **Download table (xlsx)** now exports current dataset data as an `.xlsx` workbook.
 - Export transforms dataset data through the existing table transformation pipeline.
 - Workbook package includes worksheet XML and required Open XML relationship/content-type parts.
-- XML text content is escaped for `&`, `<`, `>`, `"`, and `'`.
+- XML text content is escaped for `&`, `<`, `>`, `"`, and `'` and strips XML-invalid control characters.
+- ZIP packaging uses deflate compression when supported by the runtime, with automatic fallback to stored ZIP entries.
 - Download filename format: `<datasetLabel|export>_YYYYMMDD_HHMMSS.xlsx` (sanitized).
 
 PNG export behavior:
@@ -162,7 +168,7 @@ Table toggle behavior:
 - The label is `View table` in chart mode and `View chart` in table mode.
 - The item is shown only when a table toggle handler is provided to the menu component.
 
-Phase 1+ keyboard support:
+Keyboard support:
 
 - `ArrowDown` / `ArrowUp`: move focus between items (wrap around)
 - `Enter` / `Space`: activate focused item

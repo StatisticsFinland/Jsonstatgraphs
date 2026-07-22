@@ -2,10 +2,19 @@ import { transformTableData } from '../data/table-transform';
 import { getLocaleStrings } from '../locale/strings';
 import { JsonStatDataset } from '../types';
 import { buildExportFilename, downloadBlob } from './exportUtils';
+import { decodeCombo, getMetricUnit, product } from './exportTableUtils';
 
 interface ZipEntry {
   name: string;
   data: Uint8Array;
+}
+
+interface PreparedZipEntry {
+  nameBytes: Uint8Array;
+  data: Uint8Array;
+  compressedData: Uint8Array;
+  compressionMethod: 0 | 8;
+  crc: number;
 }
 
 function encodeUtf8(value: string): Uint8Array {
@@ -21,39 +30,35 @@ function encodeUtf8(value: string): Uint8Array {
   return bytes;
 }
 
-function product(values: number[]): number {
-  return values.reduce((acc, value) => acc * value, 1);
-}
-
-function decodeCombo(comboIdx: number, sizes: number[]): number[] {
-  const indices: number[] = new Array(sizes.length);
-  let remaining = comboIdx;
-  for (let i = sizes.length - 1; i >= 0; i--) {
-    indices[i] = remaining % sizes[i];
-    remaining = Math.floor(remaining / sizes[i]);
-  }
-  return indices;
-}
-
-function getMetricUnit(dataset: JsonStatDataset): string | null {
-  const metricCodes = dataset.role?.metric ?? dataset.id;
-  for (const dimCode of metricCodes) {
-    const dim = dataset.dimension[dimCode];
-    if (!dim?.category?.unit) continue;
-    const unitEntries = Object.values(dim.category.unit);
-    const unitLabel = unitEntries.find(entry => entry?.label)?.label;
-    if (unitLabel) return unitLabel;
-  }
-  return null;
-}
-
 export function escapeXml(value: string): string {
-  return value
+  return sanitizeXmlText(value)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&apos;');
+}
+
+function sanitizeXmlText(value: string): string {
+  let sanitized = '';
+
+  for (const char of value) {
+    const codePoint = char.codePointAt(0);
+    if (codePoint === undefined) continue;
+
+    const isInvalidControl =
+      (codePoint >= 0x00 && codePoint <= 0x08) ||
+      codePoint === 0x0b ||
+      codePoint === 0x0c ||
+      (codePoint >= 0x0e && codePoint <= 0x1f);
+    const isNonCharacter = (codePoint >= 0xfdd0 && codePoint <= 0xfdef) || (codePoint & 0xfffe) === 0xfffe;
+
+    if (!isInvalidControl && !isNonCharacter) {
+      sanitized += char;
+    }
+  }
+
+  return sanitized;
 }
 
 export function toExcelColumnName(index: number): string {
@@ -263,47 +268,107 @@ function concatUint8Arrays(parts: Uint8Array[]): Uint8Array {
   return result;
 }
 
-function createStoredZip(entries: ZipEntry[], now: Date = new Date()): Uint8Array {
+async function compressZipEntryData(data: Uint8Array): Promise<Uint8Array | null> {
+  if (typeof CompressionStream === 'undefined') {
+    return null;
+  }
+
+  try {
+    const compressionStream = new CompressionStream('deflate-raw') as unknown as TransformStream<Uint8Array, Uint8Array>;
+    const inputStream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(data);
+        controller.close();
+      },
+    });
+    const reader = inputStream.pipeThrough(compressionStream).getReader();
+    const chunks: Uint8Array[] = [];
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (value && value.length > 0) {
+        chunks.push(value);
+      }
+    }
+
+    return concatUint8Arrays(chunks);
+  } catch {
+    return null;
+  }
+}
+
+function prepareStoredZipEntries(entries: ZipEntry[]): PreparedZipEntry[] {
+  return entries.map(entry => ({
+    nameBytes: encodeUtf8(entry.name),
+    data: entry.data,
+    compressedData: entry.data,
+    compressionMethod: 0,
+    crc: crc32(entry.data),
+  }));
+}
+
+async function prepareZipEntriesWithOptionalCompression(entries: ZipEntry[]): Promise<PreparedZipEntry[]> {
+  const preparedEntries: PreparedZipEntry[] = [];
+
+  for (const entry of entries) {
+    const nameBytes = encodeUtf8(entry.name);
+    const data = entry.data;
+    const compressedData = await compressZipEntryData(data);
+    const useDeflate = compressedData !== null && compressedData.length > 0 && compressedData.length < data.length;
+
+    preparedEntries.push({
+      nameBytes,
+      data,
+      compressedData: useDeflate ? compressedData : data,
+      compressionMethod: useDeflate ? 8 : 0,
+      crc: crc32(data),
+    });
+  }
+
+  return preparedEntries;
+}
+
+function createZip(preparedEntries: PreparedZipEntry[], now: Date = new Date()): Uint8Array {
   const localParts: Uint8Array[] = [];
   const centralParts: Uint8Array[] = [];
   let offset = 0;
   const { time, date } = toDosDateTime(now);
 
-  for (const entry of entries) {
-    const nameBytes = encodeUtf8(entry.name);
-    const data = entry.data;
-    const dataLength = data.length;
-    const crc = crc32(data);
+  for (const entry of preparedEntries) {
+    const nameBytes = entry.nameBytes;
+    const uncompressedLength = entry.data.length;
+    const compressedLength = entry.compressedData.length;
 
     const localHeader = new Uint8Array(30 + nameBytes.length);
     writeUint32(localHeader, 0, 0x04034b50);
     writeUint16(localHeader, 4, 20);
     writeUint16(localHeader, 6, 0);
-    writeUint16(localHeader, 8, 0);
+    writeUint16(localHeader, 8, entry.compressionMethod);
     writeUint16(localHeader, 10, time);
     writeUint16(localHeader, 12, date);
-    writeUint32(localHeader, 14, crc);
-    writeUint32(localHeader, 18, dataLength);
-    writeUint32(localHeader, 22, dataLength);
+    writeUint32(localHeader, 14, entry.crc);
+    writeUint32(localHeader, 18, compressedLength);
+    writeUint32(localHeader, 22, uncompressedLength);
     writeUint16(localHeader, 26, nameBytes.length);
     writeUint16(localHeader, 28, 0);
     localHeader.set(nameBytes, 30);
 
     const localOffset = offset;
-    localParts.push(localHeader, data);
-    offset += localHeader.length + dataLength;
+    localParts.push(localHeader, entry.compressedData);
+    offset += localHeader.length + compressedLength;
 
     const centralHeader = new Uint8Array(46 + nameBytes.length);
     writeUint32(centralHeader, 0, 0x02014b50);
     writeUint16(centralHeader, 4, 20);
     writeUint16(centralHeader, 6, 20);
     writeUint16(centralHeader, 8, 0);
-    writeUint16(centralHeader, 10, 0);
+    writeUint16(centralHeader, 10, entry.compressionMethod);
     writeUint16(centralHeader, 12, time);
     writeUint16(centralHeader, 14, date);
-    writeUint32(centralHeader, 16, crc);
-    writeUint32(centralHeader, 20, dataLength);
-    writeUint32(centralHeader, 24, dataLength);
+    writeUint32(centralHeader, 16, entry.crc);
+    writeUint32(centralHeader, 20, compressedLength);
+    writeUint32(centralHeader, 24, uncompressedLength);
     writeUint16(centralHeader, 28, nameBytes.length);
     writeUint16(centralHeader, 30, 0);
     writeUint16(centralHeader, 32, 0);
@@ -321,8 +386,8 @@ function createStoredZip(entries: ZipEntry[], now: Date = new Date()): Uint8Arra
   writeUint32(endOfCentralDirectory, 0, 0x06054b50);
   writeUint16(endOfCentralDirectory, 4, 0);
   writeUint16(endOfCentralDirectory, 6, 0);
-  writeUint16(endOfCentralDirectory, 8, entries.length);
-  writeUint16(endOfCentralDirectory, 10, entries.length);
+  writeUint16(endOfCentralDirectory, 8, preparedEntries.length);
+  writeUint16(endOfCentralDirectory, 10, preparedEntries.length);
   writeUint32(endOfCentralDirectory, 12, centralDirectory.length);
   writeUint32(endOfCentralDirectory, 16, centralOffset);
   writeUint16(endOfCentralDirectory, 20, 0);
@@ -330,21 +395,43 @@ function createStoredZip(entries: ZipEntry[], now: Date = new Date()): Uint8Arra
   return concatUint8Arrays([...localParts, centralDirectory, endOfCentralDirectory]);
 }
 
-export function createXlsxBytes(dataset: JsonStatDataset, locale: string): Uint8Array {
+function createStoredZip(entries: ZipEntry[], now: Date = new Date()): Uint8Array {
+  return createZip(prepareStoredZipEntries(entries), now);
+}
+
+async function createZipWithOptionalCompression(entries: ZipEntry[], now: Date = new Date()): Promise<Uint8Array> {
+  const preparedEntries = await prepareZipEntriesWithOptionalCompression(entries);
+  return createZip(preparedEntries, now);
+}
+
+function createXlsxEntries(dataset: JsonStatDataset, locale: string): ZipEntry[] {
   const worksheetRows = createWorksheetRows(dataset, locale);
-  const entries: ZipEntry[] = [
+
+  return [
     { name: '[Content_Types].xml', data: encodeUtf8(createContentTypesXml()) },
     { name: '_rels/.rels', data: encodeUtf8(createRootRelationshipsXml()) },
     { name: 'xl/workbook.xml', data: encodeUtf8(createWorkbookXml()) },
     { name: 'xl/_rels/workbook.xml.rels', data: encodeUtf8(createWorkbookRelationshipsXml()) },
     { name: 'xl/worksheets/sheet1.xml', data: encodeUtf8(createWorksheetXml(worksheetRows)) },
   ];
-
-  return createStoredZip(entries);
 }
 
-export function exportXlsx(dataset: JsonStatDataset, locale: string): void {
-  const bytes = createXlsxBytes(dataset, locale);
+export function createXlsxBytes(dataset: JsonStatDataset, locale: string): Uint8Array {
+  return createStoredZip(createXlsxEntries(dataset, locale));
+}
+
+export async function createXlsxBytesWithOptionalCompression(dataset: JsonStatDataset, locale: string): Promise<Uint8Array> {
+  return createZipWithOptionalCompression(createXlsxEntries(dataset, locale));
+}
+
+export async function exportXlsx(dataset: JsonStatDataset, locale: string): Promise<void> {
+  let bytes: Uint8Array;
+  try {
+    bytes = await createXlsxBytesWithOptionalCompression(dataset, locale);
+  } catch {
+    bytes = createXlsxBytes(dataset, locale);
+  }
+
   const arrayBuffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
   const blob = new Blob([arrayBuffer], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

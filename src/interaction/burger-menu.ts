@@ -32,15 +32,10 @@ export interface BurgerMenuConfig {
 }
 
 let burgerMenuCounter = 0;
+let burgerMenuStyleRefCount = 0;
 
 function isLinkMenuItem(item: BurgerMenuItemDefinition): item is Extract<BurgerMenuItemDefinition, { url: string }> {
   return 'url' in item;
-}
-
-function showNotImplementedAlert(label: string): void {
-  if (typeof window !== 'undefined' && typeof window.alert === 'function') {
-    window.alert(`Not implemented yet: ${label}`);
-  }
 }
 
 function createBuiltInItems(
@@ -58,50 +53,50 @@ function createBuiltInItems(
   const supportsAccessibilityMode = chartType !== 'scatterPlot' && chartType !== 'table' && chartType !== 'keyFigure' && chartType !== 'map';
   const showAccessibilityToggle = isInChartMode && supportsAccessibilityMode && typeof toggleAccessibilityMode === 'function';
 
-  const exportItems: BurgerMenuItem[] = [
-    {
-      text: strings.downloadCSV,
-      activate: () => {
-        if (dataset) {
-          exportCsv(dataset, locale);
-          return;
-        }
-        showNotImplementedAlert(strings.downloadCSV);
-      },
-    },
-    {
-      text: strings.downloadXLSX,
-      activate: () => {
-        if (dataset) {
-          exportXlsx(dataset, locale);
-          return;
-        }
-        showNotImplementedAlert(strings.downloadXLSX);
-      },
-    },
-  ];
+  const exportItems: BurgerMenuItem[] = [];
 
-  if (canExportImage) {
+  if (dataset) {
+    exportItems.push(
+      {
+        text: strings.downloadCSV,
+        activate: () => {
+          exportCsv(dataset, locale);
+        },
+      },
+      {
+        text: strings.downloadXLSX,
+        activate: () => {
+          exportXlsx(dataset, locale).catch((error) => {
+            console.error('[JsonStatChart] XLSX export failed', error);
+          });
+        },
+      },
+    );
+  }
+
+  if (dataset && canExportImage) {
     exportItems.splice(1, 0, {
       text: strings.downloadSVG,
       activate: () => {
-        if (dataset && exportSvg(container, dataset, chartType)) {
+        if (exportSvg(container, dataset, chartType)) {
           return;
         }
-        showNotImplementedAlert(strings.downloadSVG);
+        console.error('[JsonStatChart] SVG export failed');
       },
     });
 
     exportItems.push({
       text: strings.downloadPNG,
       activate: () => {
-        if (dataset) {
-          exportPng(container, dataset, chartType).catch(() => {
-            showNotImplementedAlert(strings.downloadPNG);
+        exportPng(container, dataset, chartType)
+          .then((success) => {
+            if (!success) {
+              console.error('[JsonStatChart] PNG export failed');
+            }
+          })
+          .catch((error) => {
+            console.error('[JsonStatChart] PNG export failed', error);
           });
-          return;
-        }
-        showNotImplementedAlert(strings.downloadPNG);
       },
     });
   }
@@ -136,6 +131,8 @@ export class BurgerMenu {
   private readonly button: HTMLButtonElement;
   private readonly menu: HTMLUListElement;
   private readonly menuId: string;
+  private readonly previousContainerPosition: string;
+  private readonly didSetContainerPosition: boolean;
   private items: HTMLLIElement[] = [];
   private open = false;
   private activeIndex = 0;
@@ -146,10 +143,13 @@ export class BurgerMenu {
     this.theme = config.theme;
     this.menuId = `jsc-chart-menu-${++burgerMenuCounter}`;
     const theme = this.theme;
+    this.previousContainerPosition = this.container.style.position;
+    this.didSetContainerPosition = false;
 
     const containerPosition = getComputedStyle(this.container).position;
     if (containerPosition === 'static') {
       this.container.style.position = 'relative';
+      this.didSetContainerPosition = true;
     }
 
     this.injectStyles();
@@ -420,24 +420,39 @@ export class BurgerMenu {
   }
 
   private injectStyles(): void {
-    if (document.getElementById('jsc-burger-menu-styles')) return;
+    if (burgerMenuStyleRefCount === 0) {
+      const style = document.createElement('style');
+      style.id = 'jsc-burger-menu-styles';
+      style.textContent = [
+        '.jsc-burger-menu-button:focus-visible { outline: 2px solid var(--jsc-color-focus-ring, #0066cc); outline-offset: 2px; }',
+        '.jsc-burger-menu-button:focus:not(:focus-visible) { outline: none; }',
+        '.jsc-burger-menu-item { position: relative; }',
+        '.jsc-burger-menu-item--active { background: var(--jsc-burger-menu-item-active-background, #eef5ff); box-shadow: inset 0 0 0 2px var(--jsc-color-focus-ring, #0066cc); }',
+        '.jsc-burger-menu-item:focus-visible { outline: 2px solid var(--jsc-color-focus-ring, #0066cc); outline-offset: -2px; }',
+        '.jsc-burger-menu-item:focus:not(:focus-visible) { outline: none; }',
+        '.jsc-burger-menu-item:hover { background: var(--jsc-burger-menu-item-hover-background, #f5f5f5); }',
+      ].join(' ');
+      document.head.appendChild(style);
+    }
 
-    const style = document.createElement('style');
-    style.id = 'jsc-burger-menu-styles';
-    style.textContent = [
-      '.jsc-burger-menu-button:focus-visible { outline: 2px solid var(--jsc-color-focus-ring, #0066cc); outline-offset: 2px; }',
-      '.jsc-burger-menu-button:focus:not(:focus-visible) { outline: none; }',
-      '.jsc-burger-menu-item { position: relative; }',
-      '.jsc-burger-menu-item--active { background: var(--jsc-burger-menu-item-active-background, #eef5ff); box-shadow: inset 0 0 0 2px var(--jsc-color-focus-ring, #0066cc); }',
-      '.jsc-burger-menu-item:focus-visible { outline: 2px solid var(--jsc-color-focus-ring, #0066cc); outline-offset: -2px; }',
-      '.jsc-burger-menu-item:focus:not(:focus-visible) { outline: none; }',
-      '.jsc-burger-menu-item:hover { background: var(--jsc-burger-menu-item-hover-background, #f5f5f5); }',
-    ].join(' ');
-    document.head.appendChild(style);
+    burgerMenuStyleRefCount++;
   }
 
   destroy(): void {
     document.removeEventListener('mousedown', this.onDocumentPointerDown);
+    if (this.didSetContainerPosition) {
+      if (this.previousContainerPosition) {
+        this.container.style.position = this.previousContainerPosition;
+      } else {
+        this.container.style.removeProperty('position');
+      }
+    }
+
+    burgerMenuStyleRefCount = Math.max(0, burgerMenuStyleRefCount - 1);
+    if (burgerMenuStyleRefCount === 0) {
+      document.getElementById('jsc-burger-menu-styles')?.remove();
+    }
+
     this.root.remove();
   }
 }

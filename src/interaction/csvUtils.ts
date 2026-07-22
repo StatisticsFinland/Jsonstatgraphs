@@ -2,20 +2,7 @@ import { transformTableData } from '../data/table-transform';
 import { getLocaleStrings } from '../locale/strings';
 import { JsonStatDataset } from '../types';
 import { buildExportFilename, downloadBlob } from './exportUtils';
-
-function product(values: number[]): number {
-  return values.reduce((acc, v) => acc * v, 1);
-}
-
-function decodeCombo(comboIdx: number, sizes: number[]): number[] {
-  const indices: number[] = new Array(sizes.length);
-  let remaining = comboIdx;
-  for (let i = sizes.length - 1; i >= 0; i--) {
-    indices[i] = remaining % sizes[i];
-    remaining = Math.floor(remaining / sizes[i]);
-  }
-  return indices;
-}
+import { decodeCombo, getMetricUnit, product } from './exportTableUtils';
 
 export function quoteCsv(text: string): string {
   return `"${text.replace(/"/g, '""')}"`;
@@ -28,18 +15,6 @@ export function getCsvDelimiter(locale?: string): string {
 
 export function formatNumericCsvValue(value: number, locale?: string): string {
   return new Intl.NumberFormat(locale, { useGrouping: false }).format(value);
-}
-
-export function getMetricUnit(dataset: JsonStatDataset): string | null {
-  const metricCodes = dataset.role?.metric ?? dataset.id;
-  for (const dimCode of metricCodes) {
-    const dim = dataset.dimension[dimCode];
-    if (!dim?.category?.unit) continue;
-    const unitEntries = Object.values(dim.category.unit);
-    const unitLabel = unitEntries.find(entry => entry?.label)?.label;
-    if (unitLabel) return unitLabel;
-  }
-  return null;
 }
 
 export function renderCsvRow(cells: (string | number | null | undefined)[], delimiter: string, locale?: string): string {

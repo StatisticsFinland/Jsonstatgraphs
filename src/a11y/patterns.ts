@@ -23,7 +23,14 @@ export const PATTERN_PATHS: readonly string[] = [
 export const MARKER_SHAPES = ['circle', 'diamond', 'square', 'triangle-up', 'triangle-down'] as const;
 
 export function getPatternFillUrl(index: number): string {
-  return `url(#jsc-pattern-${Math.abs(index)})`;
+  return `url(#jsc-pattern-${index})`;
+}
+
+export function ensureDefs(
+  svg: Selection<SVGSVGElement, unknown, null, undefined>,
+): Selection<SVGDefsElement, unknown, null, undefined> {
+  const defs = svg.select<SVGDefsElement>('defs');
+  return defs.empty() ? svg.append<SVGDefsElement>('defs') : defs;
 }
 
 export function injectPatternDefs(

@@ -1,4 +1,4 @@
-import { createXlsxBytes, escapeXml, exportXlsx, toExcelColumnName } from '../../src/interaction/xlsxUtils';
+import { createXlsxBytes, createXlsxBytesWithOptionalCompression, escapeXml, exportXlsx, toExcelColumnName } from '../../src/interaction/xlsxUtils';
 import { JsonStatDataset } from '../../src/types';
 
 const NativeBlob = globalThis.Blob;
@@ -66,6 +66,10 @@ describe('xlsxUtils', () => {
     expect(escapeXml("5 < 7 & \"quoted\" 'text' >")).toBe('5 &lt; 7 &amp; &quot;quoted&quot; &apos;text&apos; &gt;');
   });
 
+  it('strips XML-invalid control characters before escaping', () => {
+    expect(escapeXml('a\u0000b\u0008c\u000Bd\u001Fe')).toBe('abcde');
+  });
+
   it('creates Excel-style column names', () => {
     expect(toExcelColumnName(1)).toBe('A');
     expect(toExcelColumnName(26)).toBe('Z');
@@ -94,7 +98,23 @@ describe('xlsxUtils', () => {
     expect(asText).toContain('Source: Statistics Finland');
   });
 
-  it('exportXlsx creates spreadsheet blob and triggers download with xlsx extension', () => {
+  it('creates XLSX bytes with optional compression path and valid ZIP signature', async () => {
+    const dataset = createDataset();
+    const bytes = await createXlsxBytesWithOptionalCompression(dataset, 'en');
+
+    expect(bytes[0]).toBe(0x50);
+    expect(bytes[1]).toBe(0x4b);
+  });
+
+  it('creates worksheet values with empty output cell for null dataset values', () => {
+    const dataset = createDataset({ value: [1.5, null] });
+    const asText = decodeUtf8(createXlsxBytes(dataset, 'en'));
+
+    expect(asText).toContain('<c r="A3"><v>1.5</v></c>');
+    expect(asText).not.toContain('<c r="B3"><v>');
+  });
+
+  it('exportXlsx creates spreadsheet blob and triggers download with xlsx extension', async () => {
     jest.useFakeTimers().setSystemTime(new Date('2026-11-05T14:30:22'));
 
     const blobCtor = jest.fn((parts: BlobPart[], options?: BlobPropertyBag) => ({ parts, type: options?.type } as unknown as Blob));
@@ -119,7 +139,7 @@ describe('xlsxUtils', () => {
 
     const clickSpy = jest.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
 
-    exportXlsx(createDataset(), 'en');
+    await exportXlsx(createDataset(), 'en');
 
     expect(blobCtor).toHaveBeenCalledTimes(1);
     expect(blobCtor.mock.calls[0][1]).toEqual({
