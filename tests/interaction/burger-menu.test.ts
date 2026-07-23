@@ -247,70 +247,12 @@ describe('BurgerMenu assertion tests', () => {
     button.click();
     const items = Array.from(list.querySelectorAll('.jsc-burger-menu-item')) as HTMLLIElement[];
     const csvItem = items.find(item => item.textContent?.includes('Download table (csv)'));
-    const xlsxItem = items.find(item => item.textContent?.includes('Download table (xlsx)'));
     const svgItem = items.find(item => item.textContent?.includes('Download figure (svg)'));
     const pngItem = items.find(item => item.textContent?.includes('Download figure (png)'));
 
     expect(csvItem).toBeUndefined();
-    expect(xlsxItem).toBeUndefined();
     expect(svgItem).toBeUndefined();
     expect(pngItem).toBeUndefined();
-  });
-
-  it('exports XLSX when item is clicked and dataset exists', async () => {
-    jest.useFakeTimers().setSystemTime(new Date('2026-11-05T14:30:22'));
-
-    const createObjectURLMock = jest.fn((_blob: Blob) => 'blob:xlsx');
-    const revokeObjectURLMock = jest.fn();
-    Object.defineProperty(URL, 'createObjectURL', {
-      configurable: true,
-      writable: true,
-      value: createObjectURLMock,
-    });
-    Object.defineProperty(URL, 'revokeObjectURL', {
-      configurable: true,
-      writable: true,
-      value: revokeObjectURLMock,
-    });
-
-    const blobCtor = jest.fn((parts: BlobPart[], options?: BlobPropertyBag) => ({ parts, type: options?.type } as unknown as Blob));
-    Object.defineProperty(globalThis, 'Blob', {
-      configurable: true,
-      writable: true,
-      value: blobCtor,
-    });
-
-    const clickSpy = jest.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
-
-    menu = new BurgerMenu({
-      container,
-      locale: 'en',
-      dataset: createDataset(),
-    });
-
-    const button = container.querySelector('.jsc-burger-menu-button') as HTMLButtonElement;
-    const list = container.querySelector('.jsc-burger-menu-list') as HTMLUListElement;
-
-    button.click();
-
-    const xlsxItem = Array.from(list.querySelectorAll('.jsc-burger-menu-item'))
-      .find(item => item.textContent?.includes('Download table (xlsx)')) as HTMLLIElement | undefined;
-
-    expect(xlsxItem).toBeDefined();
-    xlsxItem!.click();
-    for (let i = 0; i < 10; i++) {
-      await Promise.resolve();
-    }
-
-    expect(blobCtor).toHaveBeenCalledTimes(1);
-    expect(createObjectURLMock).toHaveBeenCalledTimes(1);
-    expect(revokeObjectURLMock).toHaveBeenCalledWith('blob:xlsx');
-    expect(clickSpy).toHaveBeenCalledTimes(1);
-
-    const anchor = clickSpy.mock.contexts[0] as HTMLAnchorElement;
-    expect(anchor.download).toBe('Population_by_Region_20261105_143022.xlsx');
-
-    jest.useRealTimers();
   });
 
   it('does not bubble arrow key events outside the menu', () => {

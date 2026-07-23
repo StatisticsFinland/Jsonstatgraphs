@@ -3,7 +3,6 @@ import { getLocaleStrings } from '../locale/strings';
 import { exportCsv } from './csvUtils';
 import { exportPng } from './pngUtils';
 import { exportSvg, supportsSvgExport } from './svgUtils';
-import { exportXlsx } from './xlsxUtils';
 
 interface BurgerMenuItem {
   text: string;
@@ -63,14 +62,6 @@ function createBuiltInItems(
         text: strings.downloadCSV,
         activate: () => {
           exportCsv(dataset, locale);
-        },
-      },
-      {
-        text: strings.downloadXLSX,
-        activate: () => {
-          exportXlsx(dataset, locale).catch((error) => {
-            console.error('[JsonStatChart] XLSX export failed', error);
-          });
         },
       },
     );
@@ -183,7 +174,7 @@ export class BurgerMenu {
     button.style.background = 'transparent';
     button.style.border = 'none';
     button.style.cursor = 'pointer';
-    button.style.borderRadius = '999px';
+    button.style.borderRadius = '0.0625rem';
     button.style.fontSize = '1.5rem';
     if (theme && !config.menuIconInheritColor) {
       button.style.color = theme.colorText;
@@ -201,16 +192,16 @@ export class BurgerMenu {
     menu.className = 'jsc-burger-menu-list';
     menu.id = this.menuId;
     menu.style.position = 'absolute';
-    menu.style.top = 'calc(100% + 4px)';
+    menu.style.top = 'calc(100% + 0.25rem)';
     menu.style.right = '0';
     menu.style.margin = '0';
     menu.style.padding = '0';
     menu.style.listStyle = 'none';
-    menu.style.minWidth = '240px';
+    menu.style.minWidth = '15rem';
     menu.style.background = theme?.burgerMenuBackground ?? '#fff';
-    menu.style.border = `1px solid ${theme?.burgerMenuBorderColor ?? '#bdbdbd'}`;
-    menu.style.borderRadius = theme?.burgerMenuBorderRadius ?? '18px';
-    menu.style.boxShadow = theme?.burgerMenuShadow ?? '0 4px 16px rgba(0, 0, 0, 0.12)';
+    menu.style.border = `0.0625rem solid ${theme?.burgerMenuBorderColor ?? '#bdbdbd'}`;
+    menu.style.borderRadius = theme?.burgerMenuBorderRadius ?? '1.125rem';
+    menu.style.boxShadow = theme?.burgerMenuShadow ?? '0 0.25rem 1rem rgba(0, 0, 0, 0.12)';
     menu.style.color = theme?.colorText ?? '';
     menu.style.display = 'none';
     menu.style.overflow = 'hidden';
@@ -341,16 +332,16 @@ export class BurgerMenu {
       li.style.userSelect = 'none';
       li.style.outline = 'none';
       if (item.bottomSeparator) {
-        li.style.borderBottom = `1px solid ${theme?.burgerMenuItemSeparatorColor ?? '#e3e3e3'}`;
+        li.style.borderBottom = `0.0625rem solid ${theme?.burgerMenuItemSeparatorColor ?? '#e3e3e3'}`;
       }
 
       if (index === 0) {
-        const radius = theme?.burgerMenuBorderRadius ?? '18px';
+        const radius = theme?.burgerMenuBorderRadius ?? '1.125rem';
         li.style.borderTopLeftRadius = radius;
         li.style.borderTopRightRadius = radius;
       }
       if (index === items.length - 1) {
-        const radius = theme?.burgerMenuBorderRadius ?? '18px';
+        const radius = theme?.burgerMenuBorderRadius ?? '1.125rem';
         li.style.borderBottomLeftRadius = radius;
         li.style.borderBottomRightRadius = radius;
       }
@@ -441,11 +432,11 @@ export class BurgerMenu {
       const style = document.createElement('style');
       style.id = 'jsc-burger-menu-styles';
       style.textContent = [
-        '.jsc-burger-menu-button:focus-visible { outline: 2px solid var(--jsc-color-focus-ring, #0066cc); outline-offset: 2px; }',
+        '.jsc-burger-menu-button:focus-visible { outline: 0.125rem solid var(--jsc-color-focus-ring, #0066cc); outline-offset: 0.125rem; }',
         '.jsc-burger-menu-button:focus:not(:focus-visible) { outline: none; }',
         '.jsc-burger-menu-item { position: relative; }',
-        '.jsc-burger-menu-item--active { background: var(--jsc-burger-menu-item-active-background, #eef5ff); box-shadow: inset 0 0 0 2px var(--jsc-color-focus-ring, #0066cc); }',
-        '.jsc-burger-menu-item:focus-visible { outline: 2px solid var(--jsc-color-focus-ring, #0066cc); outline-offset: -2px; }',
+        '.jsc-burger-menu-item--active { background: var(--jsc-burger-menu-item-active-background, #eef5ff); box-shadow: inset 0 0 0 0.125rem var(--jsc-color-focus-ring, #0066cc); }',
+        '.jsc-burger-menu-item:focus-visible { outline: 0.125rem solid var(--jsc-color-focus-ring, #0066cc); outline-offset: -0.125rem; }',
         '.jsc-burger-menu-item:focus:not(:focus-visible) { outline: none; }',
         '.jsc-burger-menu-item:hover { background: var(--jsc-burger-menu-item-hover-background, #f5f5f5); }',
       ].join(' ');

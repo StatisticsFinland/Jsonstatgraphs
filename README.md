@@ -113,14 +113,13 @@ Built-in item order:
 1. Custom items from `menuItemDefinitions` (if any)
 2. Download table (csv)
 3. Download figure (svg)
-4. Download table (xlsx)
-5. Download figure (png)
-6. Show symbols in the figure
-7. View table / View chart
+4. Download figure (png)
+5. Show symbols in the figure
+6. View table / View chart
 
 Built-in export items are shown only when export is actionable:
 
-- Table exports (CSV, XLSX) are shown only when a dataset is available.
+- Table exports (CSV) are shown only when a dataset is available.
 - Figure exports (SVG, PNG) are shown only when both a dataset is available and the current chart type supports SVG export.
 
 CSV export behavior:
@@ -137,15 +136,6 @@ SVG export behavior:
 - SVG export is available for SVG-rendered chart types and hidden for `table` and `keyFigure`.
 - Export serializes the chart container's first `<svg>` element with `XMLSerializer`.
 - Download filename format: `<datasetLabel|export>_YYYYMMDD_HHMMSS.svg` (sanitized).
-
-XLSX export behavior:
-
-- **Download table (xlsx)** now exports current dataset data as an `.xlsx` workbook.
-- Export transforms dataset data through the existing table transformation pipeline.
-- Workbook package includes worksheet XML and required Open XML relationship/content-type parts.
-- XML text content is escaped for `&`, `<`, `>`, `"`, and `'` and strips XML-invalid control characters.
-- ZIP packaging uses deflate compression when supported by the runtime, with automatic fallback to stored ZIP entries.
-- Download filename format: `<datasetLabel|export>_YYYYMMDD_HHMMSS.xlsx` (sanitized).
 
 PNG export behavior:
 

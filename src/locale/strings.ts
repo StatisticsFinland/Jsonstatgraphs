@@ -7,7 +7,6 @@ export interface LocaleStrings {
   tableValue: string;
   tableCaption: string;
   chartMenuLabel: string;
-  downloadXLSX: string;
   downloadCSV: string;
   downloadSVG: string;
   downloadPNG: string;
@@ -28,7 +27,6 @@ const STRINGS: Record<string, LocaleStrings> = {
     tableValue: 'Value',
     tableCaption: 'Data table',
     chartMenuLabel: 'Chart menu',
-    downloadXLSX: 'Download table (xlsx)',
     downloadCSV: 'Download table (csv)',
     downloadSVG: 'Download figure (svg)',
     downloadPNG: 'Download figure (png)',
@@ -47,7 +45,6 @@ const STRINGS: Record<string, LocaleStrings> = {
     tableValue: 'Arvo',
     tableCaption: 'Taulukko',
     chartMenuLabel: 'Kuvion valikko',
-    downloadXLSX: 'Lataa taulukko (xlsx)',
     downloadCSV: 'Lataa taulukko (csv)',
     downloadSVG: 'Lataa kuvio (svg)',
     downloadPNG: 'Lataa kuvio (png)',
@@ -66,7 +63,6 @@ const STRINGS: Record<string, LocaleStrings> = {
     tableValue: 'Värde',
     tableCaption: 'Tabell',
     chartMenuLabel: 'Diagrammets meny',
-    downloadXLSX: 'Ladda ner tabellen (xlsx)',
     downloadCSV: 'Ladda ner tabellen (csv)',
     downloadSVG: 'Ladda ner figuren (svg)',
     downloadPNG: 'Ladda ner figuren (png)',
