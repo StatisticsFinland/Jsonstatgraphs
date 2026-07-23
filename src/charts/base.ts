@@ -264,14 +264,14 @@ export class ChartScaffold {
     const totalContentHeight = titleBlockHeight + gap + subtitleBlockHeight;
 
     const contentStartY = headerRect.y + (headerRect.height - totalContentHeight) / 2;
-    const centerX = headerRect.x + headerRect.width / 2;
+    const contentStartX = headerRect.x + PADDING;
 
     if (titleLines.length > 0) {
       const titleEl = headerGroup
         .append('text')
         .attr('class', 'jsc-title')
-        .attr('x', centerX)
-        .attr('text-anchor', 'middle')
+        .attr('x', contentStartX)
+        .attr('text-anchor', 'start')
         .attr('font-size', this.theme.fontSizeTitle)
         .attr('font-family', this.theme.fontFamily)
         .attr('font-weight', this.theme.fontWeightBold)
@@ -280,7 +280,7 @@ export class ChartScaffold {
       for (let i = 0; i < titleLines.length; i++) {
         const y = contentStartY + (i + 0.5) * titleLineHeight;
         titleEl.append('tspan')
-          .attr('x', centerX)
+          .attr('x', contentStartX)
           .attr('y', y)
           .text(titleLines[i]);
       }
@@ -291,9 +291,9 @@ export class ChartScaffold {
       headerGroup
         .append('text')
         .attr('class', 'jsc-subtitle')
-        .attr('x', centerX)
+        .attr('x', contentStartX)
         .attr('y', subtitleY)
-        .attr('text-anchor', 'middle')
+        .attr('text-anchor', 'start')
         .attr('dominant-baseline', 'middle')
         .attr('font-size', this.theme.fontSizeLabel)
         .attr('font-family', this.theme.fontFamily)
