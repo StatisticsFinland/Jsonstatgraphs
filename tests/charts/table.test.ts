@@ -150,6 +150,14 @@ describe('createTableChart', () => {
     expect((scrollDiv as HTMLElement).style.overflowX).toBe('auto');
   });
 
+  it('reserves burger menu space before table contents when configured', () => {
+    container.style.setProperty('--jsc-burger-menu-table-top-spacing', '2.5rem');
+    createTableChart({ container, data: tableData2D, config: defaultConfig });
+
+    const wrapper = container.querySelector('div.jsc-table-wrapper') as HTMLElement;
+    expect(wrapper.style.paddingTop).toBe('var(--jsc-burger-menu-table-top-spacing, 0px)');
+  });
+
   it('correct number of body rows', () => {
     createTableChart({ container, data: tableData2D, config: defaultConfig });
     const rows = container.querySelectorAll('tbody tr');

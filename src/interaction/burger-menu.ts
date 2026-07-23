@@ -34,6 +34,7 @@ export interface BurgerMenuConfig {
 
 let burgerMenuCounter = 0;
 let burgerMenuStyleRefCount = 0;
+const burgerMenuTableTopSpacing = '--jsc-burger-menu-table-top-spacing';
 
 function isLinkMenuItem(item: BurgerMenuItemDefinition): item is Extract<BurgerMenuItemDefinition, { url: string }> {
   return 'url' in item;
@@ -142,6 +143,7 @@ export class BurgerMenu {
   constructor(config: BurgerMenuConfig) {
     this.container = config.container;
     this.theme = config.theme;
+    this.container.style.setProperty(burgerMenuTableTopSpacing, '2.5rem');
     this.menuId = `jsc-chart-menu-${++burgerMenuCounter}`;
     const theme = this.theme;
     this.previousContainerPosition = this.container.style.position;
@@ -455,6 +457,7 @@ export class BurgerMenu {
 
   destroy(): void {
     document.removeEventListener('mousedown', this.onDocumentPointerDown);
+    this.container.style.removeProperty(burgerMenuTableTopSpacing);
     if (this.didSetContainerPosition) {
       if (this.previousContainerPosition) {
         this.container.style.position = this.previousContainerPosition;

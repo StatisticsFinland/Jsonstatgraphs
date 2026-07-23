@@ -251,6 +251,7 @@ export function createTableChart(chartConfig: TableChartConfig): TableChartInsta
 
   const wrapper = document.createElement('div');
   wrapper.className = 'jsc-table-wrapper';
+  wrapper.style.paddingTop = 'var(--jsc-burger-menu-table-top-spacing, 0px)';
   container.appendChild(wrapper);
 
   const ariaLabel = config.ariaLabel ?? config.title ?? getLocaleStrings(config.locale).tableCaption;

@@ -106,6 +106,8 @@ const chart = createChart(container, dataset, {
 
 Charts render a top-right burger menu button (`☰`) that opens a keyboard-accessible dropdown shell.
 
+When the burger menu is enabled for an HTML table, the table reserves vertical space above its contents for the menu button so the button does not overlap the table header. This spacing is removed when `showBurgerMenu` is `false`.
+
 Built-in item order:
 
 1. Custom items from `menuItemDefinitions` (if any)
@@ -168,6 +170,7 @@ Table toggle behavior:
 - The last menu item toggles between chart and table view.
 - The label is `View table` in chart mode and `View chart` in table mode.
 - The item is shown only when a table toggle handler is provided to the menu component.
+- When switching to table view with the burger menu enabled, the table reserves the menu button's vertical space before its contents.
 
 Keyboard support:
 
