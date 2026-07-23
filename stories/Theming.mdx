@@ -59,22 +59,10 @@ createChart(container, dataset, {
 - `tooltipPadding` — Inner padding of tooltips
 - `tooltipBoxShadow` — Box-shadow for tooltips
 
-#### Burger menu
-
-- `burgerMenuBackground` — Burger menu dropdown background
-- `burgerMenuBorderColor` — Burger menu border color
-- `burgerMenuBorderRadius` — Burger menu corner radius
-- `burgerMenuShadow` — Burger menu dropdown shadow
-- `burgerMenuItemHoverBackground` — Burger menu item hover background
-- `burgerMenuItemActiveBackground` — Burger menu active item background
-- `burgerMenuItemSeparatorColor` — Burger menu item separator color
-
 #### Palettes
 
 - `seriesColors` — Categorical palette for bars, lines, pie segments, etc.
 - `mapColors` — Sequential palette for choropleth maps, ordered light → dark
-
-<Canvas of={ThemingStories.DarkTheme} />
 
 ---
 
@@ -87,8 +75,6 @@ All scalar `ThemeConfig` properties can also be set via CSS custom properties on
   --jsc-font-family: Georgia, serif;
   --jsc-color-text: #1a1a1a;
   --jsc-border-radius: 0;
-  --jsc-burger-menu-border-radius: 12px;
-  --jsc-burger-menu-item-hover-background: #f0f4ff;
   --jsc-series-1: #e63946;
   --jsc-series-2: #457b9d;
 }
@@ -97,8 +83,6 @@ All scalar `ThemeConfig` properties can also be set via CSS custom properties on
 Individual series colors use the `--jsc-series-1` through `--jsc-series-8` properties.
 
 **Note:** CSS custom properties are resolved at chart creation time. They do not reactively update — recreate the chart or call `instance.update(dataset)` with the current dataset to re-resolve theme values.
-
-<Canvas of={ThemingStories.CSSCustomProperties} />
 
 ---
 
