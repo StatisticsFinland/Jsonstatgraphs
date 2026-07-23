@@ -11,7 +11,7 @@ const preview: Preview = {
     },
     options: {
       storySort: {
-        order: ['Charts', ['Overview', '*'], 'Customization', ['Theming', '*'], 'Other'],
+        order: ['Charts', ['Overview', '*'], 'Customization', ['Theming', 'Custom Burger Menu Items', '*'], 'Other'],
       },
     },
   },

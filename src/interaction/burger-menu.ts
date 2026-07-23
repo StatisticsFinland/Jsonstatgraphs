@@ -7,6 +7,7 @@ import { exportXlsx } from './xlsxUtils';
 
 interface BurgerMenuItem {
   text: string;
+  ariaLabel?: string;
   prefixIcon?: string;
   suffixIcon?: string;
   bottomSeparator?: boolean;
@@ -261,13 +262,26 @@ export class BurgerMenu {
 
     const customItems: BurgerMenuItem[] = (config.menuItemDefinitions ?? []).map(item => {
       if (isLinkMenuItem(item)) {
+        const ariaLabel = item.isExternal ? `${item.text} (${strings.externalLink})` : item.text;
         return {
           text: item.text,
+          ariaLabel,
           prefixIcon: item.prefixIcon,
           suffixIcon: item.suffixIcon,
           activate: () => {
+            let safeUrl: string;
+            try {
+                const parsed = new URL(item.url, window.location.href);
+                if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+                    throw new Error('Unsupported URL protocol');
+                }
+                safeUrl = parsed.toString();
+            } catch {
+                console.error('[JsonStatChart] Invalid URL for burger menu link item', item.url);
+                return;
+            }
             const target = item.openNewTab ? '_blank' : '_self';
-            window.open(item.url, target, item.openNewTab ? 'noopener,noreferrer' : undefined);
+            window.open(safeUrl, target, item.openNewTab ? 'noopener,noreferrer' : undefined);
           },
         };
       }
@@ -340,6 +354,7 @@ export class BurgerMenu {
       }
 
       li.setAttribute('role', 'menuitem');
+      li.setAttribute('aria-label', item.ariaLabel ?? item.text);
       li.tabIndex = -1;
 
       if (item.prefixIcon) {

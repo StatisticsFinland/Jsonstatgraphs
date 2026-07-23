@@ -179,7 +179,64 @@ describe('BurgerMenu assertion tests', () => {
 
     button.click();
     items[1].click();
-    expect(openSpy).toHaveBeenCalledWith('https://example.com', '_blank', 'noopener,noreferrer');
+    expect(openSpy).toHaveBeenCalledWith('https://example.com/', '_blank', 'noopener,noreferrer');
+  });
+
+  it('does not open custom link item when URL is invalid and logs error', () => {
+    const customItems: (FunctionalMenuItem | LinkMenuItem)[] = [
+      { text: 'Bad link', url: 'javascript:alert(1)' },
+    ];
+
+    const openSpy = jest.spyOn(window, 'open').mockImplementation(() => null);
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    menu = new BurgerMenu({
+      container,
+      locale: 'en',
+      menuItemDefinitions: customItems,
+    });
+
+    const button = container.querySelector('.jsc-burger-menu-button') as HTMLButtonElement;
+    const list = container.querySelector('.jsc-burger-menu-list') as HTMLUListElement;
+    button.click();
+
+    const badLinkItem = Array.from(list.querySelectorAll('.jsc-burger-menu-item'))
+      .find(item => item.textContent?.includes('Bad link')) as HTMLLIElement | undefined;
+
+    expect(badLinkItem).toBeDefined();
+    badLinkItem!.click();
+
+    expect(openSpy).not.toHaveBeenCalled();
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      '[JsonStatChart] Invalid URL for burger menu link item',
+      'javascript:alert(1)',
+    );
+  });
+
+  it('adds external link text to aria-label when custom link item is marked as external', () => {
+    const customItems: (FunctionalMenuItem | LinkMenuItem)[] = [
+      { text: 'Documentation', url: 'https://example.com', isExternal: true, openNewTab: true },
+      { text: 'Internal page', url: 'https://example.com/internal' },
+    ];
+
+    menu = new BurgerMenu({
+      container,
+      locale: 'en',
+      menuItemDefinitions: customItems,
+    });
+
+    const button = container.querySelector('.jsc-burger-menu-button') as HTMLButtonElement;
+    const list = container.querySelector('.jsc-burger-menu-list') as HTMLUListElement;
+    button.click();
+
+    const items = Array.from(list.querySelectorAll('.jsc-burger-menu-item')) as HTMLLIElement[];
+    const externalItem = items.find(item => item.textContent?.includes('Documentation'));
+    const internalItem = items.find(item => item.textContent?.includes('Internal page'));
+
+    expect(externalItem).toBeDefined();
+    expect(externalItem!.getAttribute('aria-label')).toBe('Documentation (External link)');
+    expect(internalItem).toBeDefined();
+    expect(internalItem!.getAttribute('aria-label')).toBe('Internal page');
   });
 
   it('hides built-in export items when dataset is not provided', () => {
