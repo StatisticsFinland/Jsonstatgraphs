@@ -1,11 +1,23 @@
 import { select } from 'd3-selection';
 import { DEFAULT_THEME } from '../../src/theme/defaults';
-import { PATTERN_PATHS, MARKER_SHAPES, getMarkerPath, getPatternFillUrl, injectPatternDefs } from '../../src/a11y/patterns';
+import {
+  PATTERN_DEFINITIONS,
+  PATTERN_PATHS,
+  MARKER_SHAPES,
+  getMarkerPath,
+  getPatternFillUrl,
+  injectPatternDefs,
+} from '../../src/a11y/patterns';
 
 describe('a11y patterns utilities', () => {
   it('exposes expected pattern and marker library sizes', () => {
+    expect(PATTERN_DEFINITIONS.length).toBe(15);
     expect(PATTERN_PATHS.length).toBe(15);
     expect(MARKER_SHAPES.length).toBe(5);
+  });
+
+  it('keeps pattern path list aligned with named pattern definitions', () => {
+    expect(PATTERN_PATHS).toEqual(PATTERN_DEFINITIONS.map(pattern => pattern.path));
   });
 
   it('returns pattern fill url by index', () => {
