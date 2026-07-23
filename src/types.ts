@@ -174,6 +174,7 @@ export interface ChartConfig {
   showHeader?: boolean;
   showLegend?: boolean;
   autoTitle?: boolean;
+  showBurgerMenu?: boolean;
   menuItemDefinitions?: BurgerMenuItemDefinition[];
   menuIconInheritColor?: boolean;
 }

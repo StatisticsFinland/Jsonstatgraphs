@@ -829,24 +829,26 @@ export function createChart(
 
     const canToggleAccessibilityMode = isChartVisualizationType(effectiveType) && effectiveType !== 'scatterPlot' && effectiveType !== 'map';
 
-    burgerMenu = new BurgerMenu({
-      container,
-      dataset: ds,
-      chartType: effectiveType,
-      locale: resolvedLocale,
-      theme,
-      accessibilityMode,
-      toggleAccessibilityMode: canToggleAccessibilityMode
-        ? () => {
-            accessibilityMode = !accessibilityMode;
-            currentConfig = { ...currentConfig, accessibilityMode };
-            rebuildPipeline(currentDataset, currentConfig);
-          }
-        : undefined,
-      menuItemDefinitions: cfg.menuItemDefinitions,
-      menuIconInheritColor: cfg.menuIconInheritColor,
-      tableToggle,
-    });
+    if (cfg.showBurgerMenu !== false) {
+      burgerMenu = new BurgerMenu({
+        container,
+        dataset: ds,
+        chartType: effectiveType,
+        locale: resolvedLocale,
+        theme,
+        accessibilityMode,
+        toggleAccessibilityMode: canToggleAccessibilityMode
+          ? () => {
+              accessibilityMode = !accessibilityMode;
+              currentConfig = { ...currentConfig, accessibilityMode };
+              rebuildPipeline(currentDataset, currentConfig);
+            }
+          : undefined,
+        menuItemDefinitions: cfg.menuItemDefinitions,
+        menuIconInheritColor: cfg.menuIconInheritColor,
+        tableToggle,
+      });
+    }
   }
 
   try {

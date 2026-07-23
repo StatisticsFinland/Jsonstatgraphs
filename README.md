@@ -92,6 +92,7 @@ const chart = createChart(container, dataset, {
 | `showLegend` | `boolean` | Show legend for multi-series charts (default: `true`) |
 | `autoTitle` | `boolean` | Auto-generate title from metadata (default: `true`) |
 | `accessibilityMode` | `boolean` | Enable accessibility visuals (pattern fills or marker shapes) for supported chart types |
+| `showBurgerMenu` | `boolean` | Show the chart burger menu (default: `true`) |
 | `menuItemDefinitions` | `(FunctionalMenuItem \| LinkMenuItem)[]` | Optional custom burger menu items shown before built-in items |
 | `menuIconInheritColor` | `boolean` | When `true`, burger menu icon color inherits from parent text color |
 | `footerItems` | `FooterItem[]` | Array of footer items. Each item has `type` (`'source'`, `'updated'`, `'custom'`), `label` (prefix text), and `value` (main text) fields. |

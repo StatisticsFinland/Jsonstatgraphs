@@ -49,6 +49,18 @@ export const CustomLink: StoryObj = {
     }),
 };
 
+export const WithoutBurgerMenu: StoryObj = {
+  render: () =>
+    renderChart({
+      dataset: timeSeriesData,
+      config: {
+        chartType: 'line',
+        showBurgerMenu: false,
+      },
+      width: '800px',
+    }),
+};
+
 export const DarkTheme: StoryObj = {
   render: () => {
     const wrapper = document.createElement('div');

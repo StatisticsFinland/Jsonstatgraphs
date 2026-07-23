@@ -21,6 +21,12 @@ A custom link can open an HTTP or HTTPS URL in the current tab or a new tab. Set
 
 <Canvas of={BurgerMenuStories.CustomLink} />
 
+## Disabling the burger menu
+
+The burger menu is enabled by default. Set `showBurgerMenu` to `false` in `ChartConfig` to render a chart without the menu.
+
+<Canvas of={BurgerMenuStories.WithoutBurgerMenu} />
+
 ## Burger menu theming
 
 Burger menu appearance can be customized through the `theme` object or CSS custom properties. JavaScript configuration takes priority over CSS custom properties, followed by built-in defaults.
