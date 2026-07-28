@@ -1,20 +1,78 @@
-import { JsonStatDataset, ChartData, DataSeries, DataPoint, ScatterChartData, ScatterDataPoint, PyramidChartData } from '../types';
+import { JsonStatDataset, ChartData, DataSeries, DataPoint, ScatterChartData, ScatterDataPoint, PyramidChartData, Layout, SelectableSelections } from '../types';
+import { rebuildDataset } from './rebuild-dataset';
+import { hasSelectableDatasetOptions, resolveSelectableDatasetOptions } from './selectable-settings';
+import { computeFlatIndex, getOrderedCodes } from './dataset-utils';
+
+export { getOrderedCodes } from './dataset-utils';
 
 export interface TransformOptions {
+  layout?: Layout;
+  selectableSelections?: SelectableSelections;
+  defaultSelectableSelections?: SelectableSelections;
+  multiSelectableDimensionCode?: string;
   xDimension?: string;
   seriesDimension?: string;
 }
 
-/**
- * Returns ordered category codes from a dimension's category.index,
- * which may be either a string[] or Record<string, number>.
- */
-export function getOrderedCodes(index: Record<string, number> | string[]): string[] {
-  if (Array.isArray(index)) {
-    return index;
-  }
-  // Object form: { "code": position }
-  return Object.keys(index).sort((a, b) => index[a] - index[b]);
+interface AxisGroup {
+  code: string;
+  label: string;
+  coordinates: Map<string, number>;
+}
+
+function createAxisGroups(dataset: JsonStatDataset, dimensionCodes: string[]): AxisGroup[] {
+  if (dimensionCodes.length === 0) return [{ code: '__scalar__', label: '', coordinates: new Map() }];
+  const categoryCodes = dimensionCodes.map(code => getOrderedCodes(dataset.dimension[code].category.index));
+  const sizes = categoryCodes.map(codes => codes.length);
+  const strides = sizes.map((_, index) => sizes.slice(index + 1).reduce((product, size) => product * size, 1));
+  const count = sizes.reduce((product, size) => product * size, 1);
+  return Array.from({ length: count }, (_, flatIndex) => {
+    const positions = sizes.map((size, index) => Math.floor(flatIndex / strides[index]) % size);
+    const codes = positions.map((position, index) => categoryCodes[index][position]);
+    const labels = codes.map((code, index) => getLabel(dataset.dimension[dimensionCodes[index]].category.label, code));
+    return {
+      code: codes.length === 1
+        ? codes[0]
+        : codes.map((code, index) => `${dimensionCodes[index]}:${code}`).join('\u001f'),
+      label: labels.join(', '),
+      coordinates: new Map(dimensionCodes.map((code, index) => [code, positions[index]])),
+    };
+  });
+}
+
+function deriveYLabel(dataset: JsonStatDataset): string | undefined {
+  const metricCode = dataset.role?.metric?.[0];
+  if (!metricCode) return undefined;
+  const category = dataset.dimension[metricCode]?.category;
+  if (!category?.unit) return undefined;
+  const labels = getOrderedCodes(category.index).map(code => category.unit?.[code]?.label?.trim());
+  return labels.length > 0 && labels.every(label => label && label === labels[0]) ? labels[0] : undefined;
+}
+
+function transformLayoutDataset(dataset: JsonStatDataset, layout: Layout): ChartData {
+  const rowGroups = createAxisGroups(dataset, layout.rows);
+  const columnGroups = createAxisGroups(dataset, layout.columns);
+  const strides = dataset.size.map((_, index) => dataset.size.slice(index + 1).reduce((product, size) => product * size, 1));
+  const series = rowGroups.map(row => ({
+    name: row.label || layout.rows.map(code => dataset.dimension[code].label ?? code).join(', '),
+    code: row.code,
+    points: columnGroups.map(column => {
+      const coordinates = dataset.id.map(code => row.coordinates.get(code) ?? column.coordinates.get(code) ?? 0);
+      return {
+        value: resolveValue(dataset.value[computeFlatIndex(coordinates, strides)]),
+        label: column.label,
+        categoryCode: column.code,
+      };
+    }),
+  }));
+  return {
+    series,
+    categories: columnGroups.map(group => group.code),
+    categoryLabels: columnGroups.map(group => group.label),
+    xLabel: layout.columns.map(code => dataset.dimension[code].label ?? code).join(', '),
+    seriesLabel: layout.rows.map(code => dataset.dimension[code].label ?? code).join(', ') || undefined,
+    yLabel: deriveYLabel(dataset),
+  };
 }
 
 /**
@@ -33,15 +91,6 @@ function resolveValue(v: number | null | string): number | null {
   return v;
 }
 
-/** Computes the flat (row-major) index from per-dimension indices and strides. */
-function computeFlatIndex(dimIndices: number[], strides: number[]): number {
-  let idx = 0;
-  for (let i = 0; i < strides.length; i++) {
-    idx += dimIndices[i] * strides[i];
-  }
-  return idx;
-}
-
 /**
  * Transforms a JSON-stat 2.0 dataset into chart-ready series data.
  */
@@ -49,6 +98,27 @@ export function transformDataset(
   dataset: JsonStatDataset,
   options?: TransformOptions
 ): ChartData {
+  const selectableOptions = resolveSelectableDatasetOptions(dataset, options, options?.selectableSelections);
+  if (hasSelectableDatasetOptions(selectableOptions)) {
+    const rebuilt = rebuildDataset(dataset, selectableOptions);
+    if (selectableOptions.layout) {
+      const declaredCodes = new Set([...selectableOptions.layout.rows, ...selectableOptions.layout.columns]);
+      const multiSelectableCode = selectableOptions.multiSelectableDimensionCode;
+      const projectedRows = multiSelectableCode
+        && !declaredCodes.has(multiSelectableCode)
+        && getOrderedCodes(rebuilt.dataset.dimension[multiSelectableCode].category.index).length > 1
+        ? [multiSelectableCode, ...selectableOptions.layout.rows]
+        : selectableOptions.layout.rows;
+      return transformLayoutDataset(rebuilt.dataset, {
+        rows: projectedRows,
+        columns: selectableOptions.layout.columns,
+      });
+    }
+    return transformDataset(rebuilt.dataset, {
+      xDimension: options?.xDimension,
+      seriesDimension: options?.seriesDimension,
+    });
+  }
   const { id, size, dimension, value } = dataset;
 
   // --- 1. Determine x-axis dimension ---
@@ -234,6 +304,7 @@ export interface ScatterTransformOptions {
   xContentValue: string;
   yContentValue: string;
   observationDimension?: string;
+  activeCategoryCodes?: Record<string, string[]>;
 }
 
 export function transformScatterData(
@@ -280,7 +351,7 @@ export function transformScatterData(
 
   const obsDimIdx = id.indexOf(obsDimId);
   const obsDim = dimension[obsDimId];
-  const obsCodes = getOrderedCodes(obsDim.category.index);
+  const obsCodes = options.activeCategoryCodes?.[obsDimId] ?? getOrderedCodes(obsDim.category.index);
 
   // Compute strides for row-major indexing
   const strides: number[] = new Array(id.length).fill(1);
@@ -293,9 +364,16 @@ export function transformScatterData(
   const xUnit = contentDim.category.unit?.[options.xContentValue]?.label?.trim() || undefined;
   const yUnit = contentDim.category.unit?.[options.yContentValue]?.label?.trim() || undefined;
 
-  const points: ScatterDataPoint[] = obsCodes.map((obsCode, obsPos) => {
-    const xRaw = value[computeFlatIndex(id.map((_, i) => (i === contentDimIdx ? xPos : i === obsDimIdx ? obsPos : 0)), strides)];
-    const yRaw = value[computeFlatIndex(id.map((_, i) => (i === contentDimIdx ? yPos : i === obsDimIdx ? obsPos : 0)), strides)];
+  const points: ScatterDataPoint[] = obsCodes.map((obsCode) => {
+    const obsPos = getOrderedCodes(obsDim.category.index).indexOf(obsCode);
+    const coordinate = (contentPosition: number) => id.map((dimCode, i) => {
+      if (i === contentDimIdx) return contentPosition;
+      if (i === obsDimIdx) return obsPos;
+      const selectedCode = options.activeCategoryCodes?.[dimCode]?.[0];
+      return selectedCode ? getOrderedCodes(dimension[dimCode].category.index).indexOf(selectedCode) : 0;
+    });
+    const xRaw = value[computeFlatIndex(coordinate(xPos), strides)];
+    const yRaw = value[computeFlatIndex(coordinate(yPos), strides)];
     return {
       x: xRaw === null || typeof xRaw === 'string' ? null : xRaw,
       y: yRaw === null || typeof yRaw === 'string' ? null : yRaw,
@@ -319,6 +397,7 @@ export function transformScatterData(
 export interface PyramidTransformOptions {
   categoryDimension: string;
   splitDimension: string;
+  activeCategoryCodes?: Record<string, string[]>;
 }
 
 export function transformPyramidData(
@@ -333,8 +412,8 @@ export function transformPyramidData(
   const catDim = dimension[categoryDimension];
   const splitDim = dimension[splitDimension];
 
-  const catCodes = getOrderedCodes(catDim.category.index);
-  const splitCodes = getOrderedCodes(splitDim.category.index);
+  const catCodes = options.activeCategoryCodes?.[categoryDimension] ?? getOrderedCodes(catDim.category.index);
+  const splitCodes = options.activeCategoryCodes?.[splitDimension] ?? getOrderedCodes(splitDim.category.index);
   const categoryLabels = catCodes.map((code) => catDim.category.label?.[code] ?? code);
 
   // Compute strides
@@ -345,8 +424,16 @@ export function transformPyramidData(
 
   function buildSeries(splitIdx: number): DataSeries {
     const splitCode = splitCodes[splitIdx];
-    const points: DataPoint[] = catCodes.map((catCode, catIdx) => {
-      const raw = value[computeFlatIndex(id.map((_, i) => (i === catDimIdx ? catIdx : i === splitDimIdx ? splitIdx : 0)), strides)];
+    const points: DataPoint[] = catCodes.map((catCode) => {
+      const catIdx = getOrderedCodes(catDim.category.index).indexOf(catCode);
+      const originalSplitIdx = getOrderedCodes(splitDim.category.index).indexOf(splitCode);
+      const coordinate = id.map((dimCode, i) => {
+        if (i === catDimIdx) return catIdx;
+        if (i === splitDimIdx) return originalSplitIdx;
+        const selectedCode = options.activeCategoryCodes?.[dimCode]?.[0];
+        return selectedCode ? getOrderedCodes(dimension[dimCode].category.index).indexOf(selectedCode) : 0;
+      });
+      const raw = value[computeFlatIndex(coordinate, strides)];
       return {
         value: raw === null || typeof raw === 'string' ? null : raw,
         label: catDim.category.label?.[catCode] ?? catCode,

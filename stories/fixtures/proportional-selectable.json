@@ -1,0 +1,52 @@
+{
+  "version": "2.0",
+  "class": "dataset",
+  "id": ["scenario", "energian-loppukayton-sektori", "tiedot"],
+  "label": "Final energy consumption by sector",
+  "source": "Example Institute, energy supply and consumption",
+  "updated": "2025-12-16T08:00:00",
+  "dimension": {
+    "scenario": {
+      "label": "Scenario",
+      "category": {
+        "index": ["current", "comparison"],
+        "label": {
+          "current": "Current estimate",
+          "comparison": "Comparison estimate"
+        }
+      }
+    },
+    "energian-loppukayton-sektori": {
+      "label": "Sektor",
+      "category": {
+        "index": ["A", "B", "C", "D"],
+        "label": {
+          "A": "A Industry",
+          "B": "B Transport",
+          "C": "C Space heating",
+          "D": "D Others"
+        }
+      }
+    },
+    "tiedot": {
+      "label": "Information",
+      "category": {
+        "index": ["maara_gwh"],
+        "label": {
+          "maara_gwh": "Quantity (GWh)"
+        },
+        "unit": {
+          "maara_gwh": {
+            "label": "GWh",
+            "decimals": 0
+          }
+        }
+      }
+    }
+  },
+  "value": [120747.22, 44567.78, 75548.89, 38754.17, 118320.51, 46211.43, 73109.76, 40188.64],
+  "size": [2, 4, 1],
+  "role": {
+    "metric": ["tiedot"]
+  }
+}

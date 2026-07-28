@@ -41,6 +41,63 @@ const twoDimDataset: JsonStatDataset = {
 // --- Tests ---
 
 describe('transformDataset', () => {
+  test('uses dataset.id rather than dimension dictionary order for configured layouts', () => {
+    const ds: JsonStatDataset = {
+      id: ['Region', 'Year', 'Metric'],
+      size: [2, 2, 1],
+      dimension: {
+        Metric: { category: { index: ['value'], label: { value: 'Value' } } },
+        Year: { category: { index: ['2023', '2024'], label: { '2023': '2023', '2024': '2024' } } },
+        Region: { category: { index: ['N', 'S'], label: { N: 'North', S: 'South' } } },
+      },
+      value: [10, 20, 30, 40],
+      role: { time: ['Year'], metric: ['Metric'] },
+    };
+
+    const result = transformDataset(ds, {
+      layout: { rows: ['Region'], columns: ['Year'] },
+      selectableSelections: { Metric: ['value'] },
+    });
+
+    expect(result.series.map(series => series.name)).toEqual(['North', 'South']);
+    expect(result.series.map(series => series.points.map(point => point.value))).toEqual([
+      [10, 20],
+      [30, 40],
+    ]);
+  });
+
+  test('projects an omitted multi-select dimension as series', () => {
+    const ds: JsonStatDataset = {
+      id: ['Region', 'Year'],
+      size: [3, 2],
+      dimension: {
+        Region: {
+          label: 'Region',
+          category: { index: ['N', 'C', 'S'], label: { N: 'North', C: 'Central', S: 'South' } },
+        },
+        Year: {
+          label: 'Year',
+          category: { index: ['2023', '2024'], label: { '2023': '2023', '2024': '2024' } },
+        },
+      },
+      value: [10, 11, 20, 21, 30, 31],
+      role: { time: ['Year'] },
+    };
+
+    const result = transformDataset(ds, {
+      layout: { rows: [], columns: ['Year'] },
+      multiSelectableDimensionCode: 'Region',
+      selectableSelections: { Region: ['N', 'C', 'S'] },
+    });
+
+    expect(result.series.map(series => series.name)).toEqual(['North', 'Central', 'South']);
+    expect(result.series.map(series => series.points.map(point => point.value))).toEqual([
+      [10, 11],
+      [20, 21],
+      [30, 31],
+    ]);
+  });
+
   // 1. Single dimension
   test('single dimension produces 1 series with correct values', () => {
     const result = transformDataset(singleDimDataset);
@@ -71,6 +128,32 @@ describe('transformDataset', () => {
 
     expect(helsinki!.points.map((p) => p.value)).toEqual([10, 20, 30]);
     expect(tampere!.points.map((p) => p.value)).toEqual([40, 50, 60]);
+  });
+
+  test('retains the metric unit label when resolving a layout view', () => {
+    const ds: JsonStatDataset = {
+      id: ['Region', 'Metric', 'Year'],
+      size: [1, 1, 2],
+      dimension: {
+        Region: { category: { index: ['FI'], label: { FI: 'Finland' } } },
+        Metric: {
+          category: {
+            index: ['population'],
+            label: { population: 'Population' },
+            unit: { population: { label: 'persons', decimals: 0 } },
+          },
+        },
+        Year: { category: { index: ['2023', '2024'], label: { '2023': '2023', '2024': '2024' } } },
+      },
+      value: [5_600_000, 5_610_000],
+      role: { metric: ['Metric'], time: ['Year'] },
+    };
+
+    expect(transformDataset(ds).yLabel).toBe('persons');
+    expect(transformDataset(ds, {
+      layout: { rows: ['Region'], columns: ['Year'] },
+      selectableSelections: { Metric: ['population'] },
+    }).yLabel).toBe('persons');
   });
 
   // 3. Null values preserved

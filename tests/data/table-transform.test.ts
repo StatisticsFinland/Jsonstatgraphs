@@ -192,9 +192,9 @@ describe('computeTableOrientation', () => {
   });
 
   // -------------------------------------------------------------------------
-  // Test 9: Manual layout — un-placed multi-value dim throws
+  // Test 9: Manual layout — unplaced dimensions are hidden
   // -------------------------------------------------------------------------
-  it('throws when a multi-value dimension is not placed in rows or columns', () => {
+  it('keeps an unplaced multi-value dimension hidden', () => {
     const ds = makeDataset({
       id: ['Year', 'Region', 'Content'],
       size: [3, 2, 2],
@@ -206,9 +206,11 @@ describe('computeTableOrientation', () => {
       value: new Array(12).fill(0),
     });
 
-    expect(() =>
-      computeTableOrientation(ds, { rows: ['Year'], columns: ['Region'] })
-    ).toThrow('"Content" has size 2 and must be placed in rows or columns');
+    expect(computeTableOrientation(ds, { rows: ['Year'], columns: ['Region'] })).toEqual({
+      rows: ['Year'],
+      columns: ['Region'],
+      hidden: ['Content'],
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -268,6 +270,32 @@ describe('computeTableOrientation', () => {
 // ===========================================================================
 
 describe('transformTableData', () => {
+  it('uses dataset.id rather than dimension dictionary order for configured layouts', () => {
+    const ds = makeDataset({
+      id: ['Region', 'Year', 'Metric'],
+      size: [2, 2, 1],
+      dimension: {
+        Metric: { label: 'Metric', category: { index: ['value'], label: { value: 'Value' } } },
+        Year: { label: 'Year', category: { index: ['2023', '2024'], label: { '2023': '2023', '2024': '2024' } } },
+        Region: { label: 'Region', category: { index: ['N', 'S'], label: { N: 'North', S: 'South' } } },
+      },
+      value: [10, 20, 30, 40],
+      role: { time: ['Year'], metric: ['Metric'] },
+    });
+
+    const result = transformTableData(ds, {
+      layout: { rows: ['Region'], columns: ['Year'] },
+      selectableSelections: { Metric: ['value'] },
+    });
+
+    expect(result.rowDimensions.map(dimension => dimension.code)).toEqual(['Region']);
+    expect(result.columnDimensions.map(dimension => dimension.code)).toEqual(['Year']);
+    expect(result.values).toEqual([
+      [10, 20],
+      [30, 40],
+    ]);
+  });
+
   // -------------------------------------------------------------------------
   // Test 11: Standard 2D dataset
   // -------------------------------------------------------------------------

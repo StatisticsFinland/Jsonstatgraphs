@@ -1,5 +1,7 @@
-import { JsonStatDataset, TableLayout, TableDimension, TableData } from '../types';
-import { getOrderedCodes } from './transform';
+import { JsonStatDataset, Layout, SelectableSelections, TableDimension, TableData } from '../types';
+import { computeStrides, getOrderedCodes } from './dataset-utils';
+import { rebuildDataset } from './rebuild-dataset';
+import { hasSelectableDatasetOptions, resolveSelectableDatasetOptions } from './selectable-settings';
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -32,7 +34,7 @@ function buildCodeIndexMap(id: string[]): Map<string, number> {
 function validateManualLayout(
   id: string[],
   sizeMap: Map<string, number>,
-  layout: TableLayout
+  layout: Layout
 ): string[] {
   for (const code of layout.rows) {
     if (!sizeMap.has(code)) {
@@ -71,18 +73,7 @@ function validateManualLayout(
   }
 
   const mentioned = new Set([...layout.rows, ...layout.columns]);
-  const hidden: string[] = [];
-  for (const code of id) {
-    if (mentioned.has(code)) continue;
-    const s = sizeMap.get(code) ?? 1;
-    if (s !== 1) {
-      throw new Error(
-        `[JsonStatChart] Dimension "${code}" has size ${s} and must be placed in rows or columns`
-      );
-    }
-    hidden.push(code);
-  }
-  return hidden;
+  return id.filter(code => !mentioned.has(code));
 }
 
 /**
@@ -144,15 +135,6 @@ function decodeCombo(comboIdx: number, sizes: number[]): number[] {
     remaining = Math.floor(remaining / sizes[i]);
   }
   return indices;
-}
-
-/** Computes row-major strides for all dimensions in dataset.id order. */
-function computeStrides(size: number[]): number[] {
-  const strides: number[] = new Array(size.length).fill(1);
-  for (let i = size.length - 2; i >= 0; i--) {
-    strides[i] = strides[i + 1] * size[i + 1];
-  }
-  return strides;
 }
 
 /**
@@ -230,7 +212,7 @@ function buildValuesGrid(
  */
 export function computeTableOrientation(
   dataset: JsonStatDataset,
-  manualLayout?: TableLayout
+  manualLayout?: Layout
 ): { rows: string[]; columns: string[]; hidden: string[] } {
   const { id, size } = dataset;
   const sizeMap = buildSizeMap(id, size);
@@ -273,10 +255,22 @@ export function computeTableOrientation(
  */
 export function transformTableData(
   dataset: JsonStatDataset,
-  options?: { tableLayout?: TableLayout }
+  options?: {
+    layout?: Layout;
+    /** @deprecated Use layout. */
+    tableLayout?: Layout;
+    selectableSelections?: SelectableSelections;
+    defaultSelectableSelections?: SelectableSelections;
+    multiSelectableDimensionCode?: string;
+  }
 ): TableData {
-  const { id, size, dimension } = dataset;
-  const { rows, columns, hidden } = computeTableOrientation(dataset, options?.tableLayout);
+  const layout = options?.layout ?? options?.tableLayout;
+  const selectableOptions = resolveSelectableDatasetOptions(dataset, { ...options, layout }, options?.selectableSelections);
+  const activeDataset = hasSelectableDatasetOptions(selectableOptions)
+    ? rebuildDataset(dataset, selectableOptions).dataset
+    : dataset;
+  const { id, size, dimension } = activeDataset;
+  const { rows, columns, hidden } = computeTableOrientation(activeDataset, layout);
 
   const codeToIdx = buildCodeIndexMap(id);
   const strides = computeStrides(size);
@@ -304,7 +298,7 @@ export function transformTableData(
 
   const rowDimensions = rows.map(buildTableDimension);
   const columnDimensions = columns.map(buildTableDimension);
-  const values = buildValuesGrid(dataset, rows, columns, codeToIdx, strides);
+  const values = buildValuesGrid(activeDataset, rows, columns, codeToIdx, strides);
 
   const hiddenDimensions = hidden.map(code => {
     const codes = getOrderedCategoryCodes(code);

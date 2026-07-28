@@ -453,3 +453,14 @@ The initial premise — that `.jsc-bar { fill: blue }` has no effect — was inc
 - Story variants are derived from real API data via `sliceDataset`, keeping data structures authentic without maintaining dozens of separate fixture files.
 - Edge case and interactive stories remain as-is — they use custom DOM patterns that don't benefit from shared controls.
 - Autodocs (`tags: ['autodocs']`) generates documentation pages automatically for all story files.
+
+### ADR-034: Preserve N-dimensional datasets through selectable rebuilding
+
+**Status:** accepted
+**Date:** 2026-07-30
+
+**Context:** Selectable rebuilding previously combined category filtering, layout interpretation, chart compatibility checks, and projection into a synthetic two-dimensional JSON-stat dataset. This erased original dimensions and roles before chart-specific transforms ran, made table projection depend on synthetic axes, and placed visualization concerns in the data-preparation layer.
+
+**Decision:** `rebuildDataset()` now performs only JSON-stat operations: resolve active selectable categories, preserve their source metadata order, permute dimensions according to an explicit layout, and copy the filtered N-dimensional value cube. Explicit layout order is rows followed by columns followed by omitted dimensions in original order. Every source dimension, role, and applicable metadata entry remains present. Composite axis codes and labels are created only by categorical transformation; table, map, scatter, pyramid, and key-figure transforms project the rebuilt cube according to their own requirements. Explicit chart choices bypass compatibility fallback and selectable-dimension rejection after structural dataset validation.
+
+**Consequences:** Rebuilt data remains valid N-dimensional JSON-stat and can be consumed by specialized transforms without recovering lost metadata. Omitted multi-value dimensions no longer make rebuilding fail; individual transforms define how they are projected or fixed. A configured multi-select dimension omitted from layout is still projected as categorical series, but that promotion belongs to `transform.ts`, not rebuilding. Automatic chart selection remains compatibility-aware, while explicit chart choices may produce ordinary transformation or rendering errors if the supplied data cannot satisfy the chosen renderer. No new dependency or public chart-data type is required.

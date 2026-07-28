@@ -37,12 +37,18 @@ import type { JsonStatDataset } from '@statisticsfinland/jsonstat-chart';
 const response = await fetch('https://example.com/api/dataset');
 const dataset: JsonStatDataset = await response.json();
 
-// Render into a container
+// Render into a container. Current selectable values are an optional fourth argument.
 const container = document.getElementById('chart')!;
-const chart = createChart(container, dataset);
+const chart = createChart(container, dataset, {
+  layout: { rows: ['region'], columns: ['year'] },
+}, {
+  scenario: ['current'],
+});
 
-// Later: update with new data or config
-chart.update(dataset, { chartType: 'verticalBar' });
+// Later: update data, config, and/or current selections
+chart.update(dataset, { chartType: 'verticalBar' }, {
+  scenario: ['comparison'],
+});
 
 // Change chart type
 chart.setChartType('line');
@@ -62,6 +68,14 @@ const chart = createChart(container, dataset, {
   showHeader: true,            // Show auto-generated header (default: true)
   showLegend: true,            // Show legend for multi-series charts
   autoTitle: true,             // Auto-generate title from metadata (default: true)
+  layout: {                    // Project the JSON-stat cube into chart series and categories
+    rows: ['region'],
+    columns: ['year'],
+  },
+  defaultSelectableSelections: {
+    scenario: ['current'],
+  },
+  multiSelectableDimensionCode: 'region',
   menuIconInheritColor: false, // Burger menu icon color inherits parent color when true
   menuItemDefinitions: [       // Optional custom burger menu items (shown before built-ins)
     { text: 'Custom action', onClick: () => console.log('clicked') },
@@ -98,9 +112,73 @@ const chart = createChart(container, dataset, {
 | `footerItems` | `FooterItem[]` | Array of footer items. Each item has `type` (`'source'`, `'updated'`, `'custom'`), `label` (prefix text), and `value` (main text) fields. |
 | `sourceLink` | `string` | URL to make the source footer item a clickable link. Must be an `http://` or `https://` URL. When set, footer items with `type: 'source'` render as hyperlinks opening in a new tab. The URL is validated and `javascript:` / `data:` URLs are rejected for security. |
 | `ariaLabel` | `string` | Custom aria-label for the figure element |
-| `xDimension` | `string` | Code of dimension to use as X axis (auto-detected by default) |
-| `yDimension` | `string` | Code of dimension to use as Y axis (auto-detected by default) |
+| `layout` | `Layout` | Dimension projection with `rows` (series) and `columns` (categories/X axis) |
+| `defaultSelectableSelections` | `SelectableSelections` | Fallback category selections keyed by dimension code |
+| `multiSelectableDimensionCode` | `string` | Dimension whose multiple selected categories are rendered as separate series |
 | `theme` | `ThemeConfig` | Theme customization options (see Theming section) |
+
+## Selectable Dimensions and Layout
+
+The chart can render selected and pivoted data without mutating the caller's JSON-stat dataset. Current selections are passed separately as the fourth argument to `createChart()` and the third argument to `chart.update()`:
+
+```typescript
+import { createChart } from '@statisticsfinland/jsonstat-chart';
+import type { SelectableSelections } from '@statisticsfinland/jsonstat-chart';
+
+const selections: SelectableSelections = {
+  scenario: ['current'],
+  region: ['MK01', 'MK04'],
+};
+
+const chart = createChart(container, dataset, {
+  chartType: 'line',
+  layout: {
+    rows: [],
+    columns: ['year'],
+  },
+  defaultSelectableSelections: {
+    scenario: ['current'],
+  },
+  multiSelectableDimensionCode: 'region',
+}, selections);
+
+chart.update(dataset, undefined, {
+  scenario: ['comparison'],
+  region: ['MK02'],
+});
+```
+
+`layout.rows` forms chart series and `layout.columns` forms categories on the X axis. During dataset rebuilding, these dimensions are ordered first and omitted dimensions remain in their original relative order. Categorical charts use the first active category of an omitted dimension. A configured `multiSelectableDimensionCode` with multiple active categories is projected as series when it is not explicitly assigned to either direction.
+
+When layout or selectable settings are provided, the library internally rebuilds a compact N-dimensional dataset containing only active categories and values. The rebuilt dataset keeps every source dimension; each chart transformer is responsible for projecting it into the dimensionality required by that visualization. Datasets without layout or selectable settings follow the original transformation path unchanged.
+
+JSON-stat coordinate order is defined by `dataset.id`: each entry corresponds to the same position in `dataset.size`, and together they define the flattened `dataset.value` order. The property order of the `dataset.dimension` dictionary is not significant.
+
+Selectable settings can also be embedded in the dataset:
+
+```typescript
+const datasetWithDefaults: JsonStatDataset = {
+  ...dataset,
+  extension: {
+    ...dataset.extension,
+    selectableConfig: {
+      defaultSelectableSelections: { scenario: ['current'] },
+      multiSelectableDimensionCode: 'region',
+    },
+  },
+};
+```
+
+Resolution precedence is:
+
+1. Current selections passed to `createChart()` or `update()` override `dataset.extension.selectableConfig.selectableSelections`.
+2. `config.defaultSelectableSelections` overrides extension defaults.
+3. `config.multiSelectableDimensionCode` overrides the extension value.
+4. A missing selection falls back to its configured default, then to the latest category for a time dimension or the first category for another dimension.
+
+An explicitly empty selection uses a non-empty default when available; otherwise it is rejected. Unknown dimensions, unknown category codes, duplicate layout dimensions, and dimensions assigned to both rows and columns are also rejected at the data-source boundary. When a chart type is explicitly chosen, the library trusts that choice after structural dataset validation; automatic chart selection continues to choose only applicable chart types.
+
+Selectable filtering is supported by categorical charts, tables, maps, scatter plots, pyramids, and key figures. The scatter metric/content dimension and pyramid split dimension cannot themselves be selectable because those dimensions define the renderer's required structure. Selected categories are reflected in automatic titles, map geometry requests, and chart-type switches.
 
 ## Burger Menu
 
@@ -290,7 +368,7 @@ The library auto-selects the best chart type based on dataset dimensions when `c
 | Pie | `'pie'` | Part-to-whole proportions |
 | Scatter Plot | `'scatterPlot'` | Two-variable correlation |
 | Pyramid | `'pyramid'` | Mirrored horizontal bars (e.g. age-sex) |
-| Key Figure | `'keyFigure'` | Single-value display (auto-selected when all dimensions have size 1) |
+| Key Figure | `'keyFigure'` | Single-value display (eligible when all dimensions are single-valued after selection) |
 | Table | `'table'` | HTML table fallback |
 
 ### Key Figure Layout
@@ -323,23 +401,29 @@ Key exports from the package.
 ### Key Types
 
 - `JsonStatDataset` — JSON-stat 2.0 dataset input
+- `JsonStatDatasetExtension` — Known dataset extension fields, including selectable settings
+- `SelectableConfig` — Selectable settings stored in `dataset.extension.selectableConfig`
+- `SelectableSelections` — Dimension-code to selected category-code arrays
+- `Layout` — Row/column projection of active dimensions
+- `ResolvedDimensionView` — Selected and pivoted view of the immutable source cube
 - `ChartConfig` — Configuration options (see Configuration section)
 - `ChartInstance` — Returned by `createChart()`
 - `ChartType` — Union of all chart type strings
 - `ThemeConfig` — Theme customization options
 
-### `createChart(container, dataset, config?)`
+### `createChart(container, dataset, config?, selectableSelections?)`
 
 Creates a chart instance.
 
 - `container: HTMLElement` — DOM element to render into
 - `dataset: JsonStatDataset` — JSON-stat 2.0 dataset object
 - `config?: ChartConfig` — Optional configuration
+- `selectableSelections?: SelectableSelections` — Current category selections keyed by dimension code
 - Returns `ChartInstance`
 
 ### `ChartInstance` methods
 
-- `update(dataset, config?)` — Re-render with new data/config
+- `update(dataset, config?, selectableSelections?)` — Re-render with new data, config, and/or current selections
 - `destroy()` — Clean up DOM and event listeners
 - `setChartType(type)` — Switch chart type
 - `getChartType()` — Get current chart type

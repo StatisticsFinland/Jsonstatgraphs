@@ -9,6 +9,22 @@ import multiSeriesData from '../fixtures/multi-series.json';
 import tableWideData from '../fixtures/table-wide.json';
 import withNullsData from '../fixtures/with-nulls.json';
 import negativeValuesData from '../fixtures/negative-values.json';
+import type { JsonStatDataset } from '../../src/types';
+import { getSelectableStoryInputs } from '../helpers/selectables';
+
+const selectableBaseDataset = multiSeriesData as JsonStatDataset;
+
+function withSelectableConfig(
+  selectableConfig: NonNullable<JsonStatDataset['extension']>['selectableConfig'],
+): JsonStatDataset {
+  return {
+    ...selectableBaseDataset,
+    extension: {
+      ...selectableBaseDataset.extension,
+      selectableConfig,
+    },
+  };
+}
 
 const meta: Meta = {
   title: 'Charts/Line',
@@ -18,6 +34,86 @@ const meta: Meta = {
   args: {
     ...themeArgs,
   },
+};
+
+export const SelectableFromRenderer: StoryObj = {
+  render: (args) =>
+    renderChart({
+      dataset: withSelectableConfig({
+        defaultSelectableSelections: { alue: ['MK01'] },
+      }),
+      config: buildConfig(args, {
+        chartType: 'line',
+        layout: { rows: [], columns: ['vuosi'] },
+      }),
+      selectableSelections: { alue: ['MK02'] },
+      width: args.width as string,
+      height: args.height as string | undefined,
+      ...getSelectableStoryInputs(args),
+    }),
+};
+
+export const SelectableFromChartConfigDefault: StoryObj = {
+  render: (args) =>
+    renderChart({
+      dataset: selectableBaseDataset,
+      config: buildConfig(args, {
+        chartType: 'line',
+        layout: { rows: [], columns: ['vuosi'] },
+        defaultSelectableSelections: { alue: ['MK04'] },
+      }),
+      width: args.width as string,
+      height: args.height as string | undefined,
+      ...getSelectableStoryInputs(args),
+    }),
+};
+
+export const SelectableFromDatasetExtension: StoryObj = {
+  render: (args) =>
+    renderChart({
+      dataset: withSelectableConfig({
+        defaultSelectableSelections: { alue: ['MK06'] },
+      }),
+      config: buildConfig(args, {
+        chartType: 'line',
+        layout: { rows: [], columns: ['vuosi'] },
+      }),
+      width: args.width as string,
+      height: args.height as string | undefined,
+      ...getSelectableStoryInputs(args),
+    }),
+};
+
+export const SelectableAutomaticFallback: StoryObj = {
+  render: (args) =>
+    renderChart({
+      dataset: withSelectableConfig({
+        selectableSelections: { alue: [] },
+      }),
+      config: buildConfig(args, {
+        chartType: 'line',
+        layout: { rows: [], columns: ['vuosi'] },
+      }),
+      width: args.width as string,
+      height: args.height as string | undefined,
+    }),
+};
+
+export const MultiSelectableDimension: StoryObj = {
+  render: (args) =>
+    renderChart({
+      dataset: withSelectableConfig({
+        multiSelectableDimensionCode: 'alue',
+      }),
+      config: buildConfig(args, {
+        chartType: 'line',
+        layout: { rows: [], columns: ['vuosi'] },
+      }),
+      selectableSelections: { alue: ['MK01', 'MK04', 'MK17'] },
+      ...getSelectableStoryInputs(args),
+      width: args.width as string,
+      height: args.height as string | undefined,
+    }),
 };
 export default meta;
 

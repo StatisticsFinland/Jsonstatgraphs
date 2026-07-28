@@ -6,6 +6,22 @@ export interface JsonStatCategory {
   unit?: Record<string, { decimals?: number; label?: string; position?: string }>;
 }
 
+/** Dimension code to selected value code(s) filter. */
+export type SelectableSelections = Record<string, string[]>;
+
+/** Selectable-dimension settings supplied with a JSON-stat dataset. */
+export interface SelectableConfig {
+  selectableSelections?: SelectableSelections;
+  defaultSelectableSelections?: SelectableSelections;
+  multiSelectableDimensionCode?: string;
+}
+
+/** Known JSON-stat extension fields while preserving extension fields outside this library's scope. */
+export interface JsonStatDatasetExtension {
+  selectableConfig?: SelectableConfig;
+  [key: string]: unknown;
+}
+
 export interface JsonStatDimension {
   label?: string;
   category: JsonStatCategory;
@@ -22,7 +38,7 @@ export interface JsonStatDataset {
   size: number[];
   dimension: Record<string, JsonStatDimension>;
   value: (number | null | string)[];
-  extension?: Record<string, unknown>;
+  extension?: JsonStatDatasetExtension;
   role?: {
     time?: string[];
     geo?: string[];
@@ -162,9 +178,9 @@ export interface ChartConfig {
   sourceLink?: string;
   ariaLabel?: string;
   height?: number;
-  xDimension?: string;
-  yDimension?: string;
-  tableLayout?: TableLayout;
+  layout?: Layout;
+  defaultSelectableSelections?: SelectableSelections;
+  multiSelectableDimensionCode?: string;
   map?: MapConfig;
   /** Async function that resolves geographic boundaries for a given dimension.
    *  Receives the geo dimension ID, geo codes, an AbortSignal, and optionally
@@ -264,7 +280,7 @@ export interface PyramidChartData {
 
 // Table chart data (N-dimensional pivot table)
 
-export interface TableLayout {
+export interface Layout {
   rows: string[];
   columns: string[];
 }
@@ -410,7 +426,7 @@ export interface LayoutResult {
 // --- Chart instance (public API return type) ---
 
 export interface ChartInstance {
-  update(dataset: JsonStatDataset, config?: ChartConfig): void;
+  update(dataset: JsonStatDataset, config?: ChartConfig, selectableSelections?: SelectableSelections): void;
   destroy(): void;
   setChartType(type: ChartType): void;
   getChartType(): ChartType;
