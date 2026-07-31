@@ -909,7 +909,7 @@ export function createChart(
           if (unitEntries.length === 1) {
             unitText = unitEntries[0].unitLabel;
           } else {
-            unitText = unitEntries.map(e => `${e.valueName}: $npm{e.unitLabel}`).join(', ');
+            unitText = unitEntries.map(e => `${e.valueName}: ${e.unitLabel}`).join(', ');
           }
           resolvedConfig.footerItems = [
             { type: 'unit' as const, label: `${strings.unit}:`, value: unitText },

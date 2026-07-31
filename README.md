@@ -178,8 +178,7 @@ Resolution precedence is:
 
 An explicitly empty selection uses a non-empty default when available; otherwise it is rejected. Unknown dimensions, unknown category codes, duplicate layout dimensions, and dimensions assigned to both rows and columns are also rejected at the data-source boundary. When a chart type is explicitly chosen, the library trusts that choice after structural dataset validation; automatic chart selection continues to choose only applicable chart types.
 
-Selectable filtering is supported by categorical charts, tables, maps, scatter plots, pyramids, and key figures. The scatter metric/content dimension and pyramid split dimension cannot themselves be selectable because those dimensions define the renderer's required structure. Selected categories are reflected in automatic titles, map geometry requests, and chart-type switches.
-
+Selectable filtering is supported by categorical charts, tables, maps, scatter plots, pyramids, and key figures. During automatic chart selection, the scatter metric/content dimension and pyramid split dimension cannot be selectable because those dimensions define the renderer's required structure. Selected categories are reflected in automatic titles, map geometry requests, and chart-type switches.
 ## Burger Menu
 
 Charts render a top-right burger menu button (`☰`) that opens a keyboard-accessible dropdown shell.
