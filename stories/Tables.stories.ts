@@ -45,7 +45,7 @@ export const TableWithManualLayout: StoryObj = {
       config: buildConfig(args, {
         chartType: 'table',
         subtitle: 'Example subtitle',
-        tableLayout: { rows: ['sektori', 'sukupuoli'], columns: ['vuosi', 'palkkausmuoto'] },
+        layout: { rows: ['sektori', 'sukupuoli'], columns: ['vuosi', 'palkkausmuoto'] },
       }),
       width: args.width as string,
       height: args.height as string | undefined,

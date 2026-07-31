@@ -177,7 +177,7 @@ describe('computeTableOrientation', () => {
 
     expect(() =>
       computeTableOrientation(ds, { rows: ['DoesNotExist'], columns: ['Region'] })
-    ).toThrow('[JsonStatChart] Unknown dimension code in tableLayout: "DoesNotExist"');
+    ).toThrow('[JsonStatChart] Unknown dimension code in layout: "DoesNotExist"');
   });
 
   // -------------------------------------------------------------------------
@@ -245,7 +245,7 @@ describe('computeTableOrientation', () => {
       value: new Array(6).fill(0),
     });
     expect(() => computeTableOrientation(ds, { rows: ['A', 'A'], columns: ['B'] })).toThrow(
-      /Duplicate dimension code in tableLayout.rows: "A"/
+      /Duplicate dimension code in layout.rows: "A"/
     );
   });
 
@@ -260,7 +260,7 @@ describe('computeTableOrientation', () => {
       value: new Array(6).fill(0),
     });
     expect(() => computeTableOrientation(ds, { rows: ['A'], columns: ['B', 'B'] })).toThrow(
-      /Duplicate dimension code in tableLayout.columns: "B"/
+      /Duplicate dimension code in layout.columns: "B"/
     );
   });
 });
@@ -439,7 +439,7 @@ describe('transformTableData', () => {
   // -------------------------------------------------------------------------
   // Test 15: Manual layout swaps default orientation
   // -------------------------------------------------------------------------
-  it('respects a manual tableLayout that swaps rows and columns', () => {
+  it('respects a manual layout that swaps rows and columns', () => {
     // Without layout: Year(3) → rows, Region(2) → cols  (no roles, size desc)
     // With layout: Region → rows, Year → cols
     const ds = makeDataset({
@@ -462,7 +462,7 @@ describe('transformTableData', () => {
     });
 
     const result = transformTableData(ds, {
-      tableLayout: { rows: ['Region'], columns: ['Year'] },
+      layout: { rows: ['Region'], columns: ['Year'] },
     });
 
     expect(result.rowDimensions.map(d => d.code)).toEqual(['Region']);

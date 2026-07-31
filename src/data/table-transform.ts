@@ -26,7 +26,7 @@ function buildCodeIndexMap(id: string[]): Map<string, number> {
 }
 
 /**
- * Validates a manual TableLayout against the dataset.
+ * Validates a manual layout against the dataset.
  * Throws descriptive errors on unknown codes, overlapping codes, or un-placed
  * multi-value dimensions.
  * Returns the list of hidden dimension codes.
@@ -38,12 +38,12 @@ function validateManualLayout(
 ): string[] {
   for (const code of layout.rows) {
     if (!sizeMap.has(code)) {
-      throw new Error(`[JsonStatChart] Unknown dimension code in tableLayout: "${code}"`);
+      throw new Error(`[JsonStatChart] Unknown dimension code in layout: "${code}"`);
     }
   }
   for (const code of layout.columns) {
     if (!sizeMap.has(code)) {
-      throw new Error(`[JsonStatChart] Unknown dimension code in tableLayout: "${code}"`);
+      throw new Error(`[JsonStatChart] Unknown dimension code in layout: "${code}"`);
     }
   }
 
@@ -51,7 +51,7 @@ function validateManualLayout(
   for (const code of layout.columns) {
     if (rowSet.has(code)) {
       throw new Error(
-        `[JsonStatChart] Dimension "${code}" appears in both rows and columns of tableLayout`
+        `[JsonStatChart] Dimension "${code}" appears in both rows and columns of layout`
       );
     }
   }
@@ -59,7 +59,7 @@ function validateManualLayout(
   const seenRows = new Set<string>();
   for (const code of layout.rows) {
     if (seenRows.has(code)) {
-      throw new Error(`[JsonStatChart] Duplicate dimension code in tableLayout.rows: "${code}"`);
+      throw new Error(`[JsonStatChart] Duplicate dimension code in layout.rows: "${code}"`);
     }
     seenRows.add(code);
   }
@@ -67,7 +67,7 @@ function validateManualLayout(
   const seenCols = new Set<string>();
   for (const code of layout.columns) {
     if (seenCols.has(code)) {
-      throw new Error(`[JsonStatChart] Duplicate dimension code in tableLayout.columns: "${code}"`);
+      throw new Error(`[JsonStatChart] Duplicate dimension code in layout.columns: "${code}"`);
     }
     seenCols.add(code);
   }
@@ -257,14 +257,12 @@ export function transformTableData(
   dataset: JsonStatDataset,
   options?: {
     layout?: Layout;
-    /** @deprecated Use layout. */
-    tableLayout?: Layout;
     selectableSelections?: SelectableSelections;
     defaultSelectableSelections?: SelectableSelections;
     multiSelectableDimensionCode?: string;
   }
 ): TableData {
-  const layout = options?.layout ?? options?.tableLayout;
+  const layout = options?.layout;
   const selectableOptions = resolveSelectableDatasetOptions(dataset, { ...options, layout }, options?.selectableSelections);
   const activeDataset = hasSelectableDatasetOptions(selectableOptions)
     ? rebuildDataset(dataset, selectableOptions).dataset

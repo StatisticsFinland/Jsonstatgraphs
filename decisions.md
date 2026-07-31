@@ -242,7 +242,7 @@ Decisions are numbered sequentially. Once recorded, a decision is not deleted �
 
 ### ADR-020: N-dimensional table via dedicated TableData type and table-transform module
 
-**Status:** accepted
+**Status:** superseded by ADR-035
 **Date:** 2026-05-18
 
 **Context:** The table chart received `ChartData` (a 2D category+series structure shared with bar/line charts). This limited it to two dimensions and prevented multi-level row/column headers needed for N-dimensional JSON-stat datasets.
@@ -464,3 +464,14 @@ The initial premise — that `.jsc-bar { fill: blue }` has no effect — was inc
 **Decision:** `rebuildDataset()` now performs only JSON-stat operations: resolve active selectable categories, preserve their source metadata order, permute dimensions according to an explicit layout, and copy the filtered N-dimensional value cube. Explicit layout order is rows followed by columns followed by omitted dimensions in original order. Every source dimension, role, and applicable metadata entry remains present. Composite axis codes and labels are created only by categorical transformation; table, map, scatter, pyramid, and key-figure transforms project the rebuilt cube according to their own requirements. Explicit chart choices bypass compatibility fallback and selectable-dimension rejection after structural dataset validation.
 
 **Consequences:** Rebuilt data remains valid N-dimensional JSON-stat and can be consumed by specialized transforms without recovering lost metadata. Omitted multi-value dimensions no longer make rebuilding fail; individual transforms define how they are projected or fixed. A configured multi-select dimension omitted from layout is still projected as categorical series, but that promotion belongs to `transform.ts`, not rebuilding. Automatic chart selection remains compatibility-aware, while explicit chart choices may produce ordinary transformation or rendering errors if the supplied data cannot satisfy the chosen renderer. No new dependency or public chart-data type is required.
+
+### ADR-035: Unified chart dimension layout
+
+**Status:** accepted
+**Date:** 2026-07-31
+
+**Context:** Table orientation originally used the table-specific `ChartConfig.tableLayout` property. Selectable rebuilding and categorical projection now use the same row and column dimension ordering, so retaining a separate table-only property duplicates configuration and terminology.
+
+**Decision:** `ChartConfig.layout` with `{ rows, columns }` is the sole dimension-layout API for every chart type. Table transformation accepts only `layout`; the deprecated `tableLayout` alias is removed.
+
+**Consequences:** Consumers use one layout shape consistently across table and non-table charts. Passing `tableLayout` is no longer supported. ADR-020 remains the historical record of the original table-specific API and is superseded by this decision.
