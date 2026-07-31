@@ -5,6 +5,7 @@ import type { NiceSkipOptions } from '../layout/label-fitting';
 import { bindInteractions, DataElementInfo, BoundInteractions } from './bindInteractions';
 import { applyChartAriaAttributes, applySeriesGroupAttributes } from '../a11y/aria';
 import { getSeriesColor } from '../theme/palette';
+import { ensureDefs, getPatternFillUrl, injectPatternDefs } from '../a11y/patterns';
 
 export interface GroupedBarChartConfig {
   container: HTMLElement;
@@ -91,6 +92,11 @@ export function createGroupedBarChart(chartConfig: GroupedBarChartConfig): Group
     const plotAreaGroup = svg.select<SVGGElement>('.jsc-plot-area');
     const elements: DataElementInfo[] = [];
 
+    if (config.accessibilityMode) {
+      const defs = ensureDefs(svg);
+      injectPatternDefs(defs, theme, data.series.length);
+    }
+
     const visibleSeriesNames = data.series
       .map((s, i) => ({ name: s.name, index: i }))
       .filter(s => !hiddenSeries.has(s.index))
@@ -132,7 +138,7 @@ export function createGroupedBarChart(chartConfig: GroupedBarChartConfig): Group
           .attr('y', d => yScale(d.categoryCode)! + innerScale(series.name)!)
           .attr('width', d => Math.abs(xScale(d.value) - xScale(0)))
           .attr('height', innerScale.bandwidth())
-          .attr('fill', color)
+          .attr('fill', config.accessibilityMode ? getPatternFillUrl(si) : color)
           .attr('stroke', theme.colorBorder)
           .attr('stroke-width', '1')
           .attr('tabindex', '0');
@@ -189,7 +195,7 @@ export function createGroupedBarChart(chartConfig: GroupedBarChartConfig): Group
           .attr('y', d => d.value >= 0 ? yScale(d.value) : yScale(0))
           .attr('width', innerScale.bandwidth())
           .attr('height', d => Math.abs(yScale(0) - yScale(d.value)))
-          .attr('fill', color)
+          .attr('fill', config.accessibilityMode ? getPatternFillUrl(si) : color)
           .attr('stroke', theme.colorBorder)
           .attr('stroke-width', '1')
           .attr('tabindex', '0');

@@ -64,8 +64,6 @@ createChart(container, dataset, {
 - `seriesColors` — Categorical palette for bars, lines, pie segments, etc.
 - `mapColors` — Sequential palette for choropleth maps, ordered light → dark
 
-<Canvas of={ThemingStories.DarkTheme} />
-
 ---
 
 ## CSS Custom Properties
@@ -85,8 +83,6 @@ All scalar `ThemeConfig` properties can also be set via CSS custom properties on
 Individual series colors use the `--jsc-series-1` through `--jsc-series-8` properties.
 
 **Note:** CSS custom properties are resolved at chart creation time. They do not reactively update — recreate the chart or call `instance.update(dataset)` with the current dataset to re-resolve theme values.
-
-<Canvas of={ThemingStories.CSSCustomProperties} />
 
 ---
 

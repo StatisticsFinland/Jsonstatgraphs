@@ -124,6 +124,28 @@ describe('createChart', () => {
     expect(table).not.toBeNull();
   });
 
+  it('includes the burger menu by default', () => {
+    createChart(container, validDataset, { chartType: 'table' });
+    expect(container.querySelector('.jsc-burger-menu-button')).not.toBeNull();
+  });
+
+  it('can disable the burger menu', () => {
+    createChart(container, validDataset, { chartType: 'table', showBurgerMenu: false });
+    expect(container.querySelector('.jsc-burger-menu-button')).toBeNull();
+    expect(container.querySelector('table.jsc-table')).not.toBeNull();
+  });
+
+  it('updates burger menu visibility with chart configuration', () => {
+    const instance = createChart(container, validDataset, { chartType: 'table', showBurgerMenu: false });
+    expect(container.querySelector('.jsc-burger-menu-button')).toBeNull();
+
+    instance.update(validDataset, { chartType: 'table', showBurgerMenu: true });
+    expect(container.querySelector('.jsc-burger-menu-button')).not.toBeNull();
+
+    instance.update(validDataset, { chartType: 'table', showBurgerMenu: false });
+    expect(container.querySelector('.jsc-burger-menu-button')).toBeNull();
+  });
+
   it('renders error message for invalid dataset', () => {
     createChart(container, {} as any);
     const errDiv = container.querySelector('.jsc-error');

@@ -21,6 +21,13 @@ const mockTheme: ResolvedTheme = {
   gridOpacity: 0.2,
   tooltipPadding: '8px 12px',
   tooltipBoxShadow: '0 2px 4px rgba(0,0,0,0.15)',
+  burgerMenuBackground: '#ffffff',
+  burgerMenuBorderColor: '#bdbdbd',
+  burgerMenuBorderRadius: '18px',
+  burgerMenuShadow: '0 4px 16px rgba(0, 0, 0, 0.12)',
+  burgerMenuItemHoverBackground: '#f5f5f5',
+  burgerMenuItemActiveBackground: '#eef5ff',
+  burgerMenuItemSeparatorColor: '#e3e3e3',
   seriesColors: ['#4e79a7', '#e15759'],
   mapColors: ['#c6dbef', '#9ecae1', '#6baed6', '#3182bd', '#08519c'],
 };

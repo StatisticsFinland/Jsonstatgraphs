@@ -73,6 +73,7 @@ import { createTableChart } from './charts/table';
 import { createKeyFigureChart } from './charts/key-figure';
 import { createMapChart } from './charts/map';
 import { transformMapData } from './data/map-transform';
+import { BurgerMenu } from './interaction/burger-menu';
 
 import { getLocaleStrings } from './locale/strings';
 import type { NiceSkipOptions } from './layout/label-fitting';
@@ -311,6 +312,10 @@ function isKeyFigureCompatible(dataset: JsonStatDataset): boolean {
   return dataset.size.length > 0 && dataset.size.every(s => s === 1);
 }
 
+function isChartVisualizationType(type: ChartType): boolean {
+  return type !== 'table' && type !== 'keyFigure' && type !== 'map';
+}
+
 function extractKeyFigureData(dataset: JsonStatDataset): { value: number | null; unit: string; decimals?: number } {
   // Find the first non-null numeric value, or null if all are null
   let value: number | null = null;
@@ -491,6 +496,25 @@ export function createChart(
   let pendingSpinnerRaf: number | null = null;
   let lastMapAvailable = false;
   let resolvedMapGeometry: GeoJsonFeatureCollection | null = null;
+  let burgerMenu: BurgerMenu | null = null;
+  let chartModeType: ChartType | null = null;
+  let accessibilityMode = currentConfig.accessibilityMode ?? false;
+
+  function applyChartTypeOverride(type: ChartType): void {
+    if (destroyed) return;
+    chartTypeOverride = type;
+    try {
+      rebuildPipeline(currentDataset, currentConfig);
+    } catch (err) {
+      console.warn('[JsonStatChart]', err);
+      const theme = resolveTheme(container, currentConfig.theme);
+      renderError(
+        container,
+        err instanceof Error ? err.message : 'An unexpected error occurred',
+        theme,
+      );
+    }
+  }
 
   function rebuildPipeline(ds: JsonStatDataset, cfg: ChartConfig): void {
     // Increment generation to invalidate any pending async callbacks
@@ -514,6 +538,10 @@ export function createChart(
     if (currentRenderer) {
       currentRenderer.destroy();
       currentRenderer = null;
+    }
+    if (burgerMenu) {
+      burgerMenu.destroy();
+      burgerMenu = null;
     }
 
     const theme = resolveTheme(container, cfg.theme);
@@ -696,6 +724,7 @@ export function createChart(
 
     // Auto header building
     const resolvedConfig = { ...cfg };
+    resolvedConfig.accessibilityMode = accessibilityMode;
     resolvedConfig.locale = resolvedLocale;
     if (resolvedConfig.showHeader === undefined) resolvedConfig.showHeader = true;
     if (resolvedConfig.showHeader && resolvedConfig.title === undefined) {
@@ -778,6 +807,48 @@ export function createChart(
 
     // Store state
     currentChartType = effectiveType;
+    if (isChartVisualizationType(effectiveType)) {
+      chartModeType = effectiveType;
+    }
+
+    const canToggleTableMode = isChartVisualizationType(effectiveType) || (effectiveType === 'table' && chartModeType !== null);
+    const tableToggle = canToggleTableMode
+      ? {
+          tableMode: effectiveType === 'table',
+          toggleHandler: () => {
+            if (currentChartType === 'table') {
+              if (chartModeType !== null) {
+                applyChartTypeOverride(chartModeType);
+              }
+              return;
+            }
+            applyChartTypeOverride('table');
+          },
+        }
+      : undefined;
+
+    const canToggleAccessibilityMode = isChartVisualizationType(effectiveType) && effectiveType !== 'scatterPlot' && effectiveType !== 'map';
+
+    if (cfg.showBurgerMenu !== false) {
+      burgerMenu = new BurgerMenu({
+        container,
+        dataset: ds,
+        chartType: effectiveType,
+        locale: resolvedLocale,
+        theme,
+        accessibilityMode,
+        toggleAccessibilityMode: canToggleAccessibilityMode
+          ? () => {
+              accessibilityMode = !accessibilityMode;
+              currentConfig = { ...currentConfig, accessibilityMode };
+              rebuildPipeline(currentDataset, currentConfig);
+            }
+          : undefined,
+        menuItemDefinitions: cfg.menuItemDefinitions,
+        menuIconInheritColor: cfg.menuIconInheritColor,
+        tableToggle,
+      });
+    }
   }
 
   try {
@@ -798,6 +869,9 @@ export function createChart(
       currentDataset = newDataset;
       if (newConfig !== undefined) {
         currentConfig = newConfig;
+        if (newConfig.accessibilityMode !== undefined) {
+          accessibilityMode = newConfig.accessibilityMode;
+        }
         if (newConfig.chartType !== undefined) {
           chartTypeOverride = newConfig.chartType;
         }
@@ -831,23 +905,15 @@ export function createChart(
         currentRenderer.destroy();
         currentRenderer = null;
       }
+      if (burgerMenu) {
+        burgerMenu.destroy();
+        burgerMenu = null;
+      }
       container.innerHTML = '';
     },
 
     setChartType(type: ChartType): void {
-      if (destroyed) return;
-      chartTypeOverride = type;
-      try {
-        rebuildPipeline(currentDataset, currentConfig);
-      } catch (err) {
-        console.warn('[JsonStatChart]', err);
-        const theme = resolveTheme(container, currentConfig.theme);
-        renderError(
-          container,
-          err instanceof Error ? err.message : 'An unexpected error occurred',
-          theme,
-        );
-      }
+      applyChartTypeOverride(type);
     },
 
     getChartType(): ChartType {

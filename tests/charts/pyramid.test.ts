@@ -205,4 +205,16 @@ describe('createPyramidChart', () => {
     expect(positiveLabels).toContain(0);
     expect(Math.max(...positiveLabels)).toBeGreaterThanOrEqual(100);
   });
+
+  it('accessibility mode applies patterned fills to bars', () => {
+    createPyramidChart({
+      container,
+      data: pyramidData,
+      config: { ...defaultConfig, accessibilityMode: true },
+    });
+
+    const firstBar = container.querySelector('.jsc-bar') as SVGRectElement;
+    expect(firstBar).not.toBeNull();
+    expect(firstBar.getAttribute('fill')).toContain('url(#jsc-pattern-');
+  });
 });

@@ -7,6 +7,7 @@ import { bindInteractions, DataElementInfo, BoundInteractions } from './bindInte
 import { applyChartAriaAttributes, applySeriesGroupAttributes } from '../a11y/aria';
 import { getSeriesColor } from '../theme/palette';
 import { resolveTheme } from '../theme/theme';
+import { ensureDefs, getPatternFillUrl, injectPatternDefs } from '../a11y/patterns';
 
 export interface StackedBarChartConfig {
   container: HTMLElement;
@@ -154,6 +155,11 @@ export function createStackedBarChart(chartConfig: StackedBarChartConfig): Stack
     const plotAreaGroup = svg.select<SVGGElement>('.jsc-plot-area');
     const elements: DataElementInfo[] = [];
 
+    if (config.accessibilityMode) {
+      const defs = ensureDefs(svg);
+      injectPatternDefs(defs, theme, data.series.length);
+    }
+
     const visibleData = getVisibleData();
     const visibleIndices = data.series
       .map((_, i) => i)
@@ -211,7 +217,7 @@ export function createStackedBarChart(chartConfig: StackedBarChartConfig): Stack
             .attr('y', yScale(cat)!)
             .attr('width', xScale(y1) - xScale(y0))
             .attr('height', yScale.bandwidth())
-            .attr('fill', color)
+            .attr('fill', config.accessibilityMode ? getPatternFillUrl(origIdx) : color)
             .attr('stroke', theme.colorBorder)
             .attr('stroke-width', '1')
             .attr('tabindex', '0');
@@ -269,7 +275,7 @@ export function createStackedBarChart(chartConfig: StackedBarChartConfig): Stack
             .attr('y', yScale(y1))
             .attr('width', xScale.bandwidth())
             .attr('height', yScale(y0) - yScale(y1))
-            .attr('fill', color)
+            .attr('fill', config.accessibilityMode ? getPatternFillUrl(origIdx) : color)
             .attr('stroke', theme.colorBorder)
             .attr('stroke-width', '1')
             .attr('tabindex', '0');

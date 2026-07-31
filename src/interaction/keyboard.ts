@@ -82,6 +82,11 @@ export class KeyboardNavigator {
 
   attach(): void {
     this.handleKeyDown = (e: KeyboardEvent) => {
+      const eventTarget = e.target;
+      if (eventTarget instanceof Element && eventTarget.closest('.jsc-burger-menu')) {
+        return;
+      }
+
       if (e.key === 'Escape') {
         e.preventDefault();
         const current = this.elements[this.currentSeries]?.[this.currentPoint];

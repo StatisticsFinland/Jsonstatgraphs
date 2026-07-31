@@ -62,6 +62,11 @@ const chart = createChart(container, dataset, {
   showHeader: true,            // Show auto-generated header (default: true)
   showLegend: true,            // Show legend for multi-series charts
   autoTitle: true,             // Auto-generate title from metadata (default: true)
+  menuIconInheritColor: false, // Burger menu icon color inherits parent color when true
+  menuItemDefinitions: [       // Optional custom burger menu items (shown before built-ins)
+    { text: 'Custom action', onClick: () => console.log('clicked') },
+    { text: 'Documentation', url: 'https://example.com/docs', openNewTab: true },
+  ],
   footerItems: [
     { type: 'source', label: 'Source:', value: 'Statistics Finland' },
   ],
@@ -86,12 +91,83 @@ const chart = createChart(container, dataset, {
 | `showHeader` | `boolean` | Show auto-generated header (default: `true`) |
 | `showLegend` | `boolean` | Show legend for multi-series charts (default: `true`) |
 | `autoTitle` | `boolean` | Auto-generate title from metadata (default: `true`) |
+| `accessibilityMode` | `boolean` | Enable accessibility visuals (pattern fills or marker shapes) for supported chart types |
+| `showBurgerMenu` | `boolean` | Show the chart burger menu (default: `true`) |
+| `menuItemDefinitions` | `(FunctionalMenuItem \| LinkMenuItem)[]` | Optional custom burger menu items shown before built-in items |
+| `menuIconInheritColor` | `boolean` | When `true`, burger menu icon color inherits from parent text color |
 | `footerItems` | `FooterItem[]` | Array of footer items. Each item has `type` (`'source'`, `'updated'`, `'custom'`), `label` (prefix text), and `value` (main text) fields. |
 | `sourceLink` | `string` | URL to make the source footer item a clickable link. Must be an `http://` or `https://` URL. When set, footer items with `type: 'source'` render as hyperlinks opening in a new tab. The URL is validated and `javascript:` / `data:` URLs are rejected for security. |
 | `ariaLabel` | `string` | Custom aria-label for the figure element |
 | `xDimension` | `string` | Code of dimension to use as X axis (auto-detected by default) |
 | `yDimension` | `string` | Code of dimension to use as Y axis (auto-detected by default) |
 | `theme` | `ThemeConfig` | Theme customization options (see Theming section) |
+
+## Burger Menu
+
+Charts render a top-right burger menu button (`☰`) that opens a keyboard-accessible dropdown shell.
+
+When the burger menu is enabled for an HTML table, the table reserves vertical space above its contents for the menu button so the button does not overlap the table header. This spacing is removed when `showBurgerMenu` is `false`.
+
+Built-in item order:
+
+1. Custom items from `menuItemDefinitions` (if any)
+2. Download table (csv)
+3. Download figure (svg)
+4. Download figure (png)
+5. Show symbols in the figure
+6. View table / View chart
+
+Built-in export items are shown only when export is actionable:
+
+- Table exports (CSV) are shown only when a dataset is available.
+- Figure exports (SVG, PNG) are shown only when both a dataset is available and the current chart type supports SVG export.
+
+CSV export behavior:
+
+- **Download table (csv)** now exports current dataset data as CSV.
+- CSV includes UTF-8 BOM for spreadsheet compatibility.
+- Delimiter is locale-aware: `;` for `fi`/`sv`, otherwise `,`.
+- Numeric values are locale-formatted without grouping.
+- Download filename format: `<datasetLabel|export>_YYYYMMDD_HHMMSS.csv` (sanitized).
+
+SVG export behavior:
+
+- **Download figure (svg)** now exports the currently rendered chart SVG.
+- SVG export is available for SVG-rendered chart types and hidden for `table` and `keyFigure`.
+- Export serializes the chart container's first `<svg>` element with `XMLSerializer`.
+- Download filename format: `<datasetLabel|export>_YYYYMMDD_HHMMSS.svg` (sanitized).
+
+PNG export behavior:
+
+- **Download figure (png)** now exports the currently rendered chart as a PNG image.
+- PNG export is available for SVG-rendered chart types and hidden for `table` and `keyFigure`.
+- Export serializes the chart SVG, rasterizes it to a canvas, and downloads the PNG Blob.
+- Download filename format: `<datasetLabel|export>_YYYYMMDD_HHMMSS.png` (sanitized).
+
+Accessibility mode toggle behavior:
+
+- The menu includes an accessibility toggle in chart mode for supported chart types.
+- Supported chart types: `line`, all bar variants, `pie`, and `pyramid`.
+- Unsupported types (toggle hidden): `scatterPlot`, `table`, `keyFigure`, `map`.
+- Label is state-dependent:
+  - `Show symbols in the figure` when accessibility mode is off
+  - `Remove symbols from the figure` when accessibility mode is on
+- In line charts, accessibility mode uses distinct marker shapes per series.
+- In bar/pie/pyramid charts, accessibility mode applies per-series or per-slice SVG pattern fills.
+
+Table toggle behavior:
+
+- The last menu item toggles between chart and table view.
+- The label is `View table` in chart mode and `View chart` in table mode.
+- The item is shown only when a table toggle handler is provided to the menu component.
+- When switching to table view with the burger menu enabled, the table reserves the menu button's vertical space before its contents.
+
+Keyboard support:
+
+- `ArrowDown` / `ArrowUp`: move focus between items (wrap around)
+- `Enter` / `Space`: activate focused item
+- `Escape`: close menu and return focus to menu button
+- `Tab`: close menu
 
 ## Theming
 
@@ -163,6 +239,18 @@ Series colors use `--jsc-series-1` through `--jsc-series-8`:
 |---|---|---|
 | `--jsc-tooltip-padding` | `8px 12px` | Tooltip inner padding |
 | `--jsc-tooltip-box-shadow` | `0 2px 4px rgba(0,0,0,0.15)` | Tooltip drop shadow |
+
+#### Burger Menu
+
+| CSS Variable | Default | Description |
+|---|---|---|
+| `--jsc-burger-menu-background` | `#ffffff` | Burger menu dropdown background |
+| `--jsc-burger-menu-border-color` | `#bdbdbd` | Burger menu dropdown border color |
+| `--jsc-burger-menu-border-radius` | `18px` | Burger menu and menu item corner radius |
+| `--jsc-burger-menu-shadow` | `0 4px 16px rgba(0, 0, 0, 0.12)` | Burger menu dropdown shadow |
+| `--jsc-burger-menu-item-hover-background` | `#f5f5f5` | Burger menu item hover background |
+| `--jsc-burger-menu-item-active-background` | `#eef5ff` | Burger menu active/focused item background |
+| `--jsc-burger-menu-item-separator-color` | `#e3e3e3` | Burger menu item separator color |
 
 ```css
 /* Dark theme example — adjust values to your design system */

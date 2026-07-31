@@ -173,6 +173,16 @@ function renderTable(
 
   const theme = resolveTheme(wrapper.parentElement, config.theme);
 
+  const headerEl = document.createElement('div');
+  headerEl.className = 'jsc-table-heading';
+  headerEl.style.boxSizing = 'border-box';
+  headerEl.style.minHeight = '2.5rem';
+  headerEl.style.paddingRight = '3rem';
+  headerEl.style.display = 'flex';
+  headerEl.style.flexDirection = 'column';
+  headerEl.style.justifyContent = 'center';
+  headerEl.style.gap = '4px';
+
   if (config.title) {
     const titleEl = document.createElement('div');
     titleEl.className = 'jsc-table-title';
@@ -180,9 +190,9 @@ function renderTable(
     titleEl.style.fontWeight = String(theme.fontWeightBold);
     titleEl.style.fontFamily = theme.fontFamily;
     titleEl.style.color = theme.colorText;
-    titleEl.style.marginBottom = '8px';
+    titleEl.style.overflowWrap = 'break-word';
     titleEl.textContent = config.title;
-    wrapper.appendChild(titleEl);
+    headerEl.appendChild(titleEl);
   }
 
   if (config.subtitle) {
@@ -192,10 +202,14 @@ function renderTable(
     subtitleEl.style.fontWeight = String(theme.fontWeightNormal);
     subtitleEl.style.fontFamily = theme.fontFamily;
     subtitleEl.style.color = theme.colorTextSecondary;
-    subtitleEl.style.marginBottom = '8px';
+    subtitleEl.style.overflow = 'hidden';
+    subtitleEl.style.textOverflow = 'ellipsis';
+    subtitleEl.style.whiteSpace = 'nowrap';
     subtitleEl.textContent = config.subtitle;
-    wrapper.appendChild(subtitleEl);
+    headerEl.appendChild(subtitleEl);
   }
+
+  wrapper.appendChild(headerEl);
 
   const scrollDiv = document.createElement('div');
   scrollDiv.className = 'jsc-table-scroll';

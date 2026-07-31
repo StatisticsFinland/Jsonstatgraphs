@@ -150,6 +150,15 @@ describe('createTableChart', () => {
     expect((scrollDiv as HTMLElement).style.overflowX).toBe('auto');
   });
 
+  it('reserves the burger menu row and horizontal clearance in the table heading', () => {
+    createTableChart({ container, data: tableData2D, config: defaultConfig });
+
+    const heading = container.querySelector('div.jsc-table-heading') as HTMLElement;
+    expect(heading).not.toBeNull();
+    expect(heading.style.minHeight).toBe('2.5rem');
+    expect(heading.style.paddingRight).toBe('3rem');
+  });
+
   it('correct number of body rows', () => {
     createTableChart({ container, data: tableData2D, config: defaultConfig });
     const rows = container.querySelectorAll('tbody tr');
@@ -256,6 +265,18 @@ describe('createTableChart', () => {
     const subtitleEl = container.querySelector('div.jsc-table-subtitle');
     expect(subtitleEl).not.toBeNull();
     expect(subtitleEl!.textContent).toBe('By region');
+  });
+
+  it('wraps the title and ellipsizes the subtitle within the protected heading area', () => {
+    const config: ChartConfig = { title: 'Population', subtitle: 'By region' };
+    createTableChart({ container, data: tableData2D, config });
+
+    const titleEl = container.querySelector('div.jsc-table-title') as HTMLElement;
+    const subtitleEl = container.querySelector('div.jsc-table-subtitle') as HTMLElement;
+    expect(titleEl.style.overflowWrap).toBe('break-word');
+    expect(titleEl.style.whiteSpace).toBe('');
+    expect(subtitleEl.style.textOverflow).toBe('ellipsis');
+    expect(subtitleEl.style.whiteSpace).toBe('nowrap');
   });
 
   it('renders footer items', () => {

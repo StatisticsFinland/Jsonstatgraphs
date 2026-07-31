@@ -4,6 +4,7 @@ import { ChartScaffold, ScaffoldRenderContext } from './base';
 import { bindInteractions, DataElementInfo, BoundInteractions } from './bindInteractions';
 import { applyChartAriaAttributes, applySeriesGroupAttributes } from '../a11y/aria';
 import { getSeriesColor } from '../theme/palette';
+import { ensureDefs, getPatternFillUrl, injectPatternDefs } from '../a11y/patterns';
 
 export interface PieChartConfig {
   container: HTMLElement;
@@ -108,6 +109,11 @@ export function createPieChart(chartConfig: PieChartConfig): PieChartInstance {
 
     const pieData = pieGen(visiblePoints);
 
+    if (config.accessibilityMode) {
+      const defs = ensureDefs(svg);
+      injectPatternDefs(defs, theme, nonNullPoints.length);
+    }
+
     // Create a series group for ARIA
     const seriesGroup = plotAreaGroup
       .append('g')
@@ -123,7 +129,7 @@ export function createPieChart(chartConfig: PieChartConfig): PieChartInstance {
       .join('path')
       .attr('class', 'jsc-slice')
       .attr('d', arcGen)
-      .attr('fill', (_d, i) => getSeriesColor(theme, visibleIndices[i]))
+      .attr('fill', (_d, i) => config.accessibilityMode ? getPatternFillUrl(visibleIndices[i]) : getSeriesColor(theme, visibleIndices[i]))
       .attr('stroke', theme.colorSurface)
       .attr('stroke-width', '2')
       .attr('tabindex', '0')

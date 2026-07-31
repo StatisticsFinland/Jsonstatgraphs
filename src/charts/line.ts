@@ -6,6 +6,7 @@ import type { NiceSkipOptions } from '../layout/label-fitting';
 import { bindInteractions, DataElementInfo, BoundInteractions } from './bindInteractions';
 import { applyChartAriaAttributes, applySeriesGroupAttributes } from '../a11y/aria';
 import { getSeriesColor } from '../theme/palette';
+import { getMarkerPath } from '../a11y/patterns';
 
 export interface LineChartConfig {
   container: HTMLElement;
@@ -129,35 +130,48 @@ export function createLineChart(chartConfig: LineChartConfig): LineChartInstance
         .attr('stroke-width', '2')
         .attr('d', lineGen);
 
-      // Draw circle markers for non-null points
+      // Draw markers for non-null points
       const nonNullPoints = series.points.filter(p => p.value !== null);
 
-      seriesGroup
-        .selectAll<SVGCircleElement, LinePoint>('circle')
-        .data(nonNullPoints)
-        .join('circle')
-        .attr('class', 'jsc-marker')
-        .attr('cx', d => xScale(d.categoryCode)!)
-        .attr('cy', d => yScale(d.value as number)!)
-        .attr('r', '4')
-        .attr('fill', color)
-        .attr('stroke', theme.colorSurface)
-        .attr('stroke-width', '2')
-        .attr('tabindex', '0');
+      if (config.accessibilityMode) {
+        seriesGroup
+          .selectAll<SVGPathElement, LinePoint>('path.jsc-marker')
+          .data(nonNullPoints)
+          .join('path')
+          .attr('class', 'jsc-marker')
+          .attr('d', d => getMarkerPath(si, xScale(d.categoryCode)!, yScale(d.value as number)!, 5))
+          .attr('fill', color)
+          .attr('stroke', theme.colorSurface)
+          .attr('stroke-width', '2')
+          .attr('tabindex', '0');
+      } else {
+        seriesGroup
+          .selectAll<SVGCircleElement, LinePoint>('circle')
+          .data(nonNullPoints)
+          .join('circle')
+          .attr('class', 'jsc-marker')
+          .attr('cx', d => xScale(d.categoryCode)!)
+          .attr('cy', d => yScale(d.value as number)!)
+          .attr('r', '4')
+          .attr('fill', color)
+          .attr('stroke', theme.colorSurface)
+          .attr('stroke-width', '2')
+          .attr('tabindex', '0');
+      }
 
       // Collect elements for bindInteractions
-      const circles = seriesGroup.selectAll<SVGCircleElement, LinePoint>('circle').nodes();
+      const markers = seriesGroup.selectAll<SVGElement, LinePoint>('.jsc-marker').nodes();
       for (let pi = 0; pi < nonNullPoints.length; pi++) {
         const point = nonNullPoints[pi];
-        const circleEl = circles[pi];
-        if (!circleEl) continue;
+        const markerEl = markers[pi];
+        if (!markerEl) continue;
 
         const formattedValue = point.value === null
           ? '–'
           : point.value.toLocaleString(config.locale);
 
         elements.push({
-          element: circleEl,
+          element: markerEl,
           seriesIndex: si,
           pointIndex: pi,
           category: point.label,

@@ -1,0 +1,66 @@
+import { Meta, Canvas } from '@storybook/addon-docs/blocks';
+import * as BurgerMenuStories from './BurgerMenu.stories';
+
+<Meta of={BurgerMenuStories} />
+
+# Burger Menu
+
+The chart burger menu provides built-in actions and supports custom buttons and links. Menu items can be added with `menuItemDefinitions` in `ChartConfig`.
+
+## Custom menu items
+
+### Custom button
+
+A custom button runs an application-defined callback when selected.
+
+<Canvas of={BurgerMenuStories.CustomButton} />
+
+### Custom link
+
+A custom link can open an HTTP or HTTPS URL in the current tab or a new tab. Set `isExternal` to add an external-link indicator to its accessible label.
+
+<Canvas of={BurgerMenuStories.CustomLink} />
+
+## Disabling the burger menu
+
+The burger menu is enabled by default. Set `showBurgerMenu` to `false` in `ChartConfig` to render a chart without the menu.
+
+<Canvas of={BurgerMenuStories.WithoutBurgerMenu} />
+
+## Burger menu theming
+
+Burger menu appearance can be customized through the `theme` object or CSS custom properties. JavaScript configuration takes priority over CSS custom properties, followed by built-in defaults.
+
+### JavaScript theme
+
+The burger menu-specific `ThemeConfig` properties are:
+
+- `burgerMenuBackground` — dropdown background
+- `burgerMenuBorderColor` — dropdown border color
+- `burgerMenuBorderRadius` — dropdown corner radius
+- `burgerMenuShadow` — dropdown shadow
+- `burgerMenuItemHoverBackground` — item hover background
+- `burgerMenuItemActiveBackground` — active item background
+- `burgerMenuItemSeparatorColor` — separator color
+
+<Canvas of={BurgerMenuStories.DarkTheme} />
+
+### CSS custom properties
+
+Set the corresponding `--jsc-*` properties on the chart container or an ancestor:
+
+```css
+.my-chart-container {
+  --jsc-burger-menu-background: #ffffff;
+  --jsc-burger-menu-border-color: #999999;
+  --jsc-burger-menu-border-radius: 12px;
+  --jsc-burger-menu-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  --jsc-burger-menu-item-hover-background: #f0f4ff;
+  --jsc-burger-menu-item-active-background: #dce7ff;
+  --jsc-burger-menu-item-separator-color: #d0d0d0;
+}
+```
+
+CSS custom properties are resolved when the chart is created. Recreate the chart or update its dataset to re-resolve theme values.
+
+<Canvas of={BurgerMenuStories.CSSCustomProperties} />

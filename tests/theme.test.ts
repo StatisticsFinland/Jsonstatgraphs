@@ -102,6 +102,25 @@ describe('resolveTheme', () => {
       expect(result.tooltipBoxShadow).toBe('none');
     });
 
+    it('overrides burger menu theme tokens', () => {
+      const result = resolveTheme(null, {
+        burgerMenuBackground: '#101010',
+        burgerMenuBorderColor: '#202020',
+        burgerMenuBorderRadius: '12px',
+        burgerMenuShadow: '0 0 0 transparent',
+        burgerMenuItemHoverBackground: '#303030',
+        burgerMenuItemActiveBackground: '#404040',
+        burgerMenuItemSeparatorColor: '#505050',
+      });
+      expect(result.burgerMenuBackground).toBe('#101010');
+      expect(result.burgerMenuBorderColor).toBe('#202020');
+      expect(result.burgerMenuBorderRadius).toBe('12px');
+      expect(result.burgerMenuShadow).toBe('0 0 0 transparent');
+      expect(result.burgerMenuItemHoverBackground).toBe('#303030');
+      expect(result.burgerMenuItemActiveBackground).toBe('#404040');
+      expect(result.burgerMenuItemSeparatorColor).toBe('#505050');
+    });
+
     it('tooltipPadding and tooltipBoxShadow default to hardcoded values', () => {
       const result = resolveTheme(null);
       expect(result.tooltipPadding).toBe('8px 12px');
@@ -168,6 +187,26 @@ describe('resolveTheme', () => {
       const el = makeElement({ '--jsc-border-radius': '8px' });
       const result = resolveTheme(el);
       expect(result.borderRadius).toBe('8px');
+    });
+
+    it('reads burger menu CSS variables from CSS', () => {
+      const el = makeElement({
+        '--jsc-burger-menu-background': '#111111',
+        '--jsc-burger-menu-border-color': '#222222',
+        '--jsc-burger-menu-border-radius': '10px',
+        '--jsc-burger-menu-shadow': '0 1px 2px rgba(0,0,0,0.2)',
+        '--jsc-burger-menu-item-hover-background': '#333333',
+        '--jsc-burger-menu-item-active-background': '#444444',
+        '--jsc-burger-menu-item-separator-color': '#555555',
+      });
+      const result = resolveTheme(el);
+      expect(result.burgerMenuBackground).toBe('#111111');
+      expect(result.burgerMenuBorderColor).toBe('#222222');
+      expect(result.burgerMenuBorderRadius).toBe('10px');
+      expect(result.burgerMenuShadow).toBe('0 1px 2px rgba(0,0,0,0.2)');
+      expect(result.burgerMenuItemHoverBackground).toBe('#333333');
+      expect(result.burgerMenuItemActiveBackground).toBe('#444444');
+      expect(result.burgerMenuItemSeparatorColor).toBe('#555555');
     });
 
     it('parses --jsc-grid-opacity as a number', () => {
@@ -373,6 +412,13 @@ describe('DEFAULT_THEME', () => {
     'gridOpacity',
     'tooltipPadding',
     'tooltipBoxShadow',
+    'burgerMenuBackground',
+    'burgerMenuBorderColor',
+    'burgerMenuBorderRadius',
+    'burgerMenuShadow',
+    'burgerMenuItemHoverBackground',
+    'burgerMenuItemActiveBackground',
+    'burgerMenuItemSeparatorColor',
     'seriesColors',
   ];
 
@@ -413,6 +459,13 @@ describe('CSS_PROPERTY_MAP', () => {
       'gridOpacity',
       'tooltipPadding',
       'tooltipBoxShadow',
+      'burgerMenuBackground',
+      'burgerMenuBorderColor',
+      'burgerMenuBorderRadius',
+      'burgerMenuShadow',
+      'burgerMenuItemHoverBackground',
+      'burgerMenuItemActiveBackground',
+      'burgerMenuItemSeparatorColor',
     ];
 
     for (const key of scalarKeys) {

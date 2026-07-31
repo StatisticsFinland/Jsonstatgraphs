@@ -228,4 +228,16 @@ describe('createPieChart', () => {
     expect(slicesAfter[0].getAttribute('fill')).toBe(fillSlice1Before);
     expect(slicesAfter[1].getAttribute('fill')).toBe(fillSlice2Before);
   });
+
+  it('accessibility mode applies patterned fills to slices', () => {
+    createPieChart({
+      container,
+      data: pieData,
+      config: { ...defaultConfig, accessibilityMode: true },
+    });
+
+    const firstSlice = container.querySelector('.jsc-slice') as SVGPathElement;
+    expect(firstSlice).not.toBeNull();
+    expect(firstSlice.getAttribute('fill')).toContain('url(#jsc-pattern-');
+  });
 });
