@@ -1,4 +1,5 @@
 import { transformDataset, transformScatterData, transformPyramidData } from '../../src/data/transform';
+import { rebuildDataset } from '../../src/data/rebuild-dataset';
 import { JsonStatDataset } from '../../src/types';
 
 // --- Fixture helpers ---
@@ -54,10 +55,12 @@ describe('transformDataset', () => {
       role: { time: ['Year'], metric: ['Metric'] },
     };
 
-    const result = transformDataset(ds, {
-      layout: { rows: ['Region'], columns: ['Year'] },
+    const layout = { rows: ['Region'], columns: ['Year'] };
+    const rebuilt = rebuildDataset(ds, {
+      layout,
       selectableSelections: { Metric: ['value'] },
-    });
+    }).dataset;
+    const result = transformDataset(rebuilt, { layout });
 
     expect(result.series.map(series => series.name)).toEqual(['North', 'South']);
     expect(result.series.map(series => series.points.map(point => point.value))).toEqual([
@@ -84,10 +87,15 @@ describe('transformDataset', () => {
       role: { time: ['Year'] },
     };
 
-    const result = transformDataset(ds, {
-      layout: { rows: [], columns: ['Year'] },
+    const layout = { rows: [], columns: ['Year'] };
+    const rebuilt = rebuildDataset(ds, {
+      layout,
       multiSelectableDimensionCode: 'Region',
       selectableSelections: { Region: ['N', 'C', 'S'] },
+    }).dataset;
+    const result = transformDataset(rebuilt, {
+      layout,
+      multiSelectableDimensionCode: 'Region',
     });
 
     expect(result.series.map(series => series.name)).toEqual(['North', 'Central', 'South']);
@@ -150,10 +158,12 @@ describe('transformDataset', () => {
     };
 
     expect(transformDataset(ds).yLabel).toBe('persons');
-    expect(transformDataset(ds, {
-      layout: { rows: ['Region'], columns: ['Year'] },
+    const layout = { rows: ['Region'], columns: ['Year'] };
+    const rebuilt = rebuildDataset(ds, {
+      layout,
       selectableSelections: { Metric: ['population'] },
-    }).yLabel).toBe('persons');
+    }).dataset;
+    expect(transformDataset(rebuilt, { layout }).yLabel).toBe('persons');
   });
 
   // 3. Null values preserved

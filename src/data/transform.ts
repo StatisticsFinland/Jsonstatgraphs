@@ -1,14 +1,10 @@
-import { JsonStatDataset, ChartData, DataSeries, DataPoint, ScatterChartData, ScatterDataPoint, PyramidChartData, Layout, SelectableSelections } from '../types';
-import { rebuildDataset } from './rebuild-dataset';
-import { hasSelectableDatasetOptions, resolveSelectableDatasetOptions } from './selectable-settings';
+import { JsonStatDataset, ChartData, DataSeries, DataPoint, ScatterChartData, ScatterDataPoint, PyramidChartData, Layout } from '../types';
 import { computeFlatIndex, getOrderedCodes } from './dataset-utils';
 
 export { getOrderedCodes } from './dataset-utils';
 
 export interface TransformOptions {
   layout?: Layout;
-  selectableSelections?: SelectableSelections;
-  defaultSelectableSelections?: SelectableSelections;
   multiSelectableDimensionCode?: string;
   xDimension?: string;
   seriesDimension?: string;
@@ -98,25 +94,17 @@ export function transformDataset(
   dataset: JsonStatDataset,
   options?: TransformOptions
 ): ChartData {
-  const selectableOptions = resolveSelectableDatasetOptions(dataset, options, options?.selectableSelections);
-  if (hasSelectableDatasetOptions(selectableOptions)) {
-    const rebuilt = rebuildDataset(dataset, selectableOptions);
-    if (selectableOptions.layout) {
-      const declaredCodes = new Set([...selectableOptions.layout.rows, ...selectableOptions.layout.columns]);
-      const multiSelectableCode = selectableOptions.multiSelectableDimensionCode;
-      const projectedRows = multiSelectableCode
-        && !declaredCodes.has(multiSelectableCode)
-        && getOrderedCodes(rebuilt.dataset.dimension[multiSelectableCode].category.index).length > 1
-        ? [multiSelectableCode, ...selectableOptions.layout.rows]
-        : selectableOptions.layout.rows;
-      return transformLayoutDataset(rebuilt.dataset, {
-        rows: projectedRows,
-        columns: selectableOptions.layout.columns,
-      });
-    }
-    return transformDataset(rebuilt.dataset, {
-      xDimension: options?.xDimension,
-      seriesDimension: options?.seriesDimension,
+  if (options?.layout) {
+    const declaredCodes = new Set([...options.layout.rows, ...options.layout.columns]);
+    const multiSelectableCode = options.multiSelectableDimensionCode;
+    const projectedRows = multiSelectableCode
+      && !declaredCodes.has(multiSelectableCode)
+      && getOrderedCodes(dataset.dimension[multiSelectableCode].category.index).length > 1
+      ? [multiSelectableCode, ...options.layout.rows]
+      : options.layout.rows;
+    return transformLayoutDataset(dataset, {
+      rows: projectedRows,
+      columns: options.layout.columns,
     });
   }
   const { id, size, dimension, value } = dataset;

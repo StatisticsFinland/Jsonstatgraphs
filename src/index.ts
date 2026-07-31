@@ -516,16 +516,19 @@ function createRenderer(
   timeSeriesLabels?: NiceSkipOptions,
   mapGeometry?: GeoJsonFeatureCollection,
 ): { destroy(): void } {
-  const datasetTransformOptions = { ...cfg, selectableSelections };
   const selectableOptions = resolveSelectableDatasetOptions(dataset, cfg, selectableSelections);
   const activeDataset = hasSelectableDatasetOptions(selectableOptions)
     ? rebuildDataset(dataset, selectableOptions).dataset
     : dataset;
+  const datasetTransformOptions = {
+    layout: selectableOptions.layout,
+    multiSelectableDimensionCode: selectableOptions.multiSelectableDimensionCode,
+  };
   switch (type) {
     case 'line':
       return createLineChart({
         container,
-        data: transformDataset(dataset, datasetTransformOptions),
+        data: transformDataset(activeDataset, datasetTransformOptions),
         config: cfg,
         timeSeriesLabels,
       });
@@ -533,7 +536,7 @@ function createRenderer(
     case 'horizontalBar':
       return createBarChart({
         container,
-        data: transformDataset(dataset, datasetTransformOptions),
+        data: transformDataset(activeDataset, datasetTransformOptions),
         config: cfg,
         chartType: type,
         timeSeriesLabels,
@@ -542,7 +545,7 @@ function createRenderer(
     case 'groupedHorizontalBar':
       return createGroupedBarChart({
         container,
-        data: transformDataset(dataset, datasetTransformOptions),
+        data: transformDataset(activeDataset, datasetTransformOptions),
         config: cfg,
         chartType: type,
         timeSeriesLabels,
@@ -553,7 +556,7 @@ function createRenderer(
     case 'percentHorizontalBar':
       return createStackedBarChart({
         container,
-        data: transformDataset(dataset, datasetTransformOptions),
+        data: transformDataset(activeDataset, datasetTransformOptions),
         config: cfg,
         chartType: type,
         timeSeriesLabels,
@@ -561,7 +564,7 @@ function createRenderer(
     case 'pie':
       return createPieChart({
         container,
-        data: transformDataset(dataset, datasetTransformOptions),
+        data: transformDataset(activeDataset, datasetTransformOptions),
         config: cfg,
       });
     case 'scatterPlot':

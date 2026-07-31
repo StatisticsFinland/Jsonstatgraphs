@@ -150,7 +150,7 @@ chart.update(dataset, undefined, {
 
 `layout.rows` forms chart series and `layout.columns` forms categories on the X axis. During dataset rebuilding, these dimensions are ordered first and omitted dimensions remain in their original relative order. Categorical charts use the first active category of an omitted dimension. A configured `multiSelectableDimensionCode` with multiple active categories is projected as series when it is not explicitly assigned to either direction.
 
-When layout or selectable settings are provided, the library internally rebuilds a compact N-dimensional dataset containing only active categories and values. The rebuilt dataset keeps every source dimension; each chart transformer is responsible for projecting it into the dimensionality required by that visualization. Datasets without layout or selectable settings follow the original transformation path unchanged.
+When layout or selectable settings are provided, the library internally rebuilds a compact N-dimensional dataset containing only active categories and values once per render. The prepared dataset keeps every source dimension and is then passed to the chart transformer, which only projects it into the dimensionality required by that visualization. Datasets without layout or selectable settings follow the original transformation path unchanged.
 
 JSON-stat coordinate order is defined by `dataset.id`: each entry corresponds to the same position in `dataset.size`, and together they define the flattened `dataset.value` order. The property order of the `dataset.dimension` dictionary is not significant.
 
