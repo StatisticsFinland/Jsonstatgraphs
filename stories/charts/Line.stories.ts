@@ -84,21 +84,6 @@ export const SelectableFromDatasetExtension: StoryObj = {
     }),
 };
 
-export const SelectableAutomaticFallback: StoryObj = {
-  render: (args) =>
-    renderChart({
-      dataset: withSelectableConfig({
-        selectableSelections: { alue: [] },
-      }),
-      config: buildConfig(args, {
-        chartType: 'line',
-        layout: { rows: [], columns: ['vuosi'] },
-      }),
-      width: args.width as string,
-      height: args.height as string | undefined,
-    }),
-};
-
 export const MultiSelectableDimension: StoryObj = {
   render: (args) =>
     renderChart({

@@ -201,6 +201,38 @@ describe('transformDataset', () => {
     expect(series2020!.points.map((p) => p.value)).toEqual([10, 40]);
   });
 
+  test('seriesDimension option overrides auto-detection', () => {
+    const ds: JsonStatDataset = {
+      id: ['Sex', 'Region', 'Year'],
+      size: [2, 3, 2],
+      dimension: {
+        Sex: {
+          category: { index: ['M', 'F'], label: { M: 'Male', F: 'Female' } },
+        },
+        Region: {
+          category: {
+            index: ['N', 'C', 'S'],
+            label: { N: 'North', C: 'Central', S: 'South' },
+          },
+        },
+        Year: {
+          category: { index: ['2023', '2024'], label: { '2023': '2023', '2024': '2024' } },
+        },
+      },
+      value: Array.from({ length: 12 }, (_, index) => index),
+      role: { time: ['Year'] },
+    };
+
+    const result = transformDataset(ds, { seriesDimension: 'Region' });
+
+    expect(result.series.map(series => series.code)).toEqual(['N', 'C', 'S']);
+    expect(result.series.map(series => series.points.map(point => point.value))).toEqual([
+      [0, 1],
+      [2, 3],
+      [4, 5],
+    ]);
+  });
+
   // 6. Category index as object form { code: position }
   test('category index as object (Record<string,number>) is handled correctly', () => {
     const ds: JsonStatDataset = {
