@@ -115,6 +115,8 @@ const chart = createChart(container, dataset, {
 | `layout` | `Layout` | Dimension projection with `rows` (series) and `columns` (categories/X axis) |
 | `defaultSelectableSelections` | `SelectableSelections` | Fallback category selections keyed by dimension code |
 | `multiSelectableDimensionCode` | `string` | Dimension whose multiple selected categories are rendered as separate series |
+| `sorting` | `string` | Category sort order for bar and pie charts: `no_sorting`, `reversed`, `sum`, `ascending`, `descending`, or any other string treated as a series/category code to sort by that reference series' values (percent-of-total for percent-stacked charts). No effect on other chart types. |
+| `cutValueAxis` | `boolean` | Allow the line chart / scatter plot value axis to omit the zero baseline (default: axis always includes 0). No effect on other chart types. |
 | `theme` | `ThemeConfig` | Theme customization options (see Theming section) |
 
 ## Selectable Dimensions and Layout

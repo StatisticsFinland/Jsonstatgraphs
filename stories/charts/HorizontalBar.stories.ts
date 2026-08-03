@@ -8,11 +8,14 @@ import categoricalData from '../fixtures/categorical.json';
 import selectableCategoricalData from '../fixtures/categorical-selectable.json';
 import manyCategoriesData from '../fixtures/many-categories.json';
 import negativeValuesData from '../fixtures/negative-values.json';
+import sortingDemoData from '../fixtures/sorting-demo.json';
 
 const meta: Meta = {
   title: 'Charts/Horizontal Bar',
   argTypes: {
     ...themeArgTypes,
+    // Bar charts always anchor the value axis at zero — cutValueAxis has no effect here.
+    cutValueAxis: { table: { disable: true } },
   },
   args: {
     ...themeArgs,
@@ -67,6 +70,47 @@ export const NegativeValues: StoryObj = {
     renderChart({
       dataset: negativeValuesData,
       config: buildConfig(args, { chartType: 'horizontalBar' }),
+      width: args.width as string,
+      height: args.height as string | undefined,
+    }),
+};
+
+// The following stories reuse `sortingDemoData` — 5 product-group categories (A-E). With
+// `rows: []`, the omitted `markkina` dimension is fixed to its first category ("domestic"),
+// giving a single series: A=10, B=50, C=30, D=40, E=20.
+const sortingDemoConfig = { chartType: 'horizontalBar' as const, layout: { rows: [], columns: ['tuoteryhma'] } };
+
+// Default order (no sorting): A, B, C, D, E
+export const SortedNone: StoryObj = {
+  render: (args) =>
+    renderChart({
+      dataset: sortingDemoData,
+      config: buildConfig(args, sortingDemoConfig),
+      width: args.width as string,
+      height: args.height as string | undefined,
+    }),
+};
+
+// Sorted descending by summed value (single series, so sum == value) -> B, D, C, E, A
+export const SortedBySum: StoryObj = {
+  args: { sorting: 'sum' },
+  render: (args) =>
+    renderChart({
+      dataset: sortingDemoData,
+      config: buildConfig(args, sortingDemoConfig),
+      width: args.width as string,
+      height: args.height as string | undefined,
+    }),
+};
+
+// 'domestic' is the value code of the omitted market dimension — sorts descending by that
+// series (same result as SortedBySum here, but demonstrates reference-series-code sorting).
+export const SortedByReferenceSeries: StoryObj = {
+  args: { sorting: 'domestic' },
+  render: (args) =>
+    renderChart({
+      dataset: sortingDemoData,
+      config: buildConfig(args, sortingDemoConfig),
       width: args.width as string,
       height: args.height as string | undefined,
     }),

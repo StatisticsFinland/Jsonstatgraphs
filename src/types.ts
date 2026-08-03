@@ -193,6 +193,11 @@ export interface ChartConfig {
   showBurgerMenu?: boolean;
   menuItemDefinitions?: BurgerMenuItemDefinition[];
   menuIconInheritColor?: boolean;
+  /** Allow the line chart / scatter plot value axis to omit the zero baseline (default: always includes 0). No effect on other chart types. */
+  cutValueAxis?: boolean;
+  /** Category sort order for bar and pie charts: `no_sorting` | `reversed` | `sum` | `ascending` | `descending`,
+   *  or a series/category code to sort by that reference series' values (percent-of-total for percent-stacked charts). */
+  sorting?: string;
 }
 
 // --- Resolved theme (all values present) ---

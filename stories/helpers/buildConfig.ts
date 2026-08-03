@@ -37,6 +37,8 @@ export function buildConfig(args: StoryArgs, baseConfig?: ChartConfig): ChartCon
   if (args.showLegend !== undefined) config.showLegend = args.showLegend as boolean;
   if (args.autoTitle !== undefined) config.autoTitle = args.autoTitle as boolean;
   if (args.locale !== undefined) config.locale = args.locale as string;
+  if (args.sorting !== undefined) config.sorting = args.sorting as string;
+  if (args.cutValueAxis !== undefined) config.cutValueAxis = args.cutValueAxis as boolean;
   if (args.defaultSelectableSelections !== undefined) {
     config.defaultSelectableSelections = args.defaultSelectableSelections as Record<string, string[]>;
   }

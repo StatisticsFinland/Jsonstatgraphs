@@ -145,6 +145,27 @@ export class ChartScaffold {
     return [min - pad, max + pad];
   }
 
+  /**
+   * Whether the categorical value axis must be anchored at 0. False only for line charts
+   * with `cutValueAxis` enabled, letting the axis start/end away from zero.
+   */
+  private isCategoricalValueAxisZeroForced(): boolean {
+    return !(this.scaffoldConfig.chartType === 'line' && this.scaffoldConfig.config.cutValueAxis === true);
+  }
+
+  /** Whether the numeric (scatter) value axis must be anchored at 0. False only when `cutValueAxis` is enabled. */
+  private isNumericValueAxisZeroForced(cfg: NumericScaffoldConfig): boolean {
+    return cfg.config.cutValueAxis !== true;
+  }
+
+  /** Pads the categorical value range, using symmetric padding when the axis isn't zero-anchored. */
+  private getCategoricalValuePadding(minValue: number, maxValue: number, isPercent: boolean): [number, number] {
+    if (isPercent) return [minValue, maxValue];
+    return this.isCategoricalValueAxisZeroForced()
+      ? this.padValueRange(minValue, maxValue)
+      : this.padNumericRange(minValue, maxValue);
+  }
+
   private buildScales(
     isHorizontal: boolean,
     categories: string[],
@@ -756,7 +777,7 @@ export class ChartScaffold {
     } else {
       // Linear axis on Y — estimate tick label width from a rough axis height pass
       const estimatedAxisHeight = containerHeight * 0.6;
-      const ticks = getTickPositions(paddedMin, paddedMax, estimatedAxisHeight, undefined, this.theme.fontSizeTick);
+      const ticks = getTickPositions(paddedMin, paddedMax, estimatedAxisHeight, undefined, this.theme.fontSizeTick, this.isCategoricalValueAxisZeroForced());
       const fmt = scaleLinear().domain([paddedMin, paddedMax]).tickFormat();
       const maxTickLen = ticks.reduce((max, t) => Math.max(max, fmt(t).length), 0);
       return maxTickLen * CHAR_WIDTH + 16;
@@ -843,9 +864,10 @@ export class ChartScaffold {
 
     const xPadded = this.padNumericRange(xMin, xMax);
     const yPadded = this.padNumericRange(yMin, yMax);
+    const yForceZeroBaseline = this.isNumericValueAxisZeroForced(cfg);
 
     const estimatedAxisHeight = containerHeight * 0.6;
-    const yTicks = getTickPositions(yPadded[0], yPadded[1], estimatedAxisHeight, undefined, this.theme.fontSizeTick);
+    const yTicks = getTickPositions(yPadded[0], yPadded[1], estimatedAxisHeight, undefined, this.theme.fontSizeTick, yForceZeroBaseline);
     const yFmt = scaleLinear().domain(yPadded).tickFormat();
     const maxYTickLen = yTicks.reduce((max, t) => Math.max(max, yFmt(t).length), 0);
     measurements[ZoneType.YAxisLabels] = maxYTickLen * CHAR_WIDTH + 16;
@@ -856,7 +878,7 @@ export class ChartScaffold {
     // Right margin — from last X tick label
     const yAxisWidth = measurements[ZoneType.YAxisLabels] ?? 60;
     const estimatedPlotWidth = Math.max(100, containerWidth - yAxisWidth);
-    const xTicks = getTickPositions(xPadded[0], xPadded[1], estimatedPlotWidth, undefined, this.theme.fontSizeTick);
+    const xTicks = getTickPositions(xPadded[0], xPadded[1], estimatedPlotWidth, undefined, this.theme.fontSizeTick, false);
     if (xTicks.length > 0) {
       const xFmt = scaleLinear().domain(xPadded).tickFormat();
       const lastTickStr = xFmt(xTicks.at(-1)!);
@@ -893,7 +915,7 @@ export class ChartScaffold {
     const { categories } = this.scaffoldConfig;
     const [minValue, maxValue] = this.scaffoldConfig.valueRange;
     const isPercent = this.scaffoldConfig.chartType === 'percentVerticalBar' || this.scaffoldConfig.chartType === 'percentHorizontalBar';
-    const [paddedMin, paddedMax] = isPercent ? [minValue, maxValue] : this.padValueRange(minValue, maxValue);
+    const [paddedMin, paddedMax] = this.getCategoricalValuePadding(minValue, maxValue, isPercent);
 
     const measurements: Partial<Record<ZoneType, number>> = {};
 
@@ -993,11 +1015,12 @@ export class ChartScaffold {
       const { categories, valueRange } = this.scaffoldConfig;
       const [minValue, maxValue] = valueRange;
       const isPercent = this.scaffoldConfig.chartType === 'percentVerticalBar' || this.scaffoldConfig.chartType === 'percentHorizontalBar';
-      const [paddedMin, paddedMax] = isPercent ? [minValue, maxValue] : this.padValueRange(minValue, maxValue);
+      const [paddedMin, paddedMax] = this.getCategoricalValuePadding(minValue, maxValue, isPercent);
+      const forceZeroBaseline = this.isCategoricalValueAxisZeroForced();
 
       const rawTicks = isHorizontal
-        ? getTickPositions(paddedMin, paddedMax, plotAreaRect.width, undefined, this.theme.fontSizeTick)
-        : getTickPositions(paddedMin, paddedMax, plotAreaRect.height, undefined, this.theme.fontSizeTick);
+        ? getTickPositions(paddedMin, paddedMax, plotAreaRect.width, undefined, this.theme.fontSizeTick, forceZeroBaseline)
+        : getTickPositions(paddedMin, paddedMax, plotAreaRect.height, undefined, this.theme.fontSizeTick, forceZeroBaseline);
       const tickValues = rawTicks.length >= 2 ? rawTicks : [paddedMin, paddedMax];
 
       const scaleType = this.scaffoldConfig.chartType === 'line' ? 'point' : 'band';
@@ -1051,9 +1074,10 @@ export class ChartScaffold {
       const [yRawMin, yRawMax] = cfg.yValueRange;
       const [xPadMin, xPadMax] = this.padNumericRange(xRawMin, xRawMax);
       const [yPadMin, yPadMax] = this.padNumericRange(yRawMin, yRawMax);
+      const yForceZeroBaseline = this.isNumericValueAxisZeroForced(cfg);
 
-      const xRawTicks = getTickPositions(xPadMin, xPadMax, plotAreaRect.width, undefined, this.theme.fontSizeTick);
-      const yRawTicks = getTickPositions(yPadMin, yPadMax, plotAreaRect.height, undefined, this.theme.fontSizeTick);
+      const xRawTicks = getTickPositions(xPadMin, xPadMax, plotAreaRect.width, undefined, this.theme.fontSizeTick, false);
+      const yRawTicks = getTickPositions(yPadMin, yPadMax, plotAreaRect.height, undefined, this.theme.fontSizeTick, yForceZeroBaseline);
       const xTickValues = xRawTicks.length >= 2 ? xRawTicks : [xPadMin, xPadMax];
       const yTickValues = yRawTicks.length >= 2 ? yRawTicks : [yPadMin, yPadMax];
 

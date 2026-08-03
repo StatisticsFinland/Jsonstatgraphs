@@ -8,7 +8,12 @@ import tableWideData from './fixtures/table-wide.json';
 
 const meta: Meta = {
   title: 'Charts/Table',
-  argTypes: { ...themeArgTypes },
+  argTypes: {
+    ...themeArgTypes,
+    // Table has no chart value axis or category ordering — sorting/cutValueAxis have no effect here.
+    sorting: { table: { disable: true } },
+    cutValueAxis: { table: { disable: true } },
+  },
   args: { ...themeArgs },
 };
 export default meta;

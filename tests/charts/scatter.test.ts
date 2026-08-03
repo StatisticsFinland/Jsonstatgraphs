@@ -1,4 +1,4 @@
-import { createScatterChart } from '../../src/charts/scatter';
+import { createScatterChart, computeValueRanges } from '../../src/charts/scatter';
 import { ScatterChartData, ChartConfig } from '../../src/types';
 
 beforeAll(() => {
@@ -364,5 +364,45 @@ describe('createScatterChart', () => {
     const plotWidth = parseFloat(clipRect!.getAttribute('width') ?? '0');
     const marginRight = containerWidth - (plotX + plotWidth);
     expect(marginRight).toBeGreaterThanOrEqual(5);
+  });
+
+  describe('cutValueAxis', () => {
+    it('forces the Y range to include 0 by default even when all y values are positive; X range is always raw', () => {
+      expect(computeValueRanges(scatterData)).toEqual({ xRange: [10, 50], yRange: [0, 40] });
+      expect(computeValueRanges(scatterData, false)).toEqual({ xRange: [10, 50], yRange: [0, 40] });
+    });
+
+    it('keeps the raw Y data range when cutValueAxis is true; X range is unaffected', () => {
+      expect(computeValueRanges(scatterData, true)).toEqual({ xRange: [10, 50], yRange: [10, 40] });
+    });
+
+    const narrowYRangeData: ScatterChartData = {
+      points: [
+        { x: 10, y: 300, label: 'A', code: 'a' },
+        { x: 30, y: 320, label: 'B', code: 'b' },
+        { x: 50, y: 340, label: 'C', code: 'c' },
+      ],
+      xLabel: 'X',
+      yLabel: 'Y',
+    };
+
+    function getYAxisTickValues(): number[] {
+      return Array.from(container.querySelectorAll('.jsc-axis-y .tick text'))
+        .map(t => Number.parseFloat((t.textContent ?? '').replace(/\u2212/, '-')))
+        .filter(n => !Number.isNaN(n));
+    }
+
+    it('rendered Y axis includes 0 by default, even with a narrow, far-from-zero data range', () => {
+      createScatterChart({ container, data: narrowYRangeData, config: defaultConfig });
+      const ticks = getYAxisTickValues();
+      expect(ticks).toContain(0);
+    });
+
+    it('rendered Y axis does not start at 0 when cutValueAxis is true', () => {
+      createScatterChart({ container, data: narrowYRangeData, config: { cutValueAxis: true } });
+      const ticks = getYAxisTickValues();
+      expect(Math.min(...ticks)).toBeGreaterThan(0);
+      expect(Math.min(...ticks)).toBeLessThanOrEqual(300);
+    });
   });
 });

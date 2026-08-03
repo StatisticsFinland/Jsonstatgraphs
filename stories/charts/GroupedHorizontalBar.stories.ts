@@ -7,11 +7,14 @@ import { getSelectableStoryInputs } from '../helpers/selectables';
 import multiSeriesData from '../fixtures/multi-series.json';
 import selectableMultiSeriesData from '../fixtures/multi-series-selectable.json';
 import tableWideData from '../fixtures/table-wide.json';
+import sortingDemoData from '../fixtures/sorting-demo.json';
 
 const meta: Meta = {
   title: 'Charts/Grouped Horizontal Bar',
   argTypes: {
     ...themeArgTypes,
+    // Bar charts always anchor the value axis at zero — cutValueAxis has no effect here.
+    cutValueAxis: { table: { disable: true } },
   },
   args: {
     ...themeArgs,
@@ -59,6 +62,60 @@ export const ManyGroups: StoryObj = {
     renderChart({
       dataset: tableWideData,
       config: buildConfig(args, { chartType: 'groupedHorizontalBar' }),
+      width: args.width as string,
+      height: args.height as string | undefined,
+    }),
+};
+
+// The following stories share `sortingDemoData` — 5 product-group categories (A-E) with
+// deliberately non-monotonic "domestic"/"export" series values, so each sorting mode produces
+// a distinct, easy-to-verify category order:
+//   domestic: A=10, B=50, C=30, D=40, E=20   export: A=15, B=5, C=45, D=25, E=30
+const sortingDemoConfig = { chartType: 'groupedHorizontalBar' as const, layout: { rows: ['markkina'], columns: ['tuoteryhma'] } };
+
+// Default order (no sorting): A, B, C, D, E
+export const SortedNone: StoryObj = {
+  render: (args) =>
+    renderChart({
+      dataset: sortingDemoData,
+      config: buildConfig(args, sortingDemoConfig),
+      width: args.width as string,
+      height: args.height as string | undefined,
+    }),
+};
+
+// Sum of domestic+export per product group (A=25, B=55, C=75, D=65, E=50) descending: C, D, B, E, A
+export const SortedBySum: StoryObj = {
+  args: { sorting: 'sum' },
+  render: (args) =>
+    renderChart({
+      dataset: sortingDemoData,
+      config: buildConfig(args, sortingDemoConfig),
+      width: args.width as string,
+      height: args.height as string | undefined,
+    }),
+};
+
+// Sorted descending by the first series (domestic: A=10, B=50, C=30, D=40, E=20) -> B, D, C, E, A
+export const SortedDescending: StoryObj = {
+  args: { sorting: 'descending' },
+  render: (args) =>
+    renderChart({
+      dataset: sortingDemoData,
+      config: buildConfig(args, sortingDemoConfig),
+      width: args.width as string,
+      height: args.height as string | undefined,
+    }),
+};
+
+// 'export' is a value code of the row (market) dimension — sorts categories descending by that
+// specific series (export: A=15, B=5, C=45, D=25, E=30) -> C, E, D, A, B
+export const SortedByReferenceSeries: StoryObj = {
+  args: { sorting: 'export' },
+  render: (args) =>
+    renderChart({
+      dataset: sortingDemoData,
+      config: buildConfig(args, sortingDemoConfig),
       width: args.width as string,
       height: args.height as string | undefined,
     }),

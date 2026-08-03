@@ -10,11 +10,14 @@ import manyCategoriesData from '../fixtures/many-categories.json';
 import negativeValuesData from '../fixtures/negative-values.json';
 import withNullsData from '../fixtures/with-nulls.json';
 import timeSeriesData from '../fixtures/time-series.json';
+import sortingDemoData from '../fixtures/sorting-demo.json';
 
 const meta: Meta = {
   title: 'Charts/Vertical Bar',
   argTypes: {
     ...themeArgTypes,
+    // Bar charts always anchor the value axis at zero — cutValueAxis has no effect here.
+    cutValueAxis: { table: { disable: true } },
   },
   args: {
     ...themeArgs,
@@ -90,6 +93,58 @@ export const TimeSeries: StoryObj = {
     renderChart({
       dataset: timeSeriesData,
       config: buildConfig(args, { chartType: 'verticalBar' }),
+      width: args.width as string,
+      height: args.height as string | undefined,
+    }),
+};
+
+// The following stories reuse `sortingDemoData` — 5 product-group categories (A-E). With
+// `rows: []`, the omitted `markkina` dimension is fixed to its first category ("domestic"),
+// giving a single series: A=10, B=50, C=30, D=40, E=20.
+const sortingDemoConfig = { chartType: 'verticalBar' as const, layout: { rows: [], columns: ['tuoteryhma'] } };
+
+// Default order (no sorting): A, B, C, D, E
+export const SortedNone: StoryObj = {
+  render: (args) =>
+    renderChart({
+      dataset: sortingDemoData,
+      config: buildConfig(args, sortingDemoConfig),
+      width: args.width as string,
+      height: args.height as string | undefined,
+    }),
+};
+
+// Sorted descending by value (A=10, B=50, C=30, D=40, E=20) -> B, D, C, E, A
+export const SortedDescending: StoryObj = {
+  args: { sorting: 'descending' },
+  render: (args) =>
+    renderChart({
+      dataset: sortingDemoData,
+      config: buildConfig(args, sortingDemoConfig),
+      width: args.width as string,
+      height: args.height as string | undefined,
+    }),
+};
+
+// Sorted ascending by value -> A, E, C, D, B
+export const SortedAscending: StoryObj = {
+  args: { sorting: 'ascending' },
+  render: (args) =>
+    renderChart({
+      dataset: sortingDemoData,
+      config: buildConfig(args, sortingDemoConfig),
+      width: args.width as string,
+      height: args.height as string | undefined,
+    }),
+};
+
+// Reverses the original category order -> E, D, C, B, A
+export const Reversed: StoryObj = {
+  args: { sorting: 'reversed' },
+  render: (args) =>
+    renderChart({
+      dataset: sortingDemoData,
+      config: buildConfig(args, sortingDemoConfig),
       width: args.width as string,
       height: args.height as string | undefined,
     }),

@@ -1,4 +1,4 @@
-import { createLineChart } from '../../src/charts/line';
+import { createLineChart, computeValueRange } from '../../src/charts/line';
 import { ChartScaffold } from '../../src/charts/base';
 import { ChartData, ChartConfig, ZoneType } from '../../src/types';
 import { DEFAULT_THEME } from '../../src/theme/defaults';
@@ -432,5 +432,50 @@ describe('createLineChart', () => {
     }
     // Verify it differs from the default white surface so the test is meaningful
     expect(darkColorSurface).not.toBe(DEFAULT_THEME.colorSurface);
+  });
+
+  describe('cutValueAxis', () => {
+    it('forces the value range to include 0 by default even when all values are positive', () => {
+      expect(computeValueRange(singleSeriesData)).toEqual([0, 200]);
+      expect(computeValueRange(singleSeriesData, false)).toEqual([0, 200]);
+    });
+
+    it('keeps the raw data range when cutValueAxis is true', () => {
+      expect(computeValueRange(singleSeriesData, true)).toEqual([100, 200]);
+    });
+
+    const narrowRangeData: ChartData = {
+      series: [{
+        name: 'S',
+        code: 's',
+        points: [
+          { value: 300, label: '2020', categoryCode: '2020' },
+          { value: 320, label: '2021', categoryCode: '2021' },
+          { value: 310, label: '2022', categoryCode: '2022' },
+          { value: 340, label: '2023', categoryCode: '2023' },
+        ],
+      }],
+      categories: ['2020', '2021', '2022', '2023'],
+      categoryLabels: ['2020', '2021', '2022', '2023'],
+    };
+
+    function getYAxisTickValues(): number[] {
+      return Array.from(container.querySelectorAll('.jsc-axis-y .tick text'))
+        .map(t => Number.parseFloat((t.textContent ?? '').replace(/\u2212/, '-')))
+        .filter(n => !Number.isNaN(n));
+    }
+
+    it('rendered Y axis starts at 0 by default, even with a narrow, far-from-zero data range', () => {
+      createLineChart({ container, data: narrowRangeData, config: defaultConfig });
+      const ticks = getYAxisTickValues();
+      expect(Math.min(...ticks)).toBe(0);
+    });
+
+    it('rendered Y axis does not start at 0 when cutValueAxis is true', () => {
+      createLineChart({ container, data: narrowRangeData, config: { cutValueAxis: true } });
+      const ticks = getYAxisTickValues();
+      expect(Math.min(...ticks)).toBeGreaterThan(0);
+      expect(Math.min(...ticks)).toBeLessThanOrEqual(300);
+    });
   });
 });

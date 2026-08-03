@@ -62,6 +62,7 @@ import {
   transformPyramidData,
   getOrderedCodes,
 } from './data/transform';
+import { applySorting } from './data/sorting';
 import { transformTableData } from './data/table-transform';
 import { hasSelectableDatasetOptions, resolveSelectableDatasetOptions } from './data/selectable-settings';
 import { rebuildDataset, resolveSelectedCodes } from './data/rebuild-dataset';
@@ -536,7 +537,7 @@ function createRenderer(
     case 'horizontalBar':
       return createBarChart({
         container,
-        data: transformDataset(activeDataset, datasetTransformOptions),
+        data: applySorting(transformDataset(activeDataset, datasetTransformOptions), cfg.sorting, false),
         config: cfg,
         chartType: type,
         timeSeriesLabels,
@@ -545,7 +546,7 @@ function createRenderer(
     case 'groupedHorizontalBar':
       return createGroupedBarChart({
         container,
-        data: transformDataset(activeDataset, datasetTransformOptions),
+        data: applySorting(transformDataset(activeDataset, datasetTransformOptions), cfg.sorting, false),
         config: cfg,
         chartType: type,
         timeSeriesLabels,
@@ -553,18 +554,20 @@ function createRenderer(
     case 'stackedVerticalBar':
     case 'stackedHorizontalBar':
     case 'percentVerticalBar':
-    case 'percentHorizontalBar':
+    case 'percentHorizontalBar': {
+      const isPercent = type === 'percentVerticalBar' || type === 'percentHorizontalBar';
       return createStackedBarChart({
         container,
-        data: transformDataset(activeDataset, datasetTransformOptions),
+        data: applySorting(transformDataset(activeDataset, datasetTransformOptions), cfg.sorting, isPercent),
         config: cfg,
         chartType: type,
         timeSeriesLabels,
       });
+    }
     case 'pie':
       return createPieChart({
         container,
-        data: transformDataset(activeDataset, datasetTransformOptions),
+        data: applySorting(transformDataset(activeDataset, datasetTransformOptions), cfg.sorting, false),
         config: cfg,
       });
     case 'scatterPlot':
