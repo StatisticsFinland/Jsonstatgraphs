@@ -1,5 +1,6 @@
 import { createChart } from '../src/index';
 import { JsonStatDataset, GeoJsonFeatureCollection } from '../src/types';
+import * as rebuildDatasetModule from '../src/data/rebuild-dataset';
 
 beforeAll(() => {
   (globalThis as any).ResizeObserver = class {
@@ -395,6 +396,28 @@ describe('update', () => {
     expect(container.querySelectorAll('.jsc-series').length).toBe(1);
     expect(container.textContent).toContain('220');
     expect(container.textContent).not.toContain('300');
+  });
+
+  it('rebuilds selectable data only once per render cycle', () => {
+    const rebuildSpy = jest.spyOn(rebuildDatasetModule, 'rebuildDataset');
+
+    const instance = createChart(
+      container,
+      multiDimDataset,
+      { chartType: 'table', layout: { rows: ['region'], columns: ['year'] } },
+      { region: ['hel'] },
+    );
+    expect(rebuildSpy).toHaveBeenCalledTimes(1);
+
+    rebuildSpy.mockClear();
+    instance.setChartType('line');
+    expect(rebuildSpy).toHaveBeenCalledTimes(1);
+
+    rebuildSpy.mockClear();
+    instance.update(multiDimDataset, undefined, { region: ['tre'] });
+    expect(rebuildSpy).toHaveBeenCalledTimes(1);
+
+    rebuildSpy.mockRestore();
   });
 
   it('does nothing after destroy', () => {

@@ -1,4 +1,6 @@
 import { transformTableData } from '../data/table-transform';
+import { rebuildDataset } from '../data/rebuild-dataset';
+import { hasSelectableDatasetOptions, resolveSelectableDatasetOptions } from '../data/selectable-settings';
 import { getLocaleStrings } from '../locale/strings';
 import { JsonStatDataset } from '../types';
 import { buildExportFilename, downloadBlob } from './exportUtils';
@@ -30,7 +32,11 @@ export function renderCsvRow(cells: (string | number | null | undefined)[], deli
 export function createCsvContent(dataset: JsonStatDataset, locale: string): string {
   const strings = getLocaleStrings(locale);
   const delimiter = getCsvDelimiter(locale);
-  const tableData = transformTableData(dataset);
+  const selectableOptions = resolveSelectableDatasetOptions(dataset);
+  const activeDataset = hasSelectableDatasetOptions(selectableOptions)
+    ? rebuildDataset(dataset, selectableOptions).dataset
+    : dataset;
+  const tableData = transformTableData(activeDataset, { layout: selectableOptions.layout });
   const rows: (string | number | null)[][] = [];
 
   rows.push([dataset.label ?? '']);

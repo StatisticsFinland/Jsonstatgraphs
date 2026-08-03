@@ -1,4 +1,5 @@
 import { computeTableOrientation, transformTableData } from '../../src/data/table-transform';
+import { rebuildDataset } from '../../src/data/rebuild-dataset';
 import { JsonStatDataset } from '../../src/types';
 
 // ---------------------------------------------------------------------------
@@ -283,10 +284,12 @@ describe('transformTableData', () => {
       role: { time: ['Year'], metric: ['Metric'] },
     });
 
-    const result = transformTableData(ds, {
-      layout: { rows: ['Region'], columns: ['Year'] },
+    const layout = { rows: ['Region'], columns: ['Year'] };
+    const rebuilt = rebuildDataset(ds, {
+      layout,
       selectableSelections: { Metric: ['value'] },
-    });
+    }).dataset;
+    const result = transformTableData(rebuilt, { layout });
 
     expect(result.rowDimensions.map(dimension => dimension.code)).toEqual(['Region']);
     expect(result.columnDimensions.map(dimension => dimension.code)).toEqual(['Year']);

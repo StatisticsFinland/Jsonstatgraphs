@@ -1,7 +1,5 @@
-import { JsonStatDataset, Layout, SelectableSelections, TableDimension, TableData } from '../types';
+import { JsonStatDataset, Layout, TableDimension, TableData } from '../types';
 import { computeStrides, getOrderedCodes } from './dataset-utils';
-import { rebuildDataset } from './rebuild-dataset';
-import { hasSelectableDatasetOptions, resolveSelectableDatasetOptions } from './selectable-settings';
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -246,6 +244,9 @@ export function computeTableOrientation(
  * Transforms a JSON-stat 2.0 dataset into a `TableData` structure suitable for
  * rendering as an N-dimensional pivot table.
  *
+ * The dataset must already reflect any active selectable selections; this
+ * function performs no selection resolution or rebuilding of its own.
+ *
  *  1. Determines row/column/hidden orientation via `computeTableOrientation`.
  *  2. Builds `TableDimension` metadata for each placed dimension.
  *  3. Enumerates all row x column Cartesian-product combinations and looks up
@@ -255,20 +256,11 @@ export function computeTableOrientation(
  */
 export function transformTableData(
   dataset: JsonStatDataset,
-  options?: {
-    layout?: Layout;
-    selectableSelections?: SelectableSelections;
-    defaultSelectableSelections?: SelectableSelections;
-    multiSelectableDimensionCode?: string;
-  }
+  options?: { layout?: Layout }
 ): TableData {
   const layout = options?.layout;
-  const selectableOptions = resolveSelectableDatasetOptions(dataset, { ...options, layout }, options?.selectableSelections);
-  const activeDataset = hasSelectableDatasetOptions(selectableOptions)
-    ? rebuildDataset(dataset, selectableOptions).dataset
-    : dataset;
-  const { id, size, dimension } = activeDataset;
-  const { rows, columns, hidden } = computeTableOrientation(activeDataset, layout);
+  const { id, size, dimension } = dataset;
+  const { rows, columns, hidden } = computeTableOrientation(dataset, layout);
 
   const codeToIdx = buildCodeIndexMap(id);
   const strides = computeStrides(size);
@@ -296,7 +288,7 @@ export function transformTableData(
 
   const rowDimensions = rows.map(buildTableDimension);
   const columnDimensions = columns.map(buildTableDimension);
-  const values = buildValuesGrid(activeDataset, rows, columns, codeToIdx, strides);
+  const values = buildValuesGrid(dataset, rows, columns, codeToIdx, strides);
 
   const hiddenDimensions = hidden.map(code => {
     const codes = getOrderedCategoryCodes(code);

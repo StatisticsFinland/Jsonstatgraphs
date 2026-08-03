@@ -592,12 +592,7 @@ function createRenderer(
     case 'table':
       return createTableChart({
         container,
-        data: transformTableData(dataset, {
-          layout: cfg.layout,
-          selectableSelections,
-          defaultSelectableSelections: cfg.defaultSelectableSelections,
-          multiSelectableDimensionCode: cfg.multiSelectableDimensionCode,
-        }),
+        data: transformTableData(activeDataset, { layout: selectableOptions.layout }),
         config: cfg,
       });
     case 'map': {
