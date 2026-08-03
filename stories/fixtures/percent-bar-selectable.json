@@ -1,0 +1,62 @@
+{
+  "version": "2.0",
+  "class": "dataset",
+  "id": ["year", "sex", "age", "information"],
+  "label": "Population distribution by sex and age group",
+  "source": "Example Institute, population statistics",
+  "updated": "2025-01-01T08:00:00",
+  "dimension": {
+    "information": {
+      "label": "Information",
+      "category": {
+        "index": ["population"],
+        "label": { "population": "Population" },
+        "unit": { "population": { "label": "Persons", "decimals": 0 } }
+      }
+    },
+    "age": {
+      "label": "Age group",
+      "category": {
+        "index": ["0-17", "18-39", "40-64", "65+"],
+        "label": {
+          "0-17": "0–17",
+          "18-39": "18–39",
+          "40-64": "40–64",
+          "65+": "65+"
+        }
+      }
+    },
+    "year": {
+      "label": "Year",
+      "category": {
+        "index": ["2023", "2024"],
+        "label": { "2023": "2023", "2024": "2024" }
+      }
+    },
+    "sex": {
+      "label": "Sex",
+      "category": {
+        "index": ["female", "male"],
+        "label": { "female": "Female", "male": "Male" }
+      }
+    }
+  },
+  "value": [
+    510000, 720000, 840000, 690000,
+    535000, 750000, 825000, 505000,
+    515000, 728000, 846000, 704000,
+    540000, 758000, 832000, 519000
+  ],
+  "size": [2, 2, 4, 1],
+  "role": {
+    "time": ["year"],
+    "metric": ["information"]
+  },
+  "extension": {
+    "selectableConfig": {
+      "defaultSelectableSelections": {
+        "year": ["2024"]
+      }
+    }
+  }
+}

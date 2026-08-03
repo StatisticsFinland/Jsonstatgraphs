@@ -1,5 +1,5 @@
-import { JsonStatDataset, TableLayout, TableDimension, TableData } from '../types';
-import { getOrderedCodes } from './transform';
+import { JsonStatDataset, Layout, TableDimension, TableData } from '../types';
+import { computeStrides, getOrderedCodes } from './dataset-utils';
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -24,7 +24,7 @@ function buildCodeIndexMap(id: string[]): Map<string, number> {
 }
 
 /**
- * Validates a manual TableLayout against the dataset.
+ * Validates a manual layout against the dataset.
  * Throws descriptive errors on unknown codes, overlapping codes, or un-placed
  * multi-value dimensions.
  * Returns the list of hidden dimension codes.
@@ -32,16 +32,16 @@ function buildCodeIndexMap(id: string[]): Map<string, number> {
 function validateManualLayout(
   id: string[],
   sizeMap: Map<string, number>,
-  layout: TableLayout
+  layout: Layout
 ): string[] {
   for (const code of layout.rows) {
     if (!sizeMap.has(code)) {
-      throw new Error(`[JsonStatChart] Unknown dimension code in tableLayout: "${code}"`);
+      throw new Error(`[JsonStatChart] Unknown dimension code in layout: "${code}"`);
     }
   }
   for (const code of layout.columns) {
     if (!sizeMap.has(code)) {
-      throw new Error(`[JsonStatChart] Unknown dimension code in tableLayout: "${code}"`);
+      throw new Error(`[JsonStatChart] Unknown dimension code in layout: "${code}"`);
     }
   }
 
@@ -49,7 +49,7 @@ function validateManualLayout(
   for (const code of layout.columns) {
     if (rowSet.has(code)) {
       throw new Error(
-        `[JsonStatChart] Dimension "${code}" appears in both rows and columns of tableLayout`
+        `[JsonStatChart] Dimension "${code}" appears in both rows and columns of layout`
       );
     }
   }
@@ -57,7 +57,7 @@ function validateManualLayout(
   const seenRows = new Set<string>();
   for (const code of layout.rows) {
     if (seenRows.has(code)) {
-      throw new Error(`[JsonStatChart] Duplicate dimension code in tableLayout.rows: "${code}"`);
+      throw new Error(`[JsonStatChart] Duplicate dimension code in layout.rows: "${code}"`);
     }
     seenRows.add(code);
   }
@@ -65,24 +65,13 @@ function validateManualLayout(
   const seenCols = new Set<string>();
   for (const code of layout.columns) {
     if (seenCols.has(code)) {
-      throw new Error(`[JsonStatChart] Duplicate dimension code in tableLayout.columns: "${code}"`);
+      throw new Error(`[JsonStatChart] Duplicate dimension code in layout.columns: "${code}"`);
     }
     seenCols.add(code);
   }
 
   const mentioned = new Set([...layout.rows, ...layout.columns]);
-  const hidden: string[] = [];
-  for (const code of id) {
-    if (mentioned.has(code)) continue;
-    const s = sizeMap.get(code) ?? 1;
-    if (s !== 1) {
-      throw new Error(
-        `[JsonStatChart] Dimension "${code}" has size ${s} and must be placed in rows or columns`
-      );
-    }
-    hidden.push(code);
-  }
-  return hidden;
+  return id.filter(code => !mentioned.has(code));
 }
 
 /**
@@ -144,15 +133,6 @@ function decodeCombo(comboIdx: number, sizes: number[]): number[] {
     remaining = Math.floor(remaining / sizes[i]);
   }
   return indices;
-}
-
-/** Computes row-major strides for all dimensions in dataset.id order. */
-function computeStrides(size: number[]): number[] {
-  const strides: number[] = new Array(size.length).fill(1);
-  for (let i = size.length - 2; i >= 0; i--) {
-    strides[i] = strides[i + 1] * size[i + 1];
-  }
-  return strides;
 }
 
 /**
@@ -230,7 +210,7 @@ function buildValuesGrid(
  */
 export function computeTableOrientation(
   dataset: JsonStatDataset,
-  manualLayout?: TableLayout
+  manualLayout?: Layout
 ): { rows: string[]; columns: string[]; hidden: string[] } {
   const { id, size } = dataset;
   const sizeMap = buildSizeMap(id, size);
@@ -264,6 +244,9 @@ export function computeTableOrientation(
  * Transforms a JSON-stat 2.0 dataset into a `TableData` structure suitable for
  * rendering as an N-dimensional pivot table.
  *
+ * The dataset must already reflect any active selectable selections; this
+ * function performs no selection resolution or rebuilding of its own.
+ *
  *  1. Determines row/column/hidden orientation via `computeTableOrientation`.
  *  2. Builds `TableDimension` metadata for each placed dimension.
  *  3. Enumerates all row x column Cartesian-product combinations and looks up
@@ -273,10 +256,11 @@ export function computeTableOrientation(
  */
 export function transformTableData(
   dataset: JsonStatDataset,
-  options?: { tableLayout?: TableLayout }
+  options?: { layout?: Layout }
 ): TableData {
+  const layout = options?.layout;
   const { id, size, dimension } = dataset;
-  const { rows, columns, hidden } = computeTableOrientation(dataset, options?.tableLayout);
+  const { rows, columns, hidden } = computeTableOrientation(dataset, layout);
 
   const codeToIdx = buildCodeIndexMap(id);
   const strides = computeStrides(size);

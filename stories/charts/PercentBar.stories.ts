@@ -3,7 +3,9 @@ import { renderChart } from '../helpers/renderChart';
 import { buildConfig } from '../helpers/buildConfig';
 import { themeArgTypes, themeArgs } from '../helpers/sharedArgs';
 import multiSeriesData from '../fixtures/multi-series.json';
+import percentBarSelectableData from '../fixtures/percent-bar-selectable.json';
 import tableWideData from '../fixtures/table-wide.json';
+import { getSelectableStoryInputs } from '../helpers/selectables';
 
 const meta: Meta = {
   title: 'Charts/Percent Bar',
@@ -31,6 +33,25 @@ export const Horizontal: StoryObj = {
     renderChart({
       dataset: multiSeriesData,
       config: buildConfig(args, { chartType: 'percentHorizontalBar' }),
+      width: args.width as string,
+      height: args.height as string | undefined,
+    }),
+};
+
+export const SelectableYear: StoryObj = {
+  args: {
+    selectableSelections: {
+      year: ['2024'],
+    },
+  },
+  render: (args) =>
+    renderChart({
+      dataset: percentBarSelectableData,
+      config: buildConfig(args, {
+        chartType: 'percentVerticalBar',
+        layout: { rows: ['sex'], columns: ['age'] },
+      }),
+      ...getSelectableStoryInputs(args),
       width: args.width as string,
       height: args.height as string | undefined,
     }),

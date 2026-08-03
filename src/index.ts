@@ -3,6 +3,9 @@ export type {
   JsonStatCategory,
   JsonStatDimension,
   JsonStatDataset,
+  JsonStatDatasetExtension,
+  SelectableConfig,
+  SelectableSelections,
   ChartType,
   ChartTypeResult,
   FooterItem,
@@ -21,7 +24,7 @@ export type {
   LayoutResult,
   ChartInstance,
   TableData,
-  TableLayout,
+  Layout,
   TableDimension,
   MapConfig,
   MapProvider,
@@ -50,6 +53,7 @@ import type {
   ScatterChartData,
   PyramidChartData,
   GeoJsonFeatureCollection,
+  SelectableSelections,
 } from './types';
 import { validateDataset } from './data/validate';
 import {
@@ -59,6 +63,8 @@ import {
   getOrderedCodes,
 } from './data/transform';
 import { transformTableData } from './data/table-transform';
+import { hasSelectableDatasetOptions, resolveSelectableDatasetOptions } from './data/selectable-settings';
+import { rebuildDataset, resolveSelectedCodes } from './data/rebuild-dataset';
 import { getApplicableChartTypes, selectDefaultChartType, CHART_TYPE_ORDER, ChartRejectionReason } from './data/chart-selector';
 import type { DataProperties, ChartSelectorOptions } from './data/chart-selector';
 import { resolveTheme } from './theme/theme';
@@ -271,14 +277,119 @@ function renderLoadingIndicator(container: HTMLElement, theme: ResolvedTheme, ar
   container.appendChild(wrapper);
 }
 
-function transformScatterDataForChart(dataset: JsonStatDataset, cfg: ChartConfig): ScatterChartData {
-  const contentDimId =
-    dataset.role?.metric?.[0] ??
+function getActiveSelectableCategoryCodes(
+  dataset: JsonStatDataset,
+  cfg: ChartConfig,
+  selectableSelections: SelectableSelections | undefined,
+): Record<string, string[]> {
+  const options = resolveSelectableDatasetOptions(dataset, cfg, selectableSelections);
+  const selectableDimensionCodes = new Set([
+    ...Object.keys(options.defaultSelectableSelections ?? {}),
+    ...Object.keys(options.selectableSelections ?? {}),
+    ...(options.multiSelectableDimensionCode ? [options.multiSelectableDimensionCode] : []),
+  ]);
+  return Object.fromEntries([...selectableDimensionCodes].map(dimensionCode => {
+    const categoryCodes = getOrderedCodes(dataset.dimension[dimensionCode].category.index);
+    const selectedCodes = resolveSelectedCodes(
+      options.selectableSelections?.[dimensionCode],
+      options.defaultSelectableSelections?.[dimensionCode],
+      categoryCodes,
+      dataset.role?.time?.includes(dimensionCode) ?? false,
+      dimensionCode,
+    );
+    return [dimensionCode, selectedCodes];
+  }));
+}
+
+function getAutoTitleDimensions(
+  dataset: JsonStatDataset,
+  cfg: ChartConfig,
+  selectableSelections: SelectableSelections | undefined,
+  dimensions: DimensionMeta[],
+): DimensionMeta[] {
+  const options = resolveSelectableDatasetOptions(dataset, cfg, selectableSelections);
+  const selectableDimensionCodes = new Set([
+    ...Object.keys(options.defaultSelectableSelections ?? {}),
+    ...Object.keys(options.selectableSelections ?? {}),
+    ...(options.multiSelectableDimensionCode ? [options.multiSelectableDimensionCode] : []),
+  ]);
+
+  return dimensions.map(dimension => {
+    if (!selectableDimensionCodes.has(dimension.code)) return dimension;
+
+    const categoryCodes = getOrderedCodes(dataset.dimension[dimension.code].category.index);
+    const selectedCodes = resolveSelectedCodes(
+      options.selectableSelections?.[dimension.code],
+      options.defaultSelectableSelections?.[dimension.code],
+      categoryCodes,
+      dataset.role?.time?.includes(dimension.code) ?? false,
+      dimension.code,
+    );
+    const titleCodes = dimension.code === options.multiSelectableDimensionCode
+      ? selectedCodes
+      : selectedCodes.slice(0, 1);
+    const selectedCodeSet = new Set(titleCodes);
+
+    return {
+      ...dimension,
+      size: titleCodes.length,
+      values: dimension.values?.filter(value => selectedCodeSet.has(value.code)),
+    };
+  });
+}
+
+function getScatterContentDimensionId(dataset: JsonStatDataset): string {
+  return dataset.role?.metric?.[0] ??
     dataset.id.find((dimId) => {
       const idx = dataset.id.indexOf(dimId);
       return !dataset.role?.time?.includes(dimId) && dataset.size[idx] > 1;
     }) ??
     dataset.id[0];
+}
+
+function getPyramidSplitDimensionId(dataset: JsonStatDataset): string | undefined {
+  const metricDimensions = new Set(dataset.role?.metric ?? []);
+  return dataset.id.find((dimensionCode, index) =>
+    !metricDimensions.has(dimensionCode)
+    && !dataset.role?.time?.includes(dimensionCode)
+    && dataset.size[index] === 2,
+  ) ?? dataset.id.find((dimensionCode, index) =>
+    !dataset.role?.time?.includes(dimensionCode) && dataset.size[index] === 2,
+  );
+}
+
+function validateRendererSelectableDimensions(
+  dataset: JsonStatDataset,
+  cfg: ChartConfig,
+  selectableSelections: SelectableSelections | undefined,
+  type: ChartType,
+): void {
+  if (type !== 'scatterPlot' && type !== 'pyramid') return;
+
+  const options = resolveSelectableDatasetOptions(dataset, cfg, selectableSelections);
+  const selectableDimensionCodes = new Set([
+    ...Object.keys(options.selectableSelections ?? {}),
+    ...Object.keys(options.defaultSelectableSelections ?? {}),
+    ...(options.multiSelectableDimensionCode ? [options.multiSelectableDimensionCode] : []),
+  ]);
+  const requiredDimensionCode = type === 'scatterPlot'
+    ? getScatterContentDimensionId(dataset)
+    : getPyramidSplitDimensionId(dataset);
+
+  if (requiredDimensionCode && selectableDimensionCodes.has(requiredDimensionCode)) {
+    const rendererDimension = type === 'scatterPlot' ? 'metric/content' : 'split';
+    throw new Error(
+      `[JsonStatChart] Dimension "${requiredDimensionCode}" cannot be selectable for ${type}: it defines the ${rendererDimension} dimension`,
+    );
+  }
+}
+
+function transformScatterDataForChart(
+  dataset: JsonStatDataset,
+  cfg: ChartConfig,
+  activeCategoryCodes: Record<string, string[]>,
+): ScatterChartData {
+  const contentDimId = getScatterContentDimensionId(dataset);
 
   const contentDim = dataset.dimension[contentDimId];
   const contentCodes = getOrderedCodes(contentDim.category.index);
@@ -290,41 +401,60 @@ function transformScatterDataForChart(dataset: JsonStatDataset, cfg: ChartConfig
   return transformScatterData(dataset, {
     xContentValue: contentCodes[0],
     yContentValue: contentCodes[1],
-    observationDimension: cfg.xDimension,
+    observationDimension: cfg.layout?.columns[0],
+    activeCategoryCodes,
   });
 }
 
-function transformPyramidDataForChart(dataset: JsonStatDataset, _cfg: ChartConfig): PyramidChartData {
-  const dimSizes = dataset.id.map((dimId, i) => ({ id: dimId, size: dataset.size[i] }));
-  const splitDim = dimSizes.find((d) => d.size === 2);
+function transformPyramidDataForChart(
+  dataset: JsonStatDataset,
+  _cfg: ChartConfig,
+  activeCategoryCodes: Record<string, string[]>,
+): PyramidChartData {
+  const metricDimensions = new Set(dataset.role?.metric ?? []);
+  const dimSizes = dataset.id.map((id, index) => ({ id, size: dataset.size[index] }));
+  const visibleDimensions = dimSizes.filter(dimension =>
+    !activeCategoryCodes[dimension.id] && !metricDimensions.has(dimension.id),
+  );
+  const splitDim = visibleDimensions.find((d) => d.size === 2) ?? dimSizes.find((d) => d.id === getPyramidSplitDimensionId(dataset));
   const catDim =
+    visibleDimensions.find((d) => d.id !== splitDim?.id && d.size > 1) ??
     dimSizes.find((d) => d.id !== splitDim?.id && d.size > 1) ??
+    visibleDimensions.find((d) => d.id !== splitDim?.id) ??
     dimSizes.find((d) => d.id !== splitDim?.id);
 
   return transformPyramidData(dataset, {
     categoryDimension: catDim?.id ?? dataset.id[0],
     splitDimension: splitDim?.id ?? dataset.id[1],
+    activeCategoryCodes,
   });
 }
 
 /** Key figure requires all dimensions to have exactly one category. */
-function isKeyFigureCompatible(dataset: JsonStatDataset): boolean {
-  return dataset.size.length > 0 && dataset.size.every(s => s === 1);
+function isKeyFigureCompatible(
+  dataset: JsonStatDataset,
+  activeCategoryCodes: Record<string, string[]> = {},
+): boolean {
+  return dataset.size.length > 0 && dataset.id.every((dimensionCode, index) =>
+    dataset.size[index] === 1 || activeCategoryCodes[dimensionCode] !== undefined,
+  );
 }
 
 function isChartVisualizationType(type: ChartType): boolean {
   return type !== 'table' && type !== 'keyFigure' && type !== 'map';
 }
 
-function extractKeyFigureData(dataset: JsonStatDataset): { value: number | null; unit: string; decimals?: number } {
-  // Find the first non-null numeric value, or null if all are null
-  let value: number | null = null;
-  for (const v of dataset.value) {
-    if (v !== null && typeof v !== 'string') {
-      value = v;
-      break;
-    }
-  }
+function extractKeyFigureData(
+  dataset: JsonStatDataset,
+  activeCategoryCodes: Record<string, string[]>,
+): { value: number | null; unit: string; decimals?: number } {
+  const strides = dataset.size.map((_, index) => dataset.size.slice(index + 1).reduce((product, size) => product * size, 1));
+  const sourceIndex = dataset.id.reduce((index, dimensionCode, dimensionIndex) => {
+    const categoryCode = activeCategoryCodes[dimensionCode]?.[0] ?? getOrderedCodes(dataset.dimension[dimensionCode].category.index)[0];
+    return index + getOrderedCodes(dataset.dimension[dimensionCode].category.index).indexOf(categoryCode) * strides[dimensionIndex];
+  }, 0);
+  const rawValue = dataset.value[sourceIndex];
+  const value = rawValue === null || typeof rawValue === 'string' ? null : rawValue;
 
   // Extract unit from content dimension
   let unit = '';
@@ -332,7 +462,7 @@ function extractKeyFigureData(dataset: JsonStatDataset): { value: number | null;
   const contentDimId = dataset.role?.metric?.[0] ?? dataset.id[0];
   const contentDim = dataset.dimension[contentDimId];
   if (contentDim?.category?.unit) {
-    const codes = getOrderedCodes(contentDim.category.index);
+    const codes = activeCategoryCodes[contentDimId] ?? getOrderedCodes(contentDim.category.index);
     const unitInfo = contentDim.category.unit[codes[0]];
     if (unitInfo) {
       unit = unitInfo.label ?? '';
@@ -382,17 +512,23 @@ function createRenderer(
   container: HTMLElement,
   dataset: JsonStatDataset,
   cfg: ChartConfig,
+  selectableSelections: SelectableSelections | undefined,
   timeSeriesLabels?: NiceSkipOptions,
   mapGeometry?: GeoJsonFeatureCollection,
 ): { destroy(): void } {
-  const xDim = cfg.xDimension;
-  const yDim = cfg.yDimension;
-
+  const selectableOptions = resolveSelectableDatasetOptions(dataset, cfg, selectableSelections);
+  const activeDataset = hasSelectableDatasetOptions(selectableOptions)
+    ? rebuildDataset(dataset, selectableOptions).dataset
+    : dataset;
+  const datasetTransformOptions = {
+    layout: selectableOptions.layout,
+    multiSelectableDimensionCode: selectableOptions.multiSelectableDimensionCode,
+  };
   switch (type) {
     case 'line':
       return createLineChart({
         container,
-        data: transformDataset(dataset, { xDimension: xDim, seriesDimension: yDim }),
+        data: transformDataset(activeDataset, datasetTransformOptions),
         config: cfg,
         timeSeriesLabels,
       });
@@ -400,7 +536,7 @@ function createRenderer(
     case 'horizontalBar':
       return createBarChart({
         container,
-        data: transformDataset(dataset, { xDimension: xDim, seriesDimension: yDim }),
+        data: transformDataset(activeDataset, datasetTransformOptions),
         config: cfg,
         chartType: type,
         timeSeriesLabels,
@@ -409,7 +545,7 @@ function createRenderer(
     case 'groupedHorizontalBar':
       return createGroupedBarChart({
         container,
-        data: transformDataset(dataset, { xDimension: xDim, seriesDimension: yDim }),
+        data: transformDataset(activeDataset, datasetTransformOptions),
         config: cfg,
         chartType: type,
         timeSeriesLabels,
@@ -420,7 +556,7 @@ function createRenderer(
     case 'percentHorizontalBar':
       return createStackedBarChart({
         container,
-        data: transformDataset(dataset, { xDimension: xDim, seriesDimension: yDim }),
+        data: transformDataset(activeDataset, datasetTransformOptions),
         config: cfg,
         chartType: type,
         timeSeriesLabels,
@@ -428,23 +564,23 @@ function createRenderer(
     case 'pie':
       return createPieChart({
         container,
-        data: transformDataset(dataset, { xDimension: xDim }),
+        data: transformDataset(activeDataset, datasetTransformOptions),
         config: cfg,
       });
     case 'scatterPlot':
       return createScatterChart({
         container,
-        data: transformScatterDataForChart(dataset, cfg),
+        data: transformScatterDataForChart(activeDataset, cfg, {}),
         config: cfg,
       });
     case 'pyramid':
       return createPyramidChart({
         container,
-        data: transformPyramidDataForChart(dataset, cfg),
+        data: transformPyramidDataForChart(activeDataset, cfg, {}),
         config: cfg,
       });
     case 'keyFigure': {
-      const kfData = extractKeyFigureData(dataset);
+      const kfData = extractKeyFigureData(activeDataset, {});
       return createKeyFigureChart({
         container,
         value: kfData.value,
@@ -456,7 +592,7 @@ function createRenderer(
     case 'table':
       return createTableChart({
         container,
-        data: transformTableData(dataset, { tableLayout: cfg.tableLayout }),
+        data: transformTableData(activeDataset, { layout: selectableOptions.layout }),
         config: cfg,
       });
     case 'map': {
@@ -464,7 +600,7 @@ function createRenderer(
         throw new Error('[JsonStatChart] Map chart requires mapProvider to supply geometry');
       }
       const theme = resolveTheme(container, cfg.theme);
-      const mapData = transformMapData(dataset, mapGeometry, cfg.map ?? {}, theme);
+      const mapData = transformMapData(activeDataset, mapGeometry, cfg.map ?? {}, theme);
       return createMapChart({
         container,
         data: mapData,
@@ -480,6 +616,7 @@ export function createChart(
   container: HTMLElement,
   dataset: JsonStatDataset,
   config?: ChartConfig,
+  selectableSelections?: SelectableSelections,
 ): ChartInstance {
   if (!(container instanceof HTMLElement)) {
     throw new TypeError('[JsonStatChart] container must be an HTMLElement');
@@ -487,6 +624,7 @@ export function createChart(
 
   let currentDataset = dataset;
   let currentConfig: ChartConfig = config ?? {};
+  let currentSelectableSelections = selectableSelections;
   let currentChartType: ChartType = 'table';
   let currentRenderer: { destroy(): void } | null = null;
   let destroyed = false;
@@ -559,6 +697,8 @@ export function createChart(
       return;
     }
 
+    const activeCategoryCodes = getActiveSelectableCategoryCodes(ds, cfg, currentSelectableSelections);
+
     // Derive data properties
     const dataProps = deriveDataProperties(ds);
 
@@ -605,9 +745,9 @@ export function createChart(
     if (needsMapResolution) {
       // Async path: resolve map provider
       const dim = ds.dimension[geoDimId!];
-      const geoCodes = getOrderedCodes(dim.category.index);
+      const geoCodes = activeCategoryCodes[geoDimId!] ?? getOrderedCodes(dim.category.index);
       const timeCode = timeDimForMap
-        ? getOrderedCodes(ds.dimension[timeDimForMap.code].category.index)[0]
+        ? (activeCategoryCodes[timeDimForMap.code] ?? getOrderedCodes(ds.dimension[timeDimForMap.code].category.index))[0]
         : undefined;
 
       const abort = new AbortController();
@@ -713,9 +853,12 @@ export function createChart(
       ?? selectDefaultChartType(dataProps, dimMeta, { mapAvailable });
 
     // keyFigure requires single-cell data; fall back to table otherwise
-    const effectiveType: ChartType = resolvedType === 'keyFigure' && !isKeyFigureCompatible(ds)
+    const activeCategoryCodes = getActiveSelectableCategoryCodes(ds, cfg, currentSelectableSelections);
+    const hasExplicitType = chartTypeOverride !== null || cfg.chartType !== undefined;
+    const effectiveType: ChartType = !hasExplicitType && resolvedType === 'keyFigure' && !isKeyFigureCompatible(ds, activeCategoryCodes)
       ? 'table'
       : resolvedType;
+    if (!hasExplicitType) validateRendererSelectableDimensions(ds, cfg, currentSelectableSelections, effectiveType);
 
     // Set container height if specified
     if (cfg.height) {
@@ -729,7 +872,8 @@ export function createChart(
     if (resolvedConfig.showHeader === undefined) resolvedConfig.showHeader = true;
     if (resolvedConfig.showHeader && resolvedConfig.title === undefined) {
       if (resolvedConfig.autoTitle !== false) {
-        const headerResult = buildHeader(dimMeta, { locale: resolvedLocale });
+        const titleDimensions = getAutoTitleDimensions(ds, cfg, currentSelectableSelections, dimMeta);
+        const headerResult = buildHeader(titleDimensions, { locale: resolvedLocale });
         const autoTitle = headerResult.header.trim();
         resolvedConfig.title = autoTitle || ds.label || '';
       } else if (ds.label) {
@@ -802,8 +946,8 @@ export function createChart(
     }
 
     // Create renderer
-    const timeSeriesLabels = computeTimeSeriesLabels(dimMeta, ds, resolvedConfig.xDimension);
-    currentRenderer = createRenderer(effectiveType, container, ds, resolvedConfig, timeSeriesLabels, resolvedMapGeometry ?? undefined);
+    const timeSeriesLabels = computeTimeSeriesLabels(dimMeta, ds, resolvedConfig.layout?.columns[0]);
+    currentRenderer = createRenderer(effectiveType, container, ds, resolvedConfig, currentSelectableSelections, timeSeriesLabels, resolvedMapGeometry ?? undefined);
 
     // Store state
     currentChartType = effectiveType;
@@ -864,7 +1008,7 @@ export function createChart(
   }
 
   return {
-    update(newDataset: JsonStatDataset, newConfig?: ChartConfig): void {
+    update(newDataset: JsonStatDataset, newConfig?: ChartConfig, newSelectableSelections?: SelectableSelections): void {
       if (destroyed) return;
       currentDataset = newDataset;
       if (newConfig !== undefined) {
@@ -875,6 +1019,9 @@ export function createChart(
         if (newConfig.chartType !== undefined) {
           chartTypeOverride = newConfig.chartType;
         }
+      }
+      if (newSelectableSelections !== undefined) {
+        currentSelectableSelections = newSelectableSelections;
       }
       try {
         rebuildPipeline(currentDataset, currentConfig);

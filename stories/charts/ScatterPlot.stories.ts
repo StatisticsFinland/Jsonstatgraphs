@@ -3,7 +3,9 @@ import { renderChart } from '../helpers/renderChart';
 import { buildConfig } from '../helpers/buildConfig';
 import { themeArgTypes, themeArgs } from '../helpers/sharedArgs';
 import { sliceDataset } from '../helpers/sliceDataset';
+import { getSelectableStoryInputs } from '../helpers/selectables';
 import scatterData from '../fixtures/scatter.json';
+import selectableScatterData from '../fixtures/scatter-selectable.json';
 import scatterLargeData from '../fixtures/scatter-large.json';
 
 const meta: Meta = {
@@ -24,6 +26,18 @@ export const Default: StoryObj = {
       config: buildConfig(args, { chartType: 'scatterPlot' }),
       width: args.width as string,
       height: args.height as string | undefined,
+    }),
+};
+
+export const SelectableYear: StoryObj = {
+  render: (args) =>
+    renderChart({
+      dataset: selectableScatterData,
+      config: buildConfig(args, { chartType: 'scatterPlot' }),
+      selectableSelections: { vuosi: ['2023'] },
+      width: args.width as string,
+      height: args.height as string | undefined,
+      ...getSelectableStoryInputs(args),
     }),
 };
 

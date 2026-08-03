@@ -1,4 +1,5 @@
 import { computeTableOrientation, transformTableData } from '../../src/data/table-transform';
+import { rebuildDataset } from '../../src/data/rebuild-dataset';
 import { JsonStatDataset } from '../../src/types';
 
 // ---------------------------------------------------------------------------
@@ -177,7 +178,7 @@ describe('computeTableOrientation', () => {
 
     expect(() =>
       computeTableOrientation(ds, { rows: ['DoesNotExist'], columns: ['Region'] })
-    ).toThrow('[JsonStatChart] Unknown dimension code in tableLayout: "DoesNotExist"');
+    ).toThrow('[JsonStatChart] Unknown dimension code in layout: "DoesNotExist"');
   });
 
   // -------------------------------------------------------------------------
@@ -192,9 +193,9 @@ describe('computeTableOrientation', () => {
   });
 
   // -------------------------------------------------------------------------
-  // Test 9: Manual layout — un-placed multi-value dim throws
+  // Test 9: Manual layout — unplaced dimensions are hidden
   // -------------------------------------------------------------------------
-  it('throws when a multi-value dimension is not placed in rows or columns', () => {
+  it('keeps an unplaced multi-value dimension hidden', () => {
     const ds = makeDataset({
       id: ['Year', 'Region', 'Content'],
       size: [3, 2, 2],
@@ -206,9 +207,11 @@ describe('computeTableOrientation', () => {
       value: new Array(12).fill(0),
     });
 
-    expect(() =>
-      computeTableOrientation(ds, { rows: ['Year'], columns: ['Region'] })
-    ).toThrow('"Content" has size 2 and must be placed in rows or columns');
+    expect(computeTableOrientation(ds, { rows: ['Year'], columns: ['Region'] })).toEqual({
+      rows: ['Year'],
+      columns: ['Region'],
+      hidden: ['Content'],
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -243,7 +246,7 @@ describe('computeTableOrientation', () => {
       value: new Array(6).fill(0),
     });
     expect(() => computeTableOrientation(ds, { rows: ['A', 'A'], columns: ['B'] })).toThrow(
-      /Duplicate dimension code in tableLayout.rows: "A"/
+      /Duplicate dimension code in layout.rows: "A"/
     );
   });
 
@@ -258,7 +261,7 @@ describe('computeTableOrientation', () => {
       value: new Array(6).fill(0),
     });
     expect(() => computeTableOrientation(ds, { rows: ['A'], columns: ['B', 'B'] })).toThrow(
-      /Duplicate dimension code in tableLayout.columns: "B"/
+      /Duplicate dimension code in layout.columns: "B"/
     );
   });
 });
@@ -268,6 +271,34 @@ describe('computeTableOrientation', () => {
 // ===========================================================================
 
 describe('transformTableData', () => {
+  it('uses dataset.id rather than dimension dictionary order for configured layouts', () => {
+    const ds = makeDataset({
+      id: ['Region', 'Year', 'Metric'],
+      size: [2, 2, 1],
+      dimension: {
+        Metric: { label: 'Metric', category: { index: ['value'], label: { value: 'Value' } } },
+        Year: { label: 'Year', category: { index: ['2023', '2024'], label: { '2023': '2023', '2024': '2024' } } },
+        Region: { label: 'Region', category: { index: ['N', 'S'], label: { N: 'North', S: 'South' } } },
+      },
+      value: [10, 20, 30, 40],
+      role: { time: ['Year'], metric: ['Metric'] },
+    });
+
+    const layout = { rows: ['Region'], columns: ['Year'] };
+    const rebuilt = rebuildDataset(ds, {
+      layout,
+      selectableSelections: { Metric: ['value'] },
+    }).dataset;
+    const result = transformTableData(rebuilt, { layout });
+
+    expect(result.rowDimensions.map(dimension => dimension.code)).toEqual(['Region']);
+    expect(result.columnDimensions.map(dimension => dimension.code)).toEqual(['Year']);
+    expect(result.values).toEqual([
+      [10, 20],
+      [30, 40],
+    ]);
+  });
+
   // -------------------------------------------------------------------------
   // Test 11: Standard 2D dataset
   // -------------------------------------------------------------------------
@@ -411,7 +442,7 @@ describe('transformTableData', () => {
   // -------------------------------------------------------------------------
   // Test 15: Manual layout swaps default orientation
   // -------------------------------------------------------------------------
-  it('respects a manual tableLayout that swaps rows and columns', () => {
+  it('respects a manual layout that swaps rows and columns', () => {
     // Without layout: Year(3) → rows, Region(2) → cols  (no roles, size desc)
     // With layout: Region → rows, Year → cols
     const ds = makeDataset({
@@ -434,7 +465,7 @@ describe('transformTableData', () => {
     });
 
     const result = transformTableData(ds, {
-      tableLayout: { rows: ['Region'], columns: ['Year'] },
+      layout: { rows: ['Region'], columns: ['Year'] },
     });
 
     expect(result.rowDimensions.map(d => d.code)).toEqual(['Region']);

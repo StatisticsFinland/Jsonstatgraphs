@@ -30,6 +30,12 @@ export const themeArgTypes: ArgTypes = {
   showHeader: { control: 'boolean', description: 'Show header', table: { category: 'Config' } },
   showLegend: { control: 'boolean', description: 'Show legend', table: { category: 'Config' } },
   autoTitle: { control: 'boolean', description: 'Auto-generate title from dataset', table: { category: 'Config' } },
+  defaultSelectableSelections: { control: 'object', description: 'Fallback dimension/category selections supplied through ChartConfig.', table: { category: 'Selectables' } },
+  multiSelectableDimensionCode: { control: 'text', description: 'Line-chart multi-select dimension supplied through ChartConfig.', table: { category: 'Selectables' } },
+  selectableSelections: { control: 'object', description: 'Current selections supplied to the chart renderer. Overrides dataset extension selections.', table: { category: 'Selectables' } },
+  extensionSelectableSelections: { control: 'object', description: 'Current selections supplied through dataset.extension.selectableConfig.', table: { category: 'Selectables' } },
+  extensionDefaultSelectableSelections: { control: 'object', description: 'Fallback selections supplied through dataset.extension.selectableConfig.', table: { category: 'Selectables' } },
+  extensionMultiSelectableDimensionCode: { control: 'text', description: 'Line-chart multi-select dimension supplied through dataset.extension.selectableConfig.', table: { category: 'Selectables' } },
 
   // Select control
   locale: { control: 'select', options: ['en', 'fi', 'sv'], description: 'Locale', table: { category: 'Config' } },
@@ -54,5 +60,11 @@ export const themeArgs = {
   showHeader: undefined,
   showLegend: undefined,
   autoTitle: undefined,
+  defaultSelectableSelections: undefined,
+  multiSelectableDimensionCode: undefined,
+  selectableSelections: undefined,
+  extensionSelectableSelections: undefined,
+  extensionDefaultSelectableSelections: undefined,
+  extensionMultiSelectableDimensionCode: undefined,
   locale: 'en',
 };

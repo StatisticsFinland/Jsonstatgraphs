@@ -3,7 +3,9 @@ import { renderChart } from '../helpers/renderChart';
 import { buildConfig } from '../helpers/buildConfig';
 import { themeArgTypes, themeArgs } from '../helpers/sharedArgs';
 import { sliceDataset } from '../helpers/sliceDataset';
+import { getSelectableStoryInputs } from '../helpers/selectables';
 import pyramidData from '../fixtures/pyramid.json';
+import selectablePyramidData from '../fixtures/pyramid-selectable.json';
 
 const meta: Meta = {
   title: 'Charts/Pyramid',
@@ -23,6 +25,18 @@ export const Default: StoryObj = {
       config: buildConfig(args, { chartType: 'pyramid' }),
       width: args.width as string,
       height: args.height as string | undefined,
+    }),
+};
+
+export const SelectableYear: StoryObj = {
+  render: (args) =>
+    renderChart({
+      dataset: selectablePyramidData,
+      config: buildConfig(args, { chartType: 'pyramid' }),
+      selectableSelections: { vuosi: ['2023'] },
+      width: args.width as string,
+      height: args.height as string | undefined,
+      ...getSelectableStoryInputs(args),
     }),
 };
 
