@@ -42,9 +42,8 @@ export const themeArgTypes: ArgTypes = {
 
   // Visualization settings
   sorting: {
-    control: 'select',
-    options: ['no_sorting', 'reversed', 'sum', 'ascending', 'descending'],
-    description: 'Category sort order. Bar/pie charts only. Any other string is treated as a series code to sort against.',
+    control: 'text',
+    description: 'Category sort order or series code. Bar/pie charts only.',
     table: { category: 'Config' },
   },
   cutValueAxis: {

@@ -82,6 +82,7 @@ const sortingDemoConfig = { chartType: 'horizontalBar' as const, layout: { rows:
 
 // Default order (no sorting): A, B, C, D, E
 export const SortedNone: StoryObj = {
+  args: { sorting: 'no_sorting' },
   render: (args) =>
     renderChart({
       dataset: sortingDemoData,

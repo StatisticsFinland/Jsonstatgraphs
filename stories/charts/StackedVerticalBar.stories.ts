@@ -85,6 +85,7 @@ const sortingDemoConfig = { chartType: 'stackedVerticalBar' as const, layout: { 
 
 // Default order (no sorting): A, B, C, D, E
 export const SortedNone: StoryObj = {
+  args: { sorting: 'no_sorting' },
   render: (args) =>
     renderChart({
       dataset: sortingDemoData,
