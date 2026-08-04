@@ -12,6 +12,8 @@ const meta: Meta = {
   title: 'Charts/Scatter Plot',
   argTypes: {
     ...themeArgTypes,
+    // Sorting only applies to bar and pie charts.
+    sorting: { table: { disable: true } },
   },
   args: {
     ...themeArgs,
@@ -55,6 +57,28 @@ export const FewPoints: StoryObj = {
   render: (args) =>
     renderChart({
       dataset: sliceDataset(scatterData, 'ika', 3),
+      config: buildConfig(args, { chartType: 'scatterPlot' }),
+      width: args.width as string,
+      height: args.height as string | undefined,
+    }),
+};
+
+export const ZeroBaseline: StoryObj = {
+  args: { cutValueAxis: false },
+  render: (args) =>
+    renderChart({
+      dataset: scatterData,
+      config: buildConfig(args, { chartType: 'scatterPlot' }),
+      width: args.width as string,
+      height: args.height as string | undefined,
+    }),
+};
+
+export const CutValueAxis: StoryObj = {
+  args: { cutValueAxis: true },
+  render: (args) =>
+    renderChart({
+      dataset: scatterData,
       config: buildConfig(args, { chartType: 'scatterPlot' }),
       width: args.width as string,
       height: args.height as string | undefined,

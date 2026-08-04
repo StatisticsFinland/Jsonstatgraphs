@@ -20,7 +20,7 @@ export interface LineChartInstance {
   destroy(): void;
 }
 
-function computeValueRange(data: ChartData): [number, number] {
+export function computeValueRange(data: ChartData, cutValueAxis?: boolean): [number, number] {
   const values: number[] = [];
   for (const series of data.series) {
     for (const point of series.points) {
@@ -32,8 +32,12 @@ function computeValueRange(data: ChartData): [number, number] {
   if (values.length === 0) return [0, 1];
   const min = Math.min(...values);
   const max = Math.max(...values);
-  if (min === max) return [min - 1, max + 1];
-  return [min, max];
+  if (cutValueAxis) {
+    if (min === max) return [min - 1, max + 1];
+    return [min, max];
+  }
+  // Default: always include 0 so the Y axis isn't misleadingly cut
+  return [Math.min(0, min), Math.max(0, max)];
 }
 
 export function createLineChart(chartConfig: LineChartConfig): LineChartInstance {
@@ -68,7 +72,7 @@ export function createLineChart(chartConfig: LineChartConfig): LineChartInstance
   }
 
   const seriesNames = data.series.map(s => s.name);
-  const valueRange = computeValueRange(data);
+  const valueRange = computeValueRange(data, config.cutValueAxis);
 
   const scaffold = new ChartScaffold({
     mode: 'categorical' as const,
@@ -219,7 +223,7 @@ export function createLineChart(chartConfig: LineChartConfig): LineChartInstance
       }
       const updatedAriaLabel = config.ariaLabel ?? (config.title ?? 'Line chart');
       applyChartAriaAttributes(container, updatedAriaLabel);
-      const updatedValueRange = computeValueRange(data);
+      const updatedValueRange = computeValueRange(data, config.cutValueAxis);
       scaffold.update({
         mode: 'categorical' as const,
         container,

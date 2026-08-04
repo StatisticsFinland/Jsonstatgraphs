@@ -1,6 +1,7 @@
 import { createChart } from '../src/index';
 import { JsonStatDataset, GeoJsonFeatureCollection } from '../src/types';
 import * as rebuildDatasetModule from '../src/data/rebuild-dataset';
+import * as sortingModule from '../src/data/sorting';
 
 beforeAll(() => {
   (globalThis as any).ResizeObserver = class {
@@ -440,6 +441,66 @@ describe('destroy', () => {
     const instance = createChart(container, validDataset, { chartType: 'table' });
     instance.destroy();
     expect(() => instance.destroy()).not.toThrow();
+  });
+});
+
+describe('sorting wiring (cfg.sorting)', () => {
+  it.each([
+    ['verticalBar', false],
+    ['horizontalBar', false],
+    ['groupedVerticalBar', false],
+    ['groupedHorizontalBar', false],
+    ['stackedVerticalBar', false],
+    ['stackedHorizontalBar', false],
+    ['percentVerticalBar', true],
+    ['percentHorizontalBar', true],
+    ['pie', false],
+  ] as const)('threads cfg.sorting into %s with isPercent=%s', (chartType, isPercent) => {
+    const spy = jest.spyOn(sortingModule, 'applySorting');
+    createChart(container, validDataset, { chartType, sorting: 'sum', showBurgerMenu: false });
+    expect(spy).toHaveBeenCalledWith(expect.anything(), 'sum', isPercent);
+  });
+
+  it.each(['line', 'pyramid', 'table', 'keyFigure'] as const)(
+    'does not apply sorting for %s charts',
+    (chartType) => {
+      const spy = jest.spyOn(sortingModule, 'applySorting');
+      createChart(container, multiDimDataset, { chartType, sorting: 'sum', showBurgerMenu: false });
+      expect(spy).not.toHaveBeenCalled();
+    },
+  );
+
+  it('does not apply sorting for scatterPlot charts', () => {
+    const spy = jest.spyOn(sortingModule, 'applySorting');
+    createChart(container, selectableScatterDataset, { chartType: 'scatterPlot', sorting: 'sum', showBurgerMenu: false });
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it('does not apply sorting for map charts', async () => {
+    const spy = jest.spyOn(sortingModule, 'applySorting');
+    const provider = jest.fn().mockResolvedValue(mockGeoJson);
+    createChart(container, geoDataset, { chartType: 'map', mapProvider: provider, sorting: 'sum', showBurgerMenu: false });
+    await Promise.resolve();
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it('reorders rendered bars per cfg.sorting (descending)', () => {
+    Object.defineProperty(container, 'clientWidth', { value: 600, configurable: true });
+    Object.defineProperty(container, 'clientHeight', { value: 400, configurable: true });
+    createChart(container, validDataset, { chartType: 'verticalBar', sorting: 'descending', showBurgerMenu: false });
+    const heights = Array.from(container.querySelectorAll<SVGRectElement>('.jsc-bar')).map(r => parseFloat(r.getAttribute('height') ?? '0'));
+    expect(heights).toHaveLength(3);
+    expect(heights[0]).toBeGreaterThan(heights[1]);
+    expect(heights[1]).toBeGreaterThan(heights[2]);
+  });
+
+  it('renders bars in original dataset order without sorting', () => {
+    Object.defineProperty(container, 'clientWidth', { value: 600, configurable: true });
+    Object.defineProperty(container, 'clientHeight', { value: 400, configurable: true });
+    createChart(container, validDataset, { chartType: 'verticalBar', showBurgerMenu: false });
+    const heights = Array.from(container.querySelectorAll<SVGRectElement>('.jsc-bar')).map(r => parseFloat(r.getAttribute('height') ?? '0'));
+    expect(heights[0]).toBeLessThan(heights[1]);
+    expect(heights[1]).toBeLessThan(heights[2]);
   });
 });
 

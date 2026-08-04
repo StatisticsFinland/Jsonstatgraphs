@@ -11,6 +11,10 @@ const meta: Meta = {
   title: 'Charts/Pyramid',
   argTypes: {
     ...themeArgTypes,
+    // Pyramid categories are ordinal (age groups) — reordering them makes the chart incomprehensible.
+    sorting: { table: { disable: true } },
+    // Pyramid uses a categorical value axis, which always anchors at zero — cutValueAxis has no effect here.
+    cutValueAxis: { table: { disable: true } },
   },
   args: {
     ...themeArgs,

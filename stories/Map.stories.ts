@@ -22,7 +22,12 @@ function instantProvider(geo: GeoJsonFeatureCollection) {
 
 const meta: Meta = {
   title: 'Charts/Map',
-  argTypes: { ...themeArgTypes },
+  argTypes: {
+    ...themeArgTypes,
+    // Map has no chart value axis or category ordering — sorting/cutValueAxis have no effect here.
+    sorting: { table: { disable: true } },
+    cutValueAxis: { table: { disable: true } },
+  },
   args: { ...themeArgs, width: '600px' },
 };
 export default meta;

@@ -39,6 +39,18 @@ export const themeArgTypes: ArgTypes = {
 
   // Select control
   locale: { control: 'select', options: ['en', 'fi', 'sv'], description: 'Locale', table: { category: 'Config' } },
+
+  // Visualization settings
+  sorting: {
+    control: 'text',
+    description: 'Category sort order or series code. Bar/pie charts only.',
+    table: { category: 'Config' },
+  },
+  cutValueAxis: {
+    control: 'boolean',
+    description: 'Allow the value axis to not start at 0 (line & scatter plot only).',
+    table: { category: 'Config' },
+  },
 };
 
 export const themeArgs = {
@@ -67,4 +79,6 @@ export const themeArgs = {
   extensionDefaultSelectableSelections: undefined,
   extensionMultiSelectableDimensionCode: undefined,
   locale: 'en',
+  sorting: undefined,
+  cutValueAxis: undefined,
 };

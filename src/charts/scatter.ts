@@ -16,7 +16,7 @@ export interface ScatterChartInstance {
   destroy(): void;
 }
 
-function computeValueRanges(data: ScatterChartData): { xRange: [number, number]; yRange: [number, number] } {
+export function computeValueRanges(data: ScatterChartData, cutValueAxis?: boolean): { xRange: [number, number]; yRange: [number, number] } {
   const validPoints = data.points.filter(p => p.x !== null && p.y !== null);
   if (validPoints.length === 0) {
     return { xRange: [0, 1], yRange: [0, 1] };
@@ -30,9 +30,14 @@ function computeValueRanges(data: ScatterChartData): { xRange: [number, number];
   const yRawMin = Math.min(...yValues);
   const yRawMax = Math.max(...yValues);
 
+  // Default: always include 0 on the Y axis so it isn't misleadingly cut
+  const yRange: [number, number] = cutValueAxis
+    ? [yRawMin, yRawMax]
+    : [Math.min(0, yRawMin), Math.max(0, yRawMax)];
+
   return {
     xRange: [xRawMin, xRawMax],
-    yRange: [yRawMin, yRawMax],
+    yRange,
   };
 }
 
@@ -43,7 +48,7 @@ export function createScatterChart(chartConfig: ScatterChartConfig): ScatterChar
 
   let boundInteractions: BoundInteractions | null = null;
 
-  const { xRange, yRange } = computeValueRanges(data);
+  const { xRange, yRange } = computeValueRanges(data, config.cutValueAxis);
 
   const scaffold = new ChartScaffold({
     mode: 'numeric',
@@ -150,7 +155,7 @@ export function createScatterChart(chartConfig: ScatterChartConfig): ScatterChar
       data = newData;
       if (cfg) config = cfg;
 
-      const { xRange: newXRange, yRange: newYRange } = computeValueRanges(data);
+      const { xRange: newXRange, yRange: newYRange } = computeValueRanges(data, config.cutValueAxis);
       scaffold.update({
         mode: 'numeric',
         container,
