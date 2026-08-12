@@ -5,6 +5,7 @@ import { getLocaleStrings } from '../locale/strings';
 import { JsonStatDataset } from '../types';
 import { buildExportFilename, downloadBlob } from './exportUtils';
 import { decodeCombo, getMetricUnit, product } from './exportTableUtils';
+import { resolveDatasetSource } from '../data/source';
 
 export function quoteCsv(text: string): string {
   return `"${text.replace(/"/g, '""')}"`;
@@ -80,13 +81,14 @@ export function createCsvContent(dataset: JsonStatDataset, locale: string): stri
     rows.push(row);
   }
 
-  const unitLabel = getMetricUnit(dataset);
+  const unitLabel = getMetricUnit(activeDataset);
   if (unitLabel) {
     rows.push([`${strings.unit}: ${unitLabel}`]);
   }
 
-  if (dataset.source) {
-    rows.push([`${strings.source}: ${dataset.source}`]);
+  const source = resolveDatasetSource(activeDataset);
+  if (source) {
+    rows.push([`${strings.source}: ${source}`]);
   }
 
   return rows.map(row => renderCsvRow(row, delimiter, locale)).join('\n');

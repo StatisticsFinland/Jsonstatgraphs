@@ -4,6 +4,8 @@ export type {
   JsonStatDimension,
   JsonStatDataset,
   JsonStatDatasetExtension,
+  JsonStatSourceExtension,
+  JsonStatChartExtension,
   SelectableConfig,
   SelectableSelections,
   ChartType,
@@ -81,6 +83,7 @@ import { createKeyFigureChart } from './charts/key-figure';
 import { createMapChart } from './charts/map';
 import { transformMapData } from './data/map-transform';
 import { BurgerMenu } from './interaction/burger-menu';
+import { resolveDatasetSource } from './data/source';
 
 import { getLocaleStrings } from './locale/strings';
 import type { NiceSkipOptions } from './layout/label-fitting';
@@ -93,6 +96,7 @@ export { getApplicableChartTypes, selectDefaultChartType } from './data/chart-se
 export type { ChartSelectorOptions, DataProperties } from './data/chart-selector';
 export { resolveTheme } from './theme/theme';
 export { transformMapData } from './data/map-transform';
+export { resolveDatasetSource } from './data/source';
 
 // --- Internal helpers ---
 
@@ -511,16 +515,14 @@ function computeTimeSeriesLabels(
 function createRenderer(
   type: ChartType,
   container: HTMLElement,
-  dataset: JsonStatDataset,
+  activeDataset: JsonStatDataset,
   cfg: ChartConfig,
-  selectableSelections: SelectableSelections | undefined,
+  selectableOptions: ReturnType<typeof resolveSelectableDatasetOptions>,
+  burgerMenuVisible: boolean,
   timeSeriesLabels?: NiceSkipOptions,
   mapGeometry?: GeoJsonFeatureCollection,
 ): { destroy(): void } {
-  const selectableOptions = resolveSelectableDatasetOptions(dataset, cfg, selectableSelections);
-  const activeDataset = hasSelectableDatasetOptions(selectableOptions)
-    ? rebuildDataset(dataset, selectableOptions).dataset
-    : dataset;
+  const rendererConfig = { ...cfg, burgerMenuVisible };
   const datasetTransformOptions = {
     layout: selectableOptions.layout,
     multiSelectableDimensionCode: selectableOptions.multiSelectableDimensionCode,
@@ -530,7 +532,7 @@ function createRenderer(
       return createLineChart({
         container,
         data: transformDataset(activeDataset, datasetTransformOptions),
-        config: cfg,
+        config: rendererConfig,
         timeSeriesLabels,
       });
     case 'verticalBar':
@@ -538,7 +540,7 @@ function createRenderer(
       return createBarChart({
         container,
         data: applySorting(transformDataset(activeDataset, datasetTransformOptions), cfg.sorting, false),
-        config: cfg,
+        config: rendererConfig,
         chartType: type,
         timeSeriesLabels,
       });
@@ -547,7 +549,7 @@ function createRenderer(
       return createGroupedBarChart({
         container,
         data: applySorting(transformDataset(activeDataset, datasetTransformOptions), cfg.sorting, false),
-        config: cfg,
+        config: rendererConfig,
         chartType: type,
         timeSeriesLabels,
       });
@@ -559,7 +561,7 @@ function createRenderer(
       return createStackedBarChart({
         container,
         data: applySorting(transformDataset(activeDataset, datasetTransformOptions), cfg.sorting, isPercent),
-        config: cfg,
+        config: rendererConfig,
         chartType: type,
         timeSeriesLabels,
       });
@@ -568,19 +570,19 @@ function createRenderer(
       return createPieChart({
         container,
         data: applySorting(transformDataset(activeDataset, datasetTransformOptions), cfg.sorting, false),
-        config: cfg,
+        config: rendererConfig,
       });
     case 'scatterPlot':
       return createScatterChart({
         container,
         data: transformScatterDataForChart(activeDataset, cfg, {}),
-        config: cfg,
+        config: rendererConfig,
       });
     case 'pyramid':
       return createPyramidChart({
         container,
         data: transformPyramidDataForChart(activeDataset, cfg, {}),
-        config: cfg,
+        config: rendererConfig,
       });
     case 'keyFigure': {
       const kfData = extractKeyFigureData(activeDataset, {});
@@ -589,14 +591,14 @@ function createRenderer(
         value: kfData.value,
         unit: kfData.unit,
         decimals: kfData.decimals,
-        config: cfg,
+        config: rendererConfig,
       });
     }
     case 'table':
       return createTableChart({
         container,
         data: transformTableData(activeDataset, { layout: selectableOptions.layout }),
-        config: cfg,
+        config: rendererConfig,
       });
     case 'map': {
       if (!mapGeometry) {
@@ -607,7 +609,7 @@ function createRenderer(
       return createMapChart({
         container,
         data: mapData,
-        config: cfg,
+        config: rendererConfig,
       });
     }
   }
@@ -857,6 +859,10 @@ export function createChart(
 
     // keyFigure requires single-cell data; fall back to table otherwise
     const activeCategoryCodes = getActiveSelectableCategoryCodes(ds, cfg, currentSelectableSelections);
+    const selectableOptions = resolveSelectableDatasetOptions(ds, cfg, currentSelectableSelections);
+    const activeDataset = hasSelectableDatasetOptions(selectableOptions)
+      ? rebuildDataset(ds, selectableOptions).dataset
+      : ds;
     const hasExplicitType = chartTypeOverride !== null || cfg.chartType !== undefined;
     const effectiveType: ChartType = !hasExplicitType && resolvedType === 'keyFigure' && !isKeyFigureCompatible(ds, activeCategoryCodes)
       ? 'table'
@@ -890,10 +896,10 @@ export function createChart(
     // Auto-populate unit from content dimension (skip for keyFigure which shows unit inline)
     const hasUnit = resolvedConfig.footerItems?.some(f => f.type === 'unit');
     if (!hasUnit && effectiveType !== 'keyFigure') {
-      const metricDimId = ds.role?.metric?.[0] ??
-        ds.id.find(dimId => ds.dimension[dimId].category.unit != null);
+      const metricDimId = activeDataset.role?.metric?.[0] ??
+        activeDataset.id.find(dimId => activeDataset.dimension[dimId].category.unit != null);
       if (metricDimId) {
-        const metricDim = ds.dimension[metricDimId];
+        const metricDim = activeDataset.dimension[metricDimId];
         const codes = getOrderedCodes(metricDim.category.index);
         const unitEntries: { valueName: string; unitLabel: string }[] = [];
         for (const code of codes) {
@@ -920,11 +926,12 @@ export function createChart(
       }
     }
 
+    const resolvedSource = resolveDatasetSource(activeDataset);
     const hasSource = resolvedConfig.footerItems?.some(f => f.type === 'source');
-    if (ds.source && !hasSource) {
+    if (resolvedSource && !hasSource) {
       resolvedConfig.footerItems = [
         ...(resolvedConfig.footerItems ?? []),
-        { type: 'source' as const, label: `${strings.source}:`, value: ds.source },
+        { type: 'source' as const, label: `${strings.source}:`, value: resolvedSource },
       ];
     }
 
@@ -950,7 +957,16 @@ export function createChart(
 
     // Create renderer
     const timeSeriesLabels = computeTimeSeriesLabels(dimMeta, ds, resolvedConfig.layout?.columns[0]);
-    currentRenderer = createRenderer(effectiveType, container, ds, resolvedConfig, currentSelectableSelections, timeSeriesLabels, resolvedMapGeometry ?? undefined);
+    currentRenderer = createRenderer(
+      effectiveType,
+      container,
+      activeDataset,
+      resolvedConfig,
+      selectableOptions,
+      cfg.showBurgerMenu !== false,
+      timeSeriesLabels,
+      resolvedMapGeometry ?? undefined,
+    );
 
     // Store state
     currentChartType = effectiveType;
@@ -979,7 +995,7 @@ export function createChart(
     if (cfg.showBurgerMenu !== false) {
       burgerMenu = new BurgerMenu({
         container,
-        dataset: ds,
+        dataset: activeDataset,
         chartType: effectiveType,
         locale: resolvedLocale,
         theme,

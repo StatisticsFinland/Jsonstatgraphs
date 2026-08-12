@@ -16,9 +16,19 @@ export interface SelectableConfig {
   multiSelectableDimensionCode?: string;
 }
 
+export interface JsonStatSourceExtension {
+  dimension?: Record<string, string>;
+  category?: Record<string, Record<string, string>>;
+}
+
+export interface JsonStatChartExtension {
+  sources?: JsonStatSourceExtension;
+}
+
 /** Known JSON-stat extension fields while preserving extension fields outside this library's scope. */
 export interface JsonStatDatasetExtension {
   selectableConfig?: SelectableConfig;
+  jsonstatChart?: JsonStatChartExtension;
   [key: string]: unknown;
 }
 
@@ -191,6 +201,8 @@ export interface ChartConfig {
   showLegend?: boolean;
   autoTitle?: boolean;
   showBurgerMenu?: boolean;
+  /** Internal layout state set by the chart pipeline when the menu is rendered. */
+  burgerMenuVisible?: boolean;
   menuItemDefinitions?: BurgerMenuItemDefinition[];
   menuIconInheritColor?: boolean;
   /** Allow the line chart / scatter plot value axis to omit the zero baseline (default: always includes 0). No effect on other chart types. */
