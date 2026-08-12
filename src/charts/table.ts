@@ -7,6 +7,7 @@ export interface TableChartConfig {
   container: HTMLElement;
   data: TableData;
   config: ChartConfig;
+  burgerMenuVisible?: boolean;
 }
 
 export interface TableChartInstance {
@@ -161,7 +162,8 @@ function buildTbody(table: HTMLTableElement, data: TableData, rowDimSizes: numbe
 function renderTable(
   wrapper: HTMLDivElement,
   data: TableData,
-  config: ChartConfig
+  config: ChartConfig,
+  burgerMenuVisible = false,
 ): void {
   wrapper.innerHTML = '';
 
@@ -176,7 +178,8 @@ function renderTable(
   const headerEl = document.createElement('div');
   headerEl.className = 'jsc-table-heading';
   headerEl.style.boxSizing = 'border-box';
-  headerEl.style.minHeight = '2.5rem';
+  const hasHeaderContent = Boolean(config.title?.trim() || config.subtitle?.trim());
+  headerEl.style.minHeight = burgerMenuVisible && !hasHeaderContent ? '3rem' : '2.5rem';
   headerEl.style.paddingRight = '3rem';
   headerEl.style.display = 'flex';
   headerEl.style.flexDirection = 'column';
@@ -271,7 +274,7 @@ export function createTableChart(chartConfig: TableChartConfig): TableChartInsta
   container.setAttribute('role', 'region');
   container.setAttribute('aria-label', ariaLabel);
 
-  renderTable(wrapper, data, config);
+  renderTable(wrapper, data, config, chartConfig.burgerMenuVisible);
 
   return {
     update(newData: TableData, newConfig?: ChartConfig): void {

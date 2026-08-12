@@ -6,6 +6,8 @@ export interface CreateZonesOptions {
   showLegend: boolean;
   seriesCount: number;
   hasFooterContent?: boolean;
+  hasBurgerMenu?: boolean;
+  hasHeaderContent?: boolean;
 }
 
 export const ZONE_PRIORITIES: Record<ZoneType, number> = {
@@ -44,7 +46,7 @@ export function applyMeasuredSizes(
 }
 
 export function createZones(options: CreateZonesOptions): ZoneConfig[] {
-  const { chartType, showHeader, showLegend, seriesCount } = options;
+  const { chartType, showHeader, showLegend, seriesCount, hasBurgerMenu, hasHeaderContent } = options;
 
   const isPie = chartType === 'pie';
   const isMap = chartType === 'map';
@@ -56,9 +58,9 @@ export function createZones(options: CreateZonesOptions): ZoneConfig[] {
   return [
     {
       type: ZoneType.Header,
-      visible: showHeader,
+      visible: showHeader || Boolean(hasBurgerMenu),
       minSize: 0,
-      preferredSize: showHeader ? 40 : 0,
+      preferredSize: hasBurgerMenu && !hasHeaderContent ? 48 : (showHeader ? 40 : 0),
       priority: ZONE_PRIORITIES[ZoneType.Header],
     },
     {

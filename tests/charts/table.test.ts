@@ -150,13 +150,25 @@ describe('createTableChart', () => {
     expect((scrollDiv as HTMLElement).style.overflowX).toBe('auto');
   });
 
-  it('reserves the burger menu row and horizontal clearance in the table heading', () => {
-    createTableChart({ container, data: tableData2D, config: defaultConfig });
+  it('reserves a taller burger menu row when the table has no heading content', () => {
+    createTableChart({ container, data: tableData2D, config: defaultConfig, burgerMenuVisible: true });
 
     const heading = container.querySelector('div.jsc-table-heading') as HTMLElement;
     expect(heading).not.toBeNull();
-    expect(heading.style.minHeight).toBe('2.5rem');
+    expect(heading.style.minHeight).toBe('3rem');
     expect(heading.style.paddingRight).toBe('3rem');
+  });
+
+  it('keeps the existing heading height when a title is present', () => {
+    createTableChart({
+      container,
+      data: tableData2D,
+      config: { ...defaultConfig, title: 'Table title' },
+      burgerMenuVisible: true,
+    });
+
+    const heading = container.querySelector('div.jsc-table-heading') as HTMLElement;
+    expect(heading.style.minHeight).toBe('2.5rem');
   });
 
   it('correct number of body rows', () => {

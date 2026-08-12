@@ -36,6 +36,7 @@ interface ChartScaffoldConfigBase {
   seriesNames?: string[];
   xLabel?: string;
   yLabel?: string;
+  burgerMenuVisible?: boolean;
 }
 
 export interface CategoricalScaffoldConfig extends ChartScaffoldConfigBase {
@@ -701,7 +702,7 @@ export class ChartScaffold {
     } else if (config.subtitle) {
       return SUBTITLE_LINE_HEIGHT + HEADER_PADDING;
     } else {
-      return 0;
+      return config.burgerMenuVisible ? 48 : 0;
     }
   }
 
@@ -982,6 +983,10 @@ export class ChartScaffold {
       showHeader: this.scaffoldConfig.config.showHeader ?? false,
       showLegend: this.scaffoldConfig.config.showLegend ?? true,
       seriesCount: this.scaffoldConfig.seriesCount,
+      hasBurgerMenu: this.scaffoldConfig.burgerMenuVisible,
+      hasHeaderContent: Boolean(
+        this.scaffoldConfig.config.title?.trim() || this.scaffoldConfig.config.subtitle?.trim(),
+      ),
     });
     const measurements = this.measureZoneSizes(width, height, isHorizontal);
     const measuredZones = applyMeasuredSizes(zones, measurements);

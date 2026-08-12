@@ -679,7 +679,7 @@ function measureMapZoneSizes(
   } else if (config.subtitle) {
     measurements[ZoneType.Header] = SUBTITLE_LINE_HEIGHT + HEADER_PADDING;
   } else {
-    measurements[ZoneType.Header] = 0;
+    measurements[ZoneType.Header] = config.burgerMenuVisible ? 48 : 0;
   }
 
   const showLegend = config.showLegend ?? true;
@@ -809,6 +809,8 @@ export function createMapChart(chartConfig: MapChartConfig): MapChartInstance {
       showLegend: config.showLegend ?? true,
       seriesCount: data.classification.method === 'linear' ? 1 : data.classification.breaks.length,
       hasFooterContent: (config.footerItems && config.footerItems.length > 0),
+      hasBurgerMenu: config.burgerMenuVisible,
+      hasHeaderContent: Boolean(config.title?.trim() || config.subtitle?.trim()),
     });
 
     const measurements = measureMapZoneSizes(config, data, theme, width, isPortrait);
