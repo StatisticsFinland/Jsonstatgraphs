@@ -548,7 +548,12 @@ function createRenderer(
     case 'groupedHorizontalBar':
       return createGroupedBarChart({
         container,
-        data: applySorting(transformDataset(activeDataset, datasetTransformOptions), cfg.sorting, false),
+        data: applySorting(
+          transformDataset(activeDataset, datasetTransformOptions),
+          cfg.sorting,
+          false,
+          type
+        ),
         config: rendererConfig,
         chartType: type,
         timeSeriesLabels,

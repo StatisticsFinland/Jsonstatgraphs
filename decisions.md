@@ -475,3 +475,14 @@ The initial premise — that `.jsc-bar { fill: blue }` has no effect — was inc
 **Decision:** `ChartConfig.layout` with `{ rows, columns }` is the sole dimension-layout API for every chart type. Table transformation accepts only `layout`; the deprecated `tableLayout` alias is removed.
 
 **Consequences:** Consumers use one layout shape consistently across table and non-table charts. Passing `tableLayout` is no longer supported. ADR-020 remains the historical record of the original table-specific API and is superseded by this decision.
+
+### ADR-036: Hide singleton dimensions in table orientation
+
+**Status:** accepted
+**Date:** 2026-08-13
+
+**Context:** Selectable filtering can reduce a dimension named in `layout` to one active category. Rendering that dimension as a row or column adds a redundant header, and promoting an arbitrary dimension in an all-singleton dataset does not represent a meaningful table direction.
+
+**Decision:** `table-transform.ts` removes every size-1 dimension from visible rows and columns after rebuilding, regardless of whether it was named in `layout`. Singleton and otherwise unplaced dimensions remain in `hiddenDimensions`. An all-singleton dataset produces no visible dimensions and a one-cell values grid; hidden coordinates continue to use category index 0.
+
+**Consequences:** Table orientation depends on active rebuilt sizes, while dimension metadata remains available to headers, exports, and consumers of normalized `TableData`. Manual layout validation still rejects unknown, duplicate, and overlapping dimension codes.

@@ -1,4 +1,4 @@
-import { ChartData, DataSeries } from '../types';
+import { ChartData, ChartType, DataSeries } from '../types';
 
 export const NO_SORTING = 'no_sorting';
 export const REVERSED = 'reversed';
@@ -24,8 +24,27 @@ function categoryTotal(data: ChartData, catIndex: number): number {
  * Unrecognized values are interpreted as a series `.code` to sort against (falls back to a no-op
  * if no series matches).
  */
-export function applySorting(data: ChartData, sorting: string | undefined | null, isPercent: boolean): ChartData {
+export function applySorting(
+  data: ChartData,
+  sorting: string | undefined | null,
+  isPercent: boolean,
+  chartType?: ChartType
+): ChartData {
   if (!sorting || sorting === NO_SORTING) return data;
+
+  const isKeyword =
+    sorting === REVERSED ||
+    sorting === SUM ||
+    sorting === ASCENDING ||
+    sorting === DESCENDING;
+  if (!isKeyword && chartType === 'groupedHorizontalBar' && data.series.some(series => series.code === sorting)) {
+    const selectedSeries = data.series.find(series => series.code === sorting);
+    if (!selectedSeries) return data;
+    return {
+      ...data,
+      series: [selectedSeries, ...data.series.filter(series => series !== selectedSeries)],
+    };
+  }
 
   const indices = data.categories.map((_, i) => i);
 

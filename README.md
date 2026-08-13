@@ -115,7 +115,7 @@ const chart = createChart(container, dataset, {
 | `layout` | `Layout` | Dimension projection with `rows` (series) and `columns` (categories/X axis) |
 | `defaultSelectableSelections` | `SelectableSelections` | Fallback category selections keyed by dimension code |
 | `multiSelectableDimensionCode` | `string` | Dimension whose multiple selected categories are rendered as separate series |
-| `sorting` | `string` | Category sort order for bar and pie charts: `no_sorting`, `reversed`, `sum`, `ascending`, `descending`, or any other string treated as a series/category code to sort by that reference series' values (percent-of-total for percent-stacked charts). No effect on other chart types. |
+| `sorting` | `string` | Category sort order for bar and pie charts: `no_sorting`, `reversed`, `sum`, `ascending`, or `descending`. On grouped horizontal bars, a matching series code moves that series to the top of each group; on other supported charts, a matching code sorts categories by that reference series' values (percent-of-total for percent-stacked charts). |
 | `cutValueAxis` | `boolean` | Allow the line chart / scatter plot value axis to omit the zero baseline (default: axis always includes 0). No effect on other chart types. |
 | `theme` | `ThemeConfig` | Theme customization options (see Theming section) |
 
@@ -152,6 +152,8 @@ chart.update(dataset, undefined, {
 
 `layout.rows` forms chart series and `layout.columns` forms categories on the X axis. During dataset rebuilding, these dimensions are ordered first and omitted dimensions remain in their original relative order. Categorical charts use the first active category of an omitted dimension. A configured `multiSelectableDimensionCode` with multiple active categories is projected as series when it is not explicitly assigned to either direction.
 
+For tables, transformation hides every dimension with one active category after selectable filtering, even when that dimension appears in `layout`. Such dimensions remain available in `hiddenDimensions` metadata, and an all-singleton table uses a single value cell without promoting a dimension into a visible row or column.
+
 When layout or selectable settings are provided, the library internally rebuilds a compact N-dimensional dataset containing only active categories and values once per render. The prepared dataset keeps every source dimension and is then passed to the chart transformer, which only projects it into the dimensionality required by that visualization. Datasets without layout or selectable settings follow the original transformation path unchanged.
 
 JSON-stat coordinate order is defined by `dataset.id`: each entry corresponds to the same position in `dataset.size`, and together they define the flattened `dataset.value` order. The property order of the `dataset.dimension` dictionary is not significant.
@@ -181,6 +183,56 @@ Resolution precedence is:
 An explicitly empty selection uses a non-empty default when available; otherwise it is rejected. Unknown dimensions, unknown category codes, duplicate layout dimensions, and dimensions assigned to both rows and columns are also rejected at the data-source boundary. When a chart type is explicitly chosen, the library trusts that choice after structural dataset validation; automatic chart selection continues to choose only applicable chart types.
 
 Selectable filtering is supported by categorical charts, tables, maps, scatter plots, pyramids, and key figures. During automatic chart selection, the scatter metric/content dimension and pyramid split dimension cannot be selectable because those dimensions define the renderer's required structure. Selected categories are reflected in automatic titles, map geometry requests, and chart-type switches.
+
+## Source Metadata
+
+Source information can be supplied at three levels. The standard JSON-stat `source` field remains the dataset-wide fallback. More specific source mappings are stored in the package extension namespace `extension.jsonstatChart.sources`.
+
+```typescript
+const dataset: JsonStatDataset = {
+  // ...standard JSON-stat fields...
+  source: 'Statistics Finland',
+  role: {
+    metric: ['measure'],
+  },
+  dimension: {
+    measure: {
+      category: {
+        index: { population: 0, employment: 1 },
+      },
+    },
+  },
+  extension: {
+    jsonstatChart: {
+      sources: {
+        // Applies to every active category in this dimension.
+        dimension: {
+          measure: 'Statistics Finland, population and employment database',
+        },
+        // Overrides the dimension source for one category.
+        category: {
+          measure: {
+            employment: 'Statistics Finland, employment statistics',
+          },
+        },
+      },
+    },
+  },
+};
+```
+
+The resolution order for each active category is:
+
+1. `extension.jsonstatChart.sources.category[dimensionCode][categoryCode]`
+2. `extension.jsonstatChart.sources.dimension[dimensionCode]`
+3. `dataset.source`
+
+For example, the `population` category above uses the dimension-level source, while `employment` uses its category-level source. If no extension metadata is provided, a normal string-valued `dataset.source` works unchanged.
+
+Sources are resolved from active metric dimensions after selectable filters are applied. This means changing selections through `createChart()` or `chart.update()` can change the displayed source. Sources are resolved in metric-dimension and category order, duplicate strings are removed while keeping their first occurrence, and the resulting list is used by chart/table footers and CSV exports. Explicit `footerItems` containing a source item still take precedence over automatic source generation.
+
+Do not add `source` properties directly to JSON-stat dimensions or categories. Use the extension namespace so the standard JSON-stat structure remains valid.
+
 ## Burger Menu
 
 Charts render a top-right burger menu button (`☰`) that opens a keyboard-accessible dropdown shell.

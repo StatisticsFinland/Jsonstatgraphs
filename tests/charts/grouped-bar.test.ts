@@ -160,6 +160,33 @@ describe('createGroupedBarChart', () => {
     expect(rects.length).toBe(6);
   });
 
+  it('uses series order for top-to-bottom order in horizontal groups and legend', () => {
+    const prioritizedData: ChartData = {
+      ...twoSeriesData,
+      series: [twoSeriesData.series[1], twoSeriesData.series[0]],
+    };
+
+    createGroupedBarChart({
+      container,
+      data: prioritizedData,
+      config: defaultConfig,
+      chartType: 'groupedHorizontalBar',
+    });
+
+    const firstBarY = Number.parseFloat(
+      (container.querySelector('.jsc-series-0 .jsc-bar') as SVGRectElement).getAttribute('y') ?? '0'
+    );
+    const secondBarY = Number.parseFloat(
+      (container.querySelector('.jsc-series-1 .jsc-bar') as SVGRectElement).getAttribute('y') ?? '0'
+    );
+    expect(firstBarY).toBeLessThan(secondBarY);
+    expect(Array.from(container.querySelectorAll('.jsc-legend-item')).map(item => item.textContent?.trim())).toEqual([
+      'Series B',
+      'Series A',
+    ]);
+    expect(container.querySelector('.jsc-series-0 .jsc-bar')?.getAttribute('aria-label')).toContain('Series B');
+  });
+
   it('ARIA: container has role="figure"', () => {
     createGroupedBarChart({ container, data: twoSeriesData, config: defaultConfig });
     expect(container.getAttribute('role')).toBe('figure');

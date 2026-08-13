@@ -74,4 +74,21 @@ describe('applySorting', () => {
     const data = makeData();
     expect(applySorting(data, 'unknown-code', false)).toBe(data);
   });
+
+  it('prioritizes a matching series for grouped horizontal bars', () => {
+    const data = makeData();
+    const result = applySorting(data, 'B', false, 'groupedHorizontalBar');
+
+    expect(result.categories).toEqual(data.categories);
+    expect(result.series.map(series => series.code)).toEqual(['B', 'A']);
+    expect(result.series[0].points.map(point => point.categoryCode)).toEqual(['c1', 'c2', 'c3']);
+    expect(result.series[1].points.map(point => point.categoryCode)).toEqual(['c1', 'c2', 'c3']);
+  });
+
+  it('retains reference-series category sorting for other chart types', () => {
+    const result = applySorting(makeData(), 'B', false, 'groupedVerticalBar');
+
+    expect(result.categories).toEqual(['c3', 'c1', 'c2']);
+    expect(result.series.map(series => series.code)).toEqual(['A', 'B']);
+  });
 });

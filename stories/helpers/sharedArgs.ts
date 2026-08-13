@@ -43,7 +43,7 @@ export const themeArgTypes: ArgTypes = {
   // Visualization settings
   sorting: {
     control: 'text',
-    description: 'Category sort order or series code. Bar/pie charts only.',
+    description: 'Category sort keyword, reference-series code, or grouped-horizontal series-priority code.',
     table: { category: 'Config' },
   },
   cutValueAxis: {

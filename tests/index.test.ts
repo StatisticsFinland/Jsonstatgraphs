@@ -377,6 +377,8 @@ describe('update', () => {
     );
     expect(container.querySelector('tbody')?.textContent).toContain('100');
     expect(container.querySelector('tbody')?.textContent).not.toContain('80');
+    expect(Array.from(container.querySelectorAll('thead th')).map(cell => cell.textContent)).not.toContain('Helsinki');
+    expect(Array.from(container.querySelectorAll('thead th')).map(cell => cell.textContent)).toContain('2020');
 
     instance.update(multiDimDataset, undefined, { region: ['tre'] });
 
@@ -458,7 +460,11 @@ describe('sorting wiring (cfg.sorting)', () => {
   ] as const)('threads cfg.sorting into %s with isPercent=%s', (chartType, isPercent) => {
     const spy = jest.spyOn(sortingModule, 'applySorting');
     createChart(container, validDataset, { chartType, sorting: 'sum', showBurgerMenu: false });
-    expect(spy).toHaveBeenCalledWith(expect.anything(), 'sum', isPercent);
+    if (chartType === 'groupedHorizontalBar' || chartType === 'groupedVerticalBar') {
+      expect(spy).toHaveBeenCalledWith(expect.anything(), 'sum', isPercent, chartType);
+    } else {
+      expect(spy).toHaveBeenCalledWith(expect.anything(), 'sum', isPercent);
+    }
   });
 
   it.each(['line', 'pyramid', 'table', 'keyFigure'] as const)(

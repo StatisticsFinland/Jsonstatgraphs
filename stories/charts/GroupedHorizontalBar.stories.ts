@@ -109,9 +109,8 @@ export const SortedDescending: StoryObj = {
     }),
 };
 
-// 'export' is a value code of the row (market) dimension — sorts categories descending by that
-// specific series (export: A=15, B=5, C=45, D=25, E=30) -> C, E, D, A, B
-export const SortedByReferenceSeries: StoryObj = {
+// On grouped horizontal bars, a matching series code moves that series to the top of every group.
+export const PrioritizedSeries: StoryObj = {
   args: { sorting: 'export' },
   render: (args) =>
     renderChart({
@@ -121,3 +120,19 @@ export const SortedByReferenceSeries: StoryObj = {
       height: args.height as string | undefined,
     }),
 };
+
+  export const PrioritizedYear: StoryObj = {
+    args: { sorting: '2023' },
+    render: (args) =>
+      renderChart({
+        dataset: selectableMultiSeriesData,
+        config: buildConfig(args, {
+          chartType: 'groupedHorizontalBar',
+          layout: { rows: ['vuosi'], columns: ['alue'] },
+        }),
+        selectableSelections: { scenario: ['current'] },
+        width: args.width as string,
+        height: args.height as string | undefined,
+        ...getSelectableStoryInputs(args),
+      }),
+  };
