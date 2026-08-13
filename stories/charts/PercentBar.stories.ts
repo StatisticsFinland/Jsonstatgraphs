@@ -93,4 +93,3 @@ export const HorizontalSortedByReferenceSeries: StoryObj = {
       height: args.height as string | undefined,
     }),
 };
-

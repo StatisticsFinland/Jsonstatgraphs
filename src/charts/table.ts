@@ -274,7 +274,7 @@ export function createTableChart(chartConfig: TableChartConfig): TableChartInsta
   container.setAttribute('role', 'region');
   container.setAttribute('aria-label', ariaLabel);
 
-  renderTable(wrapper, data, config, chartConfig.burgerMenuVisible);
+  renderTable(wrapper, data, config, config.burgerMenuVisible ?? chartConfig.burgerMenuVisible);
 
   return {
     update(newData: TableData, newConfig?: ChartConfig): void {
@@ -283,7 +283,7 @@ export function createTableChart(chartConfig: TableChartConfig): TableChartInsta
       const label = config.ariaLabel ?? config.title ?? getLocaleStrings(config.locale).tableCaption;
       container.setAttribute('role', 'region');
       container.setAttribute('aria-label', label);
-      renderTable(wrapper, data, config);
+      renderTable(wrapper, data, config, config.burgerMenuVisible);
     },
 
     destroy(): void {

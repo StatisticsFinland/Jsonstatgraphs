@@ -96,4 +96,3 @@ export const TimeSeries: StoryObj = {
       height: args.height as string | undefined,
     }),
 };
-

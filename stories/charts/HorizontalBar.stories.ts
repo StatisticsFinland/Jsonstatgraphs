@@ -103,4 +103,3 @@ export const SortedBySum: StoryObj = {
       height: args.height as string | undefined,
     }),
 };
-

@@ -65,4 +65,3 @@ export const ManyGroups: StoryObj = {
       height: args.height as string | undefined,
     }),
 };
-

@@ -391,6 +391,19 @@ describe('createTableChart', () => {
     expect(container.querySelectorAll('tbody td').length).toBe(4);
   });
 
+  it('update() preserves burger menu spacing from the chart config', () => {
+    const instance = createTableChart({
+      container,
+      data: tableData2D,
+      config: { ...defaultConfig, burgerMenuVisible: true },
+    });
+
+    instance.update(tableData2D);
+
+    const heading = container.querySelector('div.jsc-table-heading') as HTMLElement;
+    expect(heading.style.minHeight).toBe('3rem');
+  });
+
   it('update() re-renders with new config', () => {
     const instance = createTableChart({ container, data: tableData2D, config: defaultConfig });
     expect(container.querySelector('caption')!.textContent).toBe('Data table');

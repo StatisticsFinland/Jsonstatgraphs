@@ -640,6 +640,7 @@ function createRenderer(
         container,
         data: transformTableData(activeDataset, { layout: selectableOptions.layout }),
         config: rendererConfig,
+        burgerMenuVisible,
       });
     case 'map': {
       if (!mapGeometry) {
