@@ -535,16 +535,27 @@ function createRenderer(
         config: rendererConfig,
         timeSeriesLabels,
       });
-    case 'verticalBar':
     case 'horizontalBar':
       return createBarChart({
         container,
-        data: applySorting(transformDataset(activeDataset, datasetTransformOptions), cfg.sorting, false),
+        data: applySorting(
+          transformDataset(activeDataset, datasetTransformOptions),
+          cfg.sorting,
+          false,
+          type
+        ),
         config: rendererConfig,
         chartType: type,
         timeSeriesLabels,
       });
-    case 'groupedVerticalBar':
+    case 'verticalBar':
+      return createBarChart({
+        container,
+        data: transformDataset(activeDataset, datasetTransformOptions),
+        config: rendererConfig,
+        chartType: type,
+        timeSeriesLabels,
+      });
     case 'groupedHorizontalBar':
       return createGroupedBarChart({
         container,
@@ -558,23 +569,48 @@ function createRenderer(
         chartType: type,
         timeSeriesLabels,
       });
-    case 'stackedVerticalBar':
+    case 'groupedVerticalBar':
+      return createGroupedBarChart({
+        container,
+        data: transformDataset(activeDataset, datasetTransformOptions),
+        config: rendererConfig,
+        chartType: type,
+        timeSeriesLabels,
+      });
     case 'stackedHorizontalBar':
-    case 'percentVerticalBar':
     case 'percentHorizontalBar': {
-      const isPercent = type === 'percentVerticalBar' || type === 'percentHorizontalBar';
+      const isPercent = type === 'percentHorizontalBar';
       return createStackedBarChart({
         container,
-        data: applySorting(transformDataset(activeDataset, datasetTransformOptions), cfg.sorting, isPercent),
+        data: applySorting(
+          transformDataset(activeDataset, datasetTransformOptions),
+          cfg.sorting,
+          isPercent,
+          type
+        ),
         config: rendererConfig,
         chartType: type,
         timeSeriesLabels,
       });
     }
+    case 'stackedVerticalBar':
+    case 'percentVerticalBar':
+      return createStackedBarChart({
+        container,
+        data: transformDataset(activeDataset, datasetTransformOptions),
+        config: rendererConfig,
+        chartType: type,
+        timeSeriesLabels,
+      });
     case 'pie':
       return createPieChart({
         container,
-        data: applySorting(transformDataset(activeDataset, datasetTransformOptions), cfg.sorting, false),
+        data: applySorting(
+          transformDataset(activeDataset, datasetTransformOptions),
+          cfg.sorting,
+          false,
+          type
+        ),
         config: rendererConfig,
       });
     case 'scatterPlot':

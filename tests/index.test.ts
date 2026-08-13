@@ -448,24 +448,25 @@ describe('destroy', () => {
 
 describe('sorting wiring (cfg.sorting)', () => {
   it.each([
-    ['verticalBar', false],
     ['horizontalBar', false],
-    ['groupedVerticalBar', false],
     ['groupedHorizontalBar', false],
-    ['stackedVerticalBar', false],
     ['stackedHorizontalBar', false],
-    ['percentVerticalBar', true],
     ['percentHorizontalBar', true],
     ['pie', false],
   ] as const)('threads cfg.sorting into %s with isPercent=%s', (chartType, isPercent) => {
     const spy = jest.spyOn(sortingModule, 'applySorting');
     createChart(container, validDataset, { chartType, sorting: 'sum', showBurgerMenu: false });
-    if (chartType === 'groupedHorizontalBar' || chartType === 'groupedVerticalBar') {
-      expect(spy).toHaveBeenCalledWith(expect.anything(), 'sum', isPercent, chartType);
-    } else {
-      expect(spy).toHaveBeenCalledWith(expect.anything(), 'sum', isPercent);
-    }
+    expect(spy).toHaveBeenCalledWith(expect.anything(), 'sum', isPercent, chartType);
   });
+
+  it.each(['verticalBar', 'groupedVerticalBar', 'stackedVerticalBar', 'percentVerticalBar'] as const)(
+    'does not apply sorting for %s charts',
+    (chartType) => {
+      const spy = jest.spyOn(sortingModule, 'applySorting');
+      createChart(container, validDataset, { chartType, sorting: 'sum', showBurgerMenu: false });
+      expect(spy).not.toHaveBeenCalled();
+    },
+  );
 
   it.each(['line', 'pyramid', 'table', 'keyFigure'] as const)(
     'does not apply sorting for %s charts',
@@ -488,16 +489,6 @@ describe('sorting wiring (cfg.sorting)', () => {
     createChart(container, geoDataset, { chartType: 'map', mapProvider: provider, sorting: 'sum', showBurgerMenu: false });
     await Promise.resolve();
     expect(spy).not.toHaveBeenCalled();
-  });
-
-  it('reorders rendered bars per cfg.sorting (descending)', () => {
-    Object.defineProperty(container, 'clientWidth', { value: 600, configurable: true });
-    Object.defineProperty(container, 'clientHeight', { value: 400, configurable: true });
-    createChart(container, validDataset, { chartType: 'verticalBar', sorting: 'descending', showBurgerMenu: false });
-    const heights = Array.from(container.querySelectorAll<SVGRectElement>('.jsc-bar')).map(r => parseFloat(r.getAttribute('height') ?? '0'));
-    expect(heights).toHaveLength(3);
-    expect(heights[0]).toBeGreaterThan(heights[1]);
-    expect(heights[1]).toBeGreaterThan(heights[2]);
   });
 
   it('renders bars in original dataset order without sorting', () => {

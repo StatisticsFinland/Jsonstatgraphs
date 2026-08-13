@@ -5,6 +5,18 @@ export const REVERSED = 'reversed';
 export const SUM = 'sum';
 export const ASCENDING = 'ascending';
 export const DESCENDING = 'descending';
+const SORTABLE_CHART_TYPES: ChartType[] = [
+  'horizontalBar',
+  'groupedHorizontalBar',
+  'stackedHorizontalBar',
+  'percentHorizontalBar',
+  'pie',
+];
+const SERIES_PRIORITY_CHART_TYPES: ChartType[] = [
+  'groupedHorizontalBar',
+  'stackedHorizontalBar',
+  'percentHorizontalBar',
+];
 
 function reorderCategories(data: ChartData, order: number[]): ChartData {
   return {
@@ -20,9 +32,8 @@ function categoryTotal(data: ChartData, catIndex: number): number {
 }
 
 /**
- * Reorders category (and parallel series-point) order per the `sorting` visualization setting.
- * Unrecognized values are interpreted as a series `.code` to sort against (falls back to a no-op
- * if no series matches).
+ * Reorders supported horizontal/pie chart data per the `sorting` visualization setting.
+ * Series codes are interpreted only for grouped, stacked, and percent horizontal bars.
  */
 export function applySorting(
   data: ChartData,
@@ -30,42 +41,49 @@ export function applySorting(
   isPercent: boolean,
   chartType?: ChartType
 ): ChartData {
-  if (!sorting || sorting === NO_SORTING) return data;
+  if (!sorting || sorting === NO_SORTING || !chartType || !SORTABLE_CHART_TYPES.includes(chartType)) return data;
 
   const isKeyword =
     sorting === REVERSED ||
     sorting === SUM ||
     sorting === ASCENDING ||
     sorting === DESCENDING;
-  if (!isKeyword && chartType === 'groupedHorizontalBar' && data.series.some(series => series.code === sorting)) {
+  if (!isKeyword && (chartType === 'horizontalBar' || chartType === 'pie')) return data;
+
+  let sortedData = data;
+  if (
+    !isKeyword &&
+    SERIES_PRIORITY_CHART_TYPES.includes(chartType) &&
+    data.series.some(series => series.code === sorting)
+  ) {
     const selectedSeries = data.series.find(series => series.code === sorting);
     if (!selectedSeries) return data;
-    return {
+    sortedData = {
       ...data,
       series: [selectedSeries, ...data.series.filter(series => series !== selectedSeries)],
     };
   }
 
-  const indices = data.categories.map((_, i) => i);
+  const indices = sortedData.categories.map((_, i) => i);
 
   if (sorting === REVERSED) {
     const reversedIndices = indices.slice().reverse();
-    return reorderCategories(data, reversedIndices);
+    return reorderCategories(sortedData, reversedIndices);
   }
 
   let valueAt: (catIndex: number) => number;
 
   if (sorting === SUM) {
-    valueAt = catIndex => categoryTotal(data, catIndex);
+    valueAt = catIndex => categoryTotal(sortedData, catIndex);
   } else if (sorting === ASCENDING || sorting === DESCENDING) {
-    const firstSeries = data.series[0];
+    const firstSeries = sortedData.series[0];
     valueAt = catIndex => firstSeries?.points[catIndex]?.value ?? 0;
   } else {
-    const referenceSeries = data.series.find(s => s.code === sorting);
+    const referenceSeries = sortedData.series.find(s => s.code === sorting);
     if (!referenceSeries) return data;
     valueAt = isPercent
       ? catIndex => {
-          const total = categoryTotal(data, catIndex);
+          const total = categoryTotal(sortedData, catIndex);
           return total === 0 ? 0 : ((referenceSeries.points[catIndex]?.value ?? 0) / total) * 100;
         }
       : catIndex => referenceSeries.points[catIndex]?.value ?? 0;
@@ -73,5 +91,5 @@ export function applySorting(
 
   const ascending = sorting === ASCENDING;
   const sortedIndices = [...indices].sort((a, b) => (ascending ? valueAt(a) - valueAt(b) : valueAt(b) - valueAt(a)));
-  return reorderCategories(data, sortedIndices);
+  return reorderCategories(sortedData, sortedIndices);
 }

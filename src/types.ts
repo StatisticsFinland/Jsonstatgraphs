@@ -207,9 +207,9 @@ export interface ChartConfig {
   menuIconInheritColor?: boolean;
   /** Allow the line chart / scatter plot value axis to omit the zero baseline (default: always includes 0). No effect on other chart types. */
   cutValueAxis?: boolean;
-  /** Category sort order for bar and pie charts: `no_sorting` | `reversed` | `sum` | `ascending` | `descending`.
-   *  Other chart types may interpret a matching series code as a reference-series sort; for grouped horizontal
-   *  bars it prioritizes that series at the top of each category group. */
+  /** Sorting for horizontal bar, grouped/stacked/percent horizontal bar, and pie charts:
+   *  `no_sorting` | `reversed` | `sum` | `ascending` | `descending`. Matching series codes are supported
+   *  for grouped, stacked, and percent horizontal bars; grouped horizontal bars prioritize that series. */
   sorting?: string;
 }
 

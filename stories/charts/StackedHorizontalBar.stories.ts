@@ -95,3 +95,14 @@ export const SortedBySum: StoryObj = {
       height: args.height as string | undefined,
     }),
 };
+
+export const SortedByReferenceSeries: StoryObj = {
+  args: { sorting: 'export' },
+  render: (args) =>
+    renderChart({
+      dataset: sortingDemoData,
+      config: buildConfig(args, sortingDemoConfig),
+      width: args.width as string,
+      height: args.height as string | undefined,
+    }),
+};
