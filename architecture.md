@@ -1,6 +1,6 @@
 # Architecture
 
-`@statisticsfinland/jsonstat-chart` is a vanilla TypeScript library that renders interactive statistical charts from JSON-stat 2.0 datasets using D3 and simple-statistics. It has no framework dependency and can be embedded in any web application.
+`@statisticsfinland/jsonstatgraphs` is a vanilla TypeScript library that renders interactive statistical charts from JSON-stat 2.0 datasets using D3 and simple-statistics. It has no framework dependency and can be embedded in any web application.
 
 ## Public API
 

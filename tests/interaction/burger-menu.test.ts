@@ -215,7 +215,7 @@ describe('BurgerMenu assertion tests', () => {
 
     expect(openSpy).not.toHaveBeenCalled();
     expect(consoleErrorSpy).toHaveBeenCalledWith(
-      '[JsonStatChart] Invalid URL for burger menu link item',
+      '[Jsonstatgraphs] Invalid URL for burger menu link item',
       'javascript:alert(1)',
     );
   });

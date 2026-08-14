@@ -75,7 +75,7 @@ function createBuiltInItems(
         if (exportSvg(container, dataset, chartType)) {
           return;
         }
-        console.error('[JsonStatChart] SVG export failed');
+        console.error('[Jsonstatgraphs] SVG export failed');
       },
     });
 
@@ -85,11 +85,11 @@ function createBuiltInItems(
         exportPng(container, dataset, chartType)
           .then((success) => {
             if (!success) {
-              console.error('[JsonStatChart] PNG export failed');
+              console.error('[Jsonstatgraphs] PNG export failed');
             }
           })
           .catch((error) => {
-            console.error('[JsonStatChart] PNG export failed', error);
+            console.error('[Jsonstatgraphs] PNG export failed', error);
           });
       },
     });
@@ -270,7 +270,7 @@ export class BurgerMenu {
                 }
                 safeUrl = parsed.toString();
             } catch {
-                console.error('[JsonStatChart] Invalid URL for burger menu link item', item.url);
+                console.error('[Jsonstatgraphs] Invalid URL for burger menu link item', item.url);
                 return;
             }
             const target = item.openNewTab ? '_blank' : '_self';

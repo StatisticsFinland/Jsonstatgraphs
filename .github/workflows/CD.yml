@@ -1,0 +1,56 @@
+name: Jsonstatgraphs CD
+
+run-name: CD for ${{ github.event.workflow_run.head_branch }}
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows:
+      - "Jsonstatgraphs CI"
+    types:
+      - completed
+    branches:
+      - dev
+      - test
+      - main
+
+env:
+  ENV: ${{ github.event.workflow_run.head_branch == 'dev' && 'd' ||
+    github.event.workflow_run.head_branch == 'test' && 't' ||
+    github.event.workflow_run.head_branch == 'main' && 'latest' }}
+
+jobs:
+  build:
+    permissions:
+        id-token: write
+        contents: read
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        node-version: [24.x]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.workflow_run.head_branch }}
+  
+    - name: Install Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        registry-url: 'https://registry.npmjs.org'
+
+    - name: Install dependencies
+      run: npm ci --no-audit --quiet --prefer-offline
+
+    - name: Validate version bump
+      run: npm run version-helper validate
+      
+    - name: Set prerelease version
+      run: npm run version-helper setpreversion
+      if: env.ENV == 'd' || env.ENV == 't'
+
+    - name: Publish
+      run: npm publish --tag ${{ env.ENV }} --git-tag-version false

@@ -18,7 +18,7 @@ export interface RebuiltDatasetResult {
 }
 
 function fail(message: string): never {
-  throw new Error(`[JsonStatChart] ${message}`);
+  throw new Error(`[Jsonstatgraphs] ${message}`);
 }
 
 export function resolveSelectedCodes(

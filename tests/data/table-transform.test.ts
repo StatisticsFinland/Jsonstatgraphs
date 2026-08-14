@@ -178,7 +178,7 @@ describe('computeTableOrientation', () => {
 
     expect(() =>
       computeTableOrientation(ds, { rows: ['DoesNotExist'], columns: ['Region'] })
-    ).toThrow('[JsonStatChart] Unknown dimension code in layout: "DoesNotExist"');
+    ).toThrow('[Jsonstatgraphs] Unknown dimension code in layout: "DoesNotExist"');
   });
 
   // -------------------------------------------------------------------------

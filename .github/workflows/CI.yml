@@ -1,0 +1,48 @@
+name: Jsonstatgraphs CI
+
+run-name: ${{ github.event_name == 'pull_request' &&
+  format('CI for PR {0}', github.event.pull_request.number) || 
+  format('CI for {0}', github.event.head_commit.message) }}
+
+on:
+  pull_request:
+    branches:
+      - dev
+  push:
+    branches:
+      - dev
+      - test
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    permissions: read-all
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        node-version: [24.x]
+    
+    runs-on: ${{ matrix.os }}
+
+    steps:
+
+    - uses: actions/checkout@v4
+
+    - name: Install Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+    
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Build
+      run: npm run build
+
+    - name: Run tests
+      run: npm run test:ci
+
+    - name: Validate version bump
+      run: npm run version-helper validate
+      if: github.event_name == 'pull_request' && ${{ github.actor != 'dependabot[bot]' }}
