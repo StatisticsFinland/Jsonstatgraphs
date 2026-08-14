@@ -3,7 +3,6 @@ name: Jsonstatgraphs CD
 run-name: CD for ${{ github.event.workflow_run.head_branch }}
 
 on:
-  workflow_dispatch:
   workflow_run:
     workflows:
       - "Jsonstatgraphs CI"
