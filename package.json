@@ -40,6 +40,7 @@
     "build": "vite build",
     "lint": "eslint src stories tests",
     "test": "jest",
+    "test:ci": "jest --ci --reporters=default",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "pack": "npm run build && npm pack"
