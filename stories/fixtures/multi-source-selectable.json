@@ -1,7 +1,7 @@
 {
   "version": "2.0",
   "class": "dataset",
-  "id": ["scenario", "alue", "vuosi", "tiedot"],
+  "id": ["tiedot", "scenario", "alue", "vuosi"],
   "label": "Gross domestic product per capita by area, annually",
   "source": "Example Institute, regional accounts",
   "updated": "2025-11-28T08:00:00",
@@ -85,7 +85,7 @@
     386.1, 389.0, 407.9, 429.9, 443.2,
     347.1, 351.9, 376.2, 401.0, 410.5
   ],
-  "size": [2, 5, 5, 2],
+  "size": [2, 2, 5, 5],
   "extension": {
     "selectableConfig": {
       "multiSelectableDimensionCode": "tiedot"

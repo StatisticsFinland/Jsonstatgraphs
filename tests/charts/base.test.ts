@@ -73,6 +73,16 @@ describe('ChartScaffold', () => {
     expect(document.querySelector('.jsc-footer')?.getAttribute('aria-hidden')).toBeNull();
   });
 
+  it('reserves nested-config burger clearance without rendering a disabled header', () => {
+    const scaffold = new ChartScaffold(createScaffoldConfig({
+      config: { title: 'Hidden Title', showHeader: false, burgerMenuVisible: true },
+    }));
+    const context = scaffold.render();
+
+    expect(document.querySelector('.jsc-header')).toBeNull();
+    expect(context.plotArea.y).toBe(48);
+  });
+
   it('render() uses custom tick positions from getTickPositions', () => {
     const scaffold = new ChartScaffold(createScaffoldConfig({ valueRange: [0, 1000] }));
     const context = scaffold.render();

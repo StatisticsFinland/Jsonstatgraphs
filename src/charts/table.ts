@@ -107,7 +107,7 @@ function buildThead(table: HTMLTableElement, data: TableData, colDimSizes: numbe
   const thead = document.createElement('thead');
   if (data.columnDimensions.length > 0) {
     buildColumnDimRows(thead, data, colDimSizes, theme);
-  } else if (data.rowDimensions.length > 0) {
+  } else {
     buildFallbackThead(thead, data, theme, locale);
   }
   if (thead.rows.length > 0) {
@@ -283,7 +283,7 @@ export function createTableChart(chartConfig: TableChartConfig): TableChartInsta
       const label = config.ariaLabel ?? config.title ?? getLocaleStrings(config.locale).tableCaption;
       container.setAttribute('role', 'region');
       container.setAttribute('aria-label', label);
-      renderTable(wrapper, data, config, config.burgerMenuVisible);
+      renderTable(wrapper, data, config, config.burgerMenuVisible ?? chartConfig.burgerMenuVisible);
     },
 
     destroy(): void {

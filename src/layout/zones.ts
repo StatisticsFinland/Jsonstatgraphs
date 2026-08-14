@@ -60,7 +60,7 @@ export function createZones(options: CreateZonesOptions): ZoneConfig[] {
       type: ZoneType.Header,
       visible: showHeader || Boolean(hasBurgerMenu),
       minSize: 0,
-      preferredSize: hasBurgerMenu && !hasHeaderContent ? 48 : (showHeader ? 40 : 0),
+      preferredSize: hasBurgerMenu && (!showHeader || !hasHeaderContent) ? 48 : (showHeader ? 40 : 0),
       priority: ZONE_PRIORITIES[ZoneType.Header],
     },
     {

@@ -5,6 +5,9 @@ import { themeArgTypes, themeArgs } from './helpers/sharedArgs';
 import multiSeriesData from './fixtures/multi-series.json';
 import tableMultiDimData from './fixtures/table-multi-dim.json';
 import tableWideData from './fixtures/table-wide.json';
+import multiSourceSelectableData from './fixtures/multi-source-selectable.json';
+import type { JsonStatDataset } from '../src/types';
+import { getSelectableStoryInputs } from './helpers/selectables';
 
 const meta: Meta = {
   title: 'Charts/Table',
@@ -28,6 +31,21 @@ export const Table: StoryObj = {
       config: buildConfig(args, { chartType: 'table' }),
       width: args.width as string,
       height: args.height as string | undefined,
+    }),
+};
+
+export const MultiSourceSelectableTable: StoryObj = {
+  args: { width: '1000px' },
+  render: (args) =>
+    renderChart({
+      dataset: multiSourceSelectableData as JsonStatDataset,
+      config: buildConfig(args, {
+        chartType: 'table',
+        layout: { rows: ['alue'], columns: ['vuosi', 'tiedot'] },
+      }),
+      width: args.width as string,
+      height: args.height as string | undefined,
+      ...getSelectableStoryInputs(args),
     }),
 };
 

@@ -90,6 +90,17 @@ describe('createZones', () => {
       expect(getZone(zones, ZoneType.Header).preferredSize).toBe(48);
     });
 
+    it('reserves menu clearance when headers are disabled', () => {
+      const zones = createZones(makeOptions({
+        showHeader: false,
+        hasBurgerMenu: true,
+        hasHeaderContent: true,
+      }));
+      const header = getZone(zones, ZoneType.Header);
+      expect(header.visible).toBe(true);
+      expect(header.preferredSize).toBe(48);
+    });
+
     it('keeps the existing 40 px row when a menu has header content', () => {
       const zones = createZones(makeOptions({
         showHeader: true,

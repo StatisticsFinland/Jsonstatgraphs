@@ -85,6 +85,13 @@ const singleDimData: TableData = {
   hiddenDimensions: [{ code: 'Region', label: 'Region', value: 'Helsinki' }],
 };
 
+const scalarTableData: TableData = {
+  rowDimensions: [],
+  columnDimensions: [],
+  values: [[42]],
+  hiddenDimensions: [{ code: 'Measure', label: 'Measure', value: 'Value' }],
+};
+
 // 2 row dimensions: Region × Gender
 const tableData2RowDim: TableData = {
   rowDimensions: [
@@ -139,6 +146,14 @@ describe('createTableChart', () => {
     createTableChart({ container, data: tableData2D, config: defaultConfig });
     const table = container.querySelector('table.jsc-table');
     expect(table).not.toBeNull();
+  });
+
+  it('renders a value header for scalar tables', () => {
+    createTableChart({ container, data: scalarTableData, config: defaultConfig });
+    const valueHeader = container.querySelector('thead th[scope="col"]');
+
+    expect(valueHeader?.textContent).toBe('Value');
+    expect(container.querySelectorAll('tbody td')).toHaveLength(1);
   });
 
   it('wraps table in scrollable div', () => {

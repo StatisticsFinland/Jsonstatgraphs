@@ -211,7 +211,7 @@ function renderHeader(
   theme: ResolvedTheme,
 ): void {
   const headerRect = layout.zones.get(ZoneType.Header);
-  if (!headerRect || (!config.title && !config.subtitle)) return;
+  if (!headerRect || config.showHeader === false || (!config.title && !config.subtitle)) return;
 
   const headerGroup = svg.append('g').attr('class', 'jsc-header').attr('aria-hidden', 'true');
 
@@ -669,7 +669,9 @@ function measureMapZoneSizes(
   const SUBTITLE_LINE_HEIGHT = subtitleFontSize * 1.25;
   const HEADER_PADDING = 12;
 
-  if (config.title) {
+  if (config.showHeader === false) {
+    measurements[ZoneType.Header] = config.burgerMenuVisible ? 48 : 0;
+  } else if (config.title) {
     const titleMaxWidth = containerWidth - 40;
     const titleWidth = config.title.length * CHAR_WIDTH;
     const titleLineCount = titleMaxWidth > 0 ? Math.max(1, Math.ceil(titleWidth / titleMaxWidth)) : 1;
@@ -810,7 +812,7 @@ export function createMapChart(chartConfig: MapChartConfig): MapChartInstance {
       seriesCount: data.classification.method === 'linear' ? 1 : data.classification.breaks.length,
       hasFooterContent: (config.footerItems && config.footerItems.length > 0),
       hasBurgerMenu: config.burgerMenuVisible,
-      hasHeaderContent: Boolean(config.title?.trim() || config.subtitle?.trim()),
+      hasHeaderContent: config.showHeader !== false && Boolean(config.title?.trim() || config.subtitle?.trim()),
     });
 
     const measurements = measureMapZoneSizes(config, data, theme, width, isPortrait);

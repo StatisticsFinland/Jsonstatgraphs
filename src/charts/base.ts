@@ -219,7 +219,7 @@ export class ChartScaffold {
 
   private renderHeader(layout: LayoutResult): void {
     const headerRect = layout.zones.get(ZoneType.Header);
-    if (!headerRect) return;
+    if (!headerRect || this.scaffoldConfig.config.showHeader === false) return;
 
     const { title, subtitle } = this.scaffoldConfig.config;
     const headerGroup = this.svg.append('g').attr('class', 'jsc-header').attr('aria-hidden', 'true');
@@ -672,6 +672,9 @@ export class ChartScaffold {
     const TITLE_LINE_HEIGHT = titleFontSize * 1.25;
     const SUBTITLE_LINE_HEIGHT = subtitleFontSize * 1.25;
     const HEADER_PADDING = 12;
+    if (config.showHeader === false) {
+      return config.burgerMenuVisible ? 48 : 0;
+    }
     if (config.title) {
       const titleMaxWidth = containerWidth - 40; // 20px padding each side
 
@@ -983,8 +986,8 @@ export class ChartScaffold {
       showHeader: this.scaffoldConfig.config.showHeader ?? false,
       showLegend: this.scaffoldConfig.config.showLegend ?? true,
       seriesCount: this.scaffoldConfig.seriesCount,
-      hasBurgerMenu: this.scaffoldConfig.burgerMenuVisible,
-      hasHeaderContent: Boolean(
+      hasBurgerMenu: this.scaffoldConfig.config.burgerMenuVisible,
+      hasHeaderContent: this.scaffoldConfig.config.showHeader !== false && Boolean(
         this.scaffoldConfig.config.title?.trim() || this.scaffoldConfig.config.subtitle?.trim(),
       ),
     });
