@@ -198,6 +198,8 @@ export interface ChartConfig {
    *  Return `null` if no geometry is available. */
   mapProvider?: MapProvider;
   showHeader?: boolean;
+  /** Add the dataset unit to the footer. Units are shown on the y-axis by default. */
+  showUnit?: boolean;
   showLegend?: boolean;
   autoTitle?: boolean;
   showBurgerMenu?: boolean;

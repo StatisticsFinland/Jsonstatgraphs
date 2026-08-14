@@ -148,19 +148,6 @@ export function createLineChart(chartConfig: LineChartConfig): LineChartInstance
           .attr('stroke', theme.colorSurface)
           .attr('stroke-width', '2')
           .attr('tabindex', '0');
-      } else {
-        seriesGroup
-          .selectAll<SVGCircleElement, LinePoint>('circle')
-          .data(nonNullPoints)
-          .join('circle')
-          .attr('class', 'jsc-marker')
-          .attr('cx', d => xScale(d.categoryCode)!)
-          .attr('cy', d => yScale(d.value as number)!)
-          .attr('r', '4')
-          .attr('fill', color)
-          .attr('stroke', theme.colorSurface)
-          .attr('stroke-width', '2')
-          .attr('tabindex', '0');
       }
 
       // Collect elements for bindInteractions

@@ -78,18 +78,14 @@ describe('createLineChart', () => {
     expect(paths.length).toBe(2);
   });
 
-  it('draws correct number of circle markers for all non-null data points', () => {
+  it('does not draw point markers by default', () => {
     createLineChart({ container, data: singleSeriesData, config: defaultConfig });
-    const circles = container.querySelectorAll('.jsc-marker');
-    // 3 non-null points in single series
-    expect(circles.length).toBe(3);
+    expect(container.querySelectorAll('.jsc-marker')).toHaveLength(0);
   });
 
-  it('null values create gaps — circles omitted for null points', () => {
+  it('null values create gaps without drawing point markers by default', () => {
     createLineChart({ container, data: multiSeriesData, config: defaultConfig });
-    // Helsinki: 3 non-null, Tampere: 2 non-null (one null skipped) => 5 total
-    const circles = container.querySelectorAll('.jsc-marker');
-    expect(circles.length).toBe(5);
+    expect(container.querySelectorAll('.jsc-marker')).toHaveLength(0);
   });
 
   it('single series — no legend shown by default', () => {
@@ -114,13 +110,21 @@ describe('createLineChart', () => {
     expect(container.getAttribute('role')).toBe('figure');
   });
 
-  it('ARIA: circles have role="listitem" and aria-label', () => {
+  it('ARIA: markers are only interactive when accessibility mode is enabled', () => {
     createLineChart({ container, data: singleSeriesData, config: defaultConfig });
-    const circles = container.querySelectorAll('.jsc-marker');
-    expect(circles.length).toBeGreaterThan(0);
-    for (const circle of circles) {
-      expect(circle.getAttribute('role')).toBe('listitem');
-      expect(circle.getAttribute('aria-label')).not.toBeNull();
+    expect(container.querySelectorAll('.jsc-marker')).toHaveLength(0);
+
+    container.innerHTML = '';
+    createLineChart({
+      container,
+      data: singleSeriesData,
+      config: { ...defaultConfig, accessibilityMode: true },
+    });
+    const markers = container.querySelectorAll('.jsc-marker');
+    expect(markers.length).toBeGreaterThan(0);
+    for (const marker of markers) {
+      expect(marker.getAttribute('role')).toBe('listitem');
+      expect(marker.getAttribute('aria-label')).not.toBeNull();
     }
   });
 
@@ -141,13 +145,12 @@ describe('createLineChart', () => {
 
   it('update() re-renders with new data', () => {
     const instance = createLineChart({ container, data: singleSeriesData, config: defaultConfig });
-    const circlesBefore = container.querySelectorAll('.jsc-marker').length;
-    expect(circlesBefore).toBe(3);
+    const markersBefore = container.querySelectorAll('.jsc-marker').length;
+    expect(markersBefore).toBe(0);
 
     instance.update(multiSeriesData);
-    const circlesAfter = container.querySelectorAll('.jsc-marker').length;
-    // Helsinki: 3 non-null, Tampere: 2 non-null => 5
-    expect(circlesAfter).toBe(5);
+    const markersAfter = container.querySelectorAll('.jsc-marker').length;
+    expect(markersAfter).toBe(0);
 
     const pathsAfter = container.querySelectorAll('.jsc-line').length;
     expect(pathsAfter).toBe(2);
@@ -213,30 +216,31 @@ describe('createLineChart', () => {
     // With scalePoint(.padding(0)), range is [0, plotWidth].
     // First category maps to 0, last maps to plotWidth.
     // The actual plotWidth depends on the layout engine, but we can verify
-    // relative positions: first circle cx < second cx < last circle cx,
-    // and the first circle is at the minimum x (0 relative to plot area).
+    // relative positions from the line path, with the first point at the
+    // minimum x (0 relative to plot area).
+    const getLineXValues = (): number[] => {
+      const line = container.querySelector<SVGPathElement>('.jsc-line');
+      const path = line?.getAttribute('d') ?? '';
+      return Array.from(path.matchAll(/[ML](-?\d+(?:\.\d+)?),/g), match => parseFloat(match[1]));
+    };
 
-    it('first data point circle is at the left edge of the plot area (cx closest to 0)', () => {
+    it('first data point is at the left edge of the plot area', () => {
       createLineChart({ container, data: singleSeriesData, config: defaultConfig });
-      const circles = container.querySelectorAll<SVGCircleElement>('.jsc-marker');
-      expect(circles.length).toBe(3);
-      const cxValues = Array.from(circles).map(c => parseFloat(c.getAttribute('cx') ?? '0'));
+      const xValues = getLineXValues();
       // First point should be at the minimum x position (leftmost)
-      expect(cxValues[0]).toBeLessThan(cxValues[1]);
-      expect(cxValues[0]).toBeLessThan(cxValues[2]);
+      expect(xValues[0]).toBeLessThan(xValues[1]);
+      expect(xValues[0]).toBeLessThan(xValues[2]);
     });
 
-    it('last data point circle is at the right edge of the plot area (cx closest to plotWidth)', () => {
+    it('last data point is at the right edge of the plot area', () => {
       createLineChart({ container, data: singleSeriesData, config: defaultConfig });
-      const circles = container.querySelectorAll<SVGCircleElement>('.jsc-marker');
-      expect(circles.length).toBe(3);
-      const cxValues = Array.from(circles).map(c => parseFloat(c.getAttribute('cx') ?? '0'));
+      const xValues = getLineXValues();
       // Last point should be at the maximum x position (rightmost)
-      expect(cxValues[2]).toBeGreaterThan(cxValues[0]);
-      expect(cxValues[2]).toBeGreaterThan(cxValues[1]);
+      expect(xValues[2]).toBeGreaterThan(xValues[0]);
+      expect(xValues[2]).toBeGreaterThan(xValues[1]);
     });
 
-    it('first circle cx equals 0 (scalePoint maps first domain value to range start)', () => {
+    it('first line point x equals 0 (scalePoint maps first domain value to range start)', () => {
       // Use 4 categories to make the scalePoint layout unambiguous
       const fourCatData: ChartData = {
         series: [{
@@ -253,14 +257,12 @@ describe('createLineChart', () => {
         categoryLabels: ['A', 'B', 'C', 'D'],
       };
       createLineChart({ container, data: fourCatData, config: defaultConfig });
-      const circles = container.querySelectorAll<SVGCircleElement>('.jsc-marker');
-      expect(circles.length).toBe(4);
-      const cxValues = Array.from(circles).map(c => parseFloat(c.getAttribute('cx') ?? '-1'));
+      const xValues = getLineXValues();
       // scalePoint with padding(0): first point at 0
-      expect(cxValues[0]).toBeCloseTo(0, 1);
+      expect(xValues[0]).toBeCloseTo(0, 1);
     });
 
-    it('last circle cx equals plotWidth (scalePoint maps last domain value to range end)', () => {
+    it('last line point x equals plotWidth (scalePoint maps last domain value to range end)', () => {
       const fourCatData: ChartData = {
         series: [{
           name: 'Series',
@@ -279,20 +281,18 @@ describe('createLineChart', () => {
       Object.defineProperty(container, 'clientWidth', { value: 600, configurable: true });
       Object.defineProperty(container, 'clientHeight', { value: 400, configurable: true });
       createLineChart({ container, data: fourCatData, config: defaultConfig });
-      const circles = container.querySelectorAll<SVGCircleElement>('.jsc-marker');
-      expect(circles.length).toBe(4);
-      const cxValues = Array.from(circles).map(c => parseFloat(c.getAttribute('cx') ?? '-1'));
+      const xValues = getLineXValues();
       // Points should be equally spaced: step = plotWidth / (N-1)
-      const step01 = cxValues[1] - cxValues[0];
-      const step12 = cxValues[2] - cxValues[1];
-      const step23 = cxValues[3] - cxValues[2];
+      const step01 = xValues[1] - xValues[0];
+      const step12 = xValues[2] - xValues[1];
+      const step23 = xValues[3] - xValues[2];
       expect(step01).toBeCloseTo(step12, 1);
       expect(step12).toBeCloseTo(step23, 1);
-      // Last point at range end = cxValues[0] + 3 * step
-      expect(cxValues[3]).toBeCloseTo(cxValues[0] + 3 * step01, 1);
+      // Last point at range end = xValues[0] + 3 * step
+      expect(xValues[3]).toBeCloseTo(xValues[0] + 3 * step01, 1);
     });
 
-    it('1-category: single data point circle is rendered (no division by zero)', () => {
+    it('1-category: single data point is rendered (no division by zero)', () => {
       const oneCatData: ChartData = {
         series: [{
           name: 'Series',
@@ -303,11 +303,10 @@ describe('createLineChart', () => {
         categoryLabels: ['A'],
       };
       createLineChart({ container, data: oneCatData, config: defaultConfig });
-      const circles = container.querySelectorAll('.jsc-marker');
-      expect(circles.length).toBe(1);
+      expect(getLineXValues()).toHaveLength(1);
     });
 
-    it('2-category: first circle cx ≈ 0, second circle cx ≈ plot width', () => {
+    it('2-category: first line point x ≈ 0, second line point x ≈ plot width', () => {
       const twoCatData: ChartData = {
         series: [{
           name: 'Series',
@@ -321,17 +320,15 @@ describe('createLineChart', () => {
         categoryLabels: ['A', 'B'],
       };
       createLineChart({ container, data: twoCatData, config: defaultConfig });
-      const circles = container.querySelectorAll<SVGCircleElement>('.jsc-marker');
-      expect(circles.length).toBe(2);
-      const cxValues = Array.from(circles).map(c => parseFloat(c.getAttribute('cx') ?? '-1'));
+      const xValues = getLineXValues();
       // First point stays at x=0 (anchored to y-axis)
-      expect(cxValues[0]).toBeCloseTo(0, 1);
+      expect(xValues[0]).toBeCloseTo(0, 1);
       // Get actual plot width from the clip rect
       const clipRect = container.querySelector<SVGRectElement>('clipPath rect');
       const plotWidth = clipRect ? parseFloat(clipRect.getAttribute('width') ?? '0') : 0;
       expect(plotWidth).toBeGreaterThan(0);
-      // Second circle is at the right edge of the plot area
-      expect(cxValues[1]).toBeCloseTo(plotWidth, 1);
+      // Second point is at the right edge of the plot area
+      expect(xValues[1]).toBeCloseTo(plotWidth, 1);
     });
 
     it('x-axis tick count matches number of categories', () => {
@@ -418,17 +415,17 @@ describe('createLineChart', () => {
     expect(firstMarkerPath.getAttribute('d')).toContain('5');
   });
 
-  it('marker stroke uses theme.colorSurface — custom dark theme is reflected on circle markers', () => {
+  it('marker stroke uses theme.colorSurface in accessibility mode', () => {
     const darkColorSurface = '#1a1a2e';
     createLineChart({
       container,
       data: singleSeriesData,
-      config: { theme: { colorSurface: darkColorSurface } },
+      config: { theme: { colorSurface: darkColorSurface }, accessibilityMode: true },
     });
-    const circles = container.querySelectorAll<SVGCircleElement>('.jsc-marker');
-    expect(circles.length).toBeGreaterThan(0);
-    for (const circle of circles) {
-      expect(circle.getAttribute('stroke')).toBe(darkColorSurface);
+    const markers = container.querySelectorAll<SVGPathElement>('.jsc-marker');
+    expect(markers.length).toBeGreaterThan(0);
+    for (const marker of markers) {
+      expect(marker.getAttribute('stroke')).toBe(darkColorSurface);
     }
     // Verify it differs from the default white surface so the test is meaningful
     expect(darkColorSurface).not.toBe(DEFAULT_THEME.colorSurface);

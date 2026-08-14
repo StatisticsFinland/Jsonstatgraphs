@@ -937,6 +937,51 @@ describe('axis titles after update', () => {
   });
 });
 
+describe('unit footer visibility', () => {
+  const datasetWithUnit: JsonStatDataset = {
+    id: ['ContVar', 'Year'],
+    size: [1, 3],
+    dimension: {
+      ContVar: {
+        label: 'Measure',
+        category: {
+          index: ['POP'],
+          label: { POP: 'Population' },
+          unit: { POP: { label: 'persons', decimals: 0 } },
+        },
+      },
+      Year: {
+        label: 'Year',
+        category: {
+          index: ['2020', '2021', '2022'],
+          label: { '2020': '2020', '2021': '2021', '2022': '2022' },
+        },
+      },
+    },
+    value: [100, 200, 300],
+    role: { metric: ['ContVar'], time: ['Year'] },
+  };
+
+  it('does not add the unit to the footer by default', () => {
+    Object.defineProperty(container, 'clientWidth', { value: 600, configurable: true });
+    Object.defineProperty(container, 'clientHeight', { value: 400, configurable: true });
+    createChart(container, datasetWithUnit, { chartType: 'line' });
+
+    expect(container.querySelector('.jsc-footer-unit')).toBeNull();
+    expect(container.querySelector('.jsc-axis-title-y')).not.toBeNull();
+  });
+
+  it('adds the unit to the footer when showUnit is enabled', () => {
+    Object.defineProperty(container, 'clientWidth', { value: 600, configurable: true });
+    Object.defineProperty(container, 'clientHeight', { value: 400, configurable: true });
+    createChart(container, datasetWithUnit, { chartType: 'line', showUnit: true });
+
+    const footerTexts = Array.from(container.querySelectorAll('.jsc-footer-text'))
+      .map(element => element.textContent);
+    expect(footerTexts).toContain('Unit: persons');
+  });
+});
+
 // --- Key figure datasets ---
 
 const keyFigureDataset: JsonStatDataset = {

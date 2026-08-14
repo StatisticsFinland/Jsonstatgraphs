@@ -66,6 +66,7 @@ const chart = createChart(container, dataset, {
   title: 'Custom Title',       // Override auto-generated title
   height: 400,                 // Container height in pixels
   showHeader: true,            // Show auto-generated header (default: true)
+  showUnit: false,             // Also show the dataset unit in the footer (default: false)
   showLegend: true,            // Show legend for multi-series charts
   autoTitle: true,             // Auto-generate title from metadata (default: true)
   layout: {                    // Project the JSON-stat cube into chart series and categories
@@ -103,6 +104,7 @@ const chart = createChart(container, dataset, {
 | `subtitle` | `string` | Subtitle displayed below the title |
 | `height` | `number` | Container height in pixels |
 | `showHeader` | `boolean` | Show auto-generated header (default: `true`) |
+| `showUnit` | `boolean` | Add the dataset unit to the footer (default: `false`; units remain on the y-axis) |
 | `showLegend` | `boolean` | Show legend for multi-series charts (default: `true`) |
 | `autoTitle` | `boolean` | Auto-generate title from metadata (default: `true`) |
 | `accessibilityMode` | `boolean` | Enable accessibility visuals (pattern fills or marker shapes) for supported chart types |

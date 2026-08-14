@@ -935,9 +935,9 @@ export function createChart(
     // Auto-populate footer from dataset metadata
     const strings = getLocaleStrings(resolvedLocale);
 
-    // Auto-populate unit from content dimension (skip for keyFigure which shows unit inline)
+    // Auto-populate unit from content dimension only when explicitly requested.
     const hasUnit = resolvedConfig.footerItems?.some(f => f.type === 'unit');
-    if (!hasUnit && effectiveType !== 'keyFigure') {
+    if (resolvedConfig.showUnit && !hasUnit && effectiveType !== 'keyFigure') {
       const metricDimId = activeDataset.role?.metric?.[0] ??
         activeDataset.id.find(dimId => activeDataset.dimension[dimId].category.unit != null);
       if (metricDimId) {
