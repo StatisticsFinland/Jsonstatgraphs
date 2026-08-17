@@ -392,6 +392,22 @@ describe('createScatterChart', () => {
         .filter(n => !Number.isNaN(n));
     }
 
+    function getXAxisTickValues(): number[] {
+      return Array.from(container.querySelectorAll('.jsc-axis-x .tick text'))
+        .map(t => Number.parseFloat((t.textContent ?? '').replace(/\u2212/, '-')))
+        .filter(n => !Number.isNaN(n));
+    }
+
+    it('rendered X axis includes 0 when all x values are positive', () => {
+      createScatterChart({ container, data: scatterData, config: defaultConfig });
+      expect(getXAxisTickValues()).toContain(0);
+    });
+
+    it('rendered Y axis starts at 0 when all y values are positive', () => {
+      createScatterChart({ container, data: scatterData, config: defaultConfig });
+      expect(Math.min(...getYAxisTickValues())).toBe(0);
+    });
+
     it('rendered Y axis includes 0 by default, even with a narrow, far-from-zero data range', () => {
       createScatterChart({ container, data: narrowYRangeData, config: defaultConfig });
       const ticks = getYAxisTickValues();

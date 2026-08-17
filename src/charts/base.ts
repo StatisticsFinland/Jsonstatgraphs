@@ -884,9 +884,11 @@ export class ChartScaffold {
     const [xMin, xMax] = cfg.xValueRange;
     const [yMin, yMax] = cfg.yValueRange;
 
-    const xPadded = this.padNumericRange(xMin, xMax);
-    const yPadded = this.padNumericRange(yMin, yMax);
     const yForceZeroBaseline = this.isNumericValueAxisZeroForced(cfg);
+    const xPadded = this.padValueRange(xMin, xMax);
+    const yPadded = yForceZeroBaseline
+      ? this.padValueRange(yMin, yMax)
+      : this.padNumericRange(yMin, yMax);
 
     const estimatedAxisHeight = containerHeight * 0.6;
     const yTicks = getTickPositions(yPadded[0], yPadded[1], estimatedAxisHeight, undefined, this.theme.fontSizeTick, yForceZeroBaseline);
@@ -900,7 +902,7 @@ export class ChartScaffold {
     // Right margin — from last X tick label
     const yAxisWidth = measurements[ZoneType.YAxisLabels] ?? 60;
     const estimatedPlotWidth = Math.max(100, containerWidth - yAxisWidth);
-    const xTicks = getTickPositions(xPadded[0], xPadded[1], estimatedPlotWidth, undefined, this.theme.fontSizeTick, false);
+    const xTicks = getTickPositions(xPadded[0], xPadded[1], estimatedPlotWidth, undefined, this.theme.fontSizeTick, true);
     if (xTicks.length > 0) {
       const xFmt = scaleLinear().domain(xPadded).tickFormat();
       const lastTickStr = xFmt(xTicks.at(-1)!);
@@ -1098,11 +1100,13 @@ export class ChartScaffold {
       const cfg = this.scaffoldConfig as NumericScaffoldConfig;
       const [xRawMin, xRawMax] = cfg.xValueRange;
       const [yRawMin, yRawMax] = cfg.yValueRange;
-      const [xPadMin, xPadMax] = this.padNumericRange(xRawMin, xRawMax);
-      const [yPadMin, yPadMax] = this.padNumericRange(yRawMin, yRawMax);
       const yForceZeroBaseline = this.isNumericValueAxisZeroForced(cfg);
+      const [xPadMin, xPadMax] = this.padValueRange(xRawMin, xRawMax);
+      const [yPadMin, yPadMax] = yForceZeroBaseline
+        ? this.padValueRange(yRawMin, yRawMax)
+        : this.padNumericRange(yRawMin, yRawMax);
 
-      const xRawTicks = getTickPositions(xPadMin, xPadMax, plotAreaRect.width, undefined, this.theme.fontSizeTick, false);
+      const xRawTicks = getTickPositions(xPadMin, xPadMax, plotAreaRect.width, undefined, this.theme.fontSizeTick, true);
       const yRawTicks = getTickPositions(yPadMin, yPadMax, plotAreaRect.height, undefined, this.theme.fontSizeTick, yForceZeroBaseline);
       const xTickValues = xRawTicks.length >= 2 ? xRawTicks : [xPadMin, xPadMax];
       const yTickValues = yRawTicks.length >= 2 ? yRawTicks : [yPadMin, yPadMax];
