@@ -7,6 +7,7 @@ import { createZones, applyMeasuredSizes } from '../layout/zones';
 import { computeLayout } from '../layout/layout-engine';
 import { renderSvgFooter } from './footer';
 import { Tooltip, TooltipData } from '../interaction/tooltip';
+import { BURGER_MENU_CLEARANCE } from './base';
 
 
 export interface MapChartConfig {
@@ -218,12 +219,14 @@ function renderHeader(
   const CHAR_WIDTH = 8;
   const LINE_HEIGHT = 1.25;
   const PADDING = 20;
-  const maxWidth = headerRect.width - PADDING * 2;
+  const maxWidth = headerRect.width - PADDING * 2 - (
+    config.burgerMenuVisible ? BURGER_MENU_CLEARANCE : 0
+  );
 
   const titleFontSize = Number.parseFloat(theme.fontSizeTitle) || 16;
   const subtitleFontSize = Number.parseFloat(theme.fontSizeLabel) || 14;
   const titleLineHeight = titleFontSize * LINE_HEIGHT;
-  const centerX = headerRect.x + headerRect.width / 2;
+  const contentStartX = headerRect.x + PADDING;
 
   function wrapText(text: string, charWidth: number): string[] {
     const fullWidth = text.length * charWidth;
@@ -258,8 +261,8 @@ function renderHeader(
   if (titleLines.length > 0) {
     const titleEl = headerGroup.append('text')
       .attr('class', 'jsc-title')
-      .attr('x', centerX)
-      .attr('text-anchor', 'middle')
+      .attr('x', contentStartX)
+      .attr('text-anchor', 'start')
       .attr('font-size', theme.fontSizeTitle)
       .attr('font-family', theme.fontFamily)
       .attr('font-weight', theme.fontWeightBold)
@@ -267,7 +270,7 @@ function renderHeader(
 
     for (let i = 0; i < titleLines.length; i++) {
       const y = contentStartY + (i + 0.5) * titleLineHeight;
-      titleEl.append('tspan').attr('x', centerX).attr('y', y).text(titleLines[i]);
+      titleEl.append('tspan').attr('x', contentStartX).attr('y', y).text(titleLines[i]);
     }
   }
 
@@ -275,9 +278,9 @@ function renderHeader(
     const subtitleY = contentStartY + titleBlockHeight + gap + subtitleFontSize * 0.5 * LINE_HEIGHT;
     headerGroup.append('text')
       .attr('class', 'jsc-subtitle')
-      .attr('x', centerX)
+      .attr('x', contentStartX)
       .attr('y', subtitleY)
-      .attr('text-anchor', 'middle')
+      .attr('text-anchor', 'start')
       .attr('dominant-baseline', 'middle')
       .attr('font-size', theme.fontSizeLabel)
       .attr('font-family', theme.fontFamily)
@@ -672,9 +675,23 @@ function measureMapZoneSizes(
   if (config.showHeader === false) {
     measurements[ZoneType.Header] = config.burgerMenuVisible ? 48 : 0;
   } else if (config.title) {
-    const titleMaxWidth = containerWidth - 40;
-    const titleWidth = config.title.length * CHAR_WIDTH;
-    const titleLineCount = titleMaxWidth > 0 ? Math.max(1, Math.ceil(titleWidth / titleMaxWidth)) : 1;
+    const titleMaxWidth = containerWidth - 40 - (
+      config.burgerMenuVisible ? BURGER_MENU_CLEARANCE : 0
+    );
+    const words = config.title.split(/\s+/);
+    let titleLineCount = 0;
+    let currentLine = '';
+    for (const word of words) {
+      const candidate = currentLine ? `${currentLine} ${word}` : word;
+      if (titleMaxWidth > 0 && candidate.length * CHAR_WIDTH > titleMaxWidth && currentLine) {
+        titleLineCount++;
+        currentLine = word;
+      } else {
+        currentLine = candidate;
+      }
+    }
+    if (currentLine) titleLineCount++;
+    titleLineCount = Math.max(1, titleLineCount);
     let headerHeight = titleLineCount * TITLE_LINE_HEIGHT + HEADER_PADDING;
     if (config.subtitle) headerHeight += SUBTITLE_LINE_HEIGHT;
     measurements[ZoneType.Header] = headerHeight;

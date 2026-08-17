@@ -184,6 +184,8 @@ describe('createTableChart', () => {
 
     const heading = container.querySelector('div.jsc-table-heading') as HTMLElement;
     expect(heading.style.minHeight).toBe('2.5rem');
+    expect(heading.style.paddingLeft).toBe('20px');
+    expect(heading.style.marginBottom).toBe('8px');
   });
 
   it('correct number of body rows', () => {

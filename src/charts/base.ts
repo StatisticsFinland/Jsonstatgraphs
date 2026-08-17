@@ -18,6 +18,8 @@ const X_AXIS_TICK_SIZE = 8;
 /** Gap (px) between the X-axis tick mark and the label text. */
 const X_AXIS_TICK_LABEL_GAP = 4;
 
+export const BURGER_MENU_CLEARANCE = 24;
+
 const HORIZONTAL_CHART_TYPES = new Set<ChartType>([
   'horizontalBar',
   'groupedHorizontalBar',
@@ -227,7 +229,9 @@ export class ChartScaffold {
     const CHAR_WIDTH = 8;
     const LINE_HEIGHT = 1.25; // em
     const PADDING = 20; // px per side
-    const maxWidth = headerRect.width - PADDING * 2;
+    const maxWidth = headerRect.width - PADDING * 2 - (
+      this.scaffoldConfig.config.burgerMenuVisible ? BURGER_MENU_CLEARANCE : 0
+    );
 
     const measureText = (textEl: SVGTextElement, str: string): number => {
       textEl.textContent = str;
@@ -676,7 +680,9 @@ export class ChartScaffold {
       return config.burgerMenuVisible ? 48 : 0;
     }
     if (config.title) {
-      const titleMaxWidth = containerWidth - 40; // 20px padding each side
+      const titleMaxWidth = containerWidth - 40 - (
+        config.burgerMenuVisible ? BURGER_MENU_CLEARANCE : 0
+      );
 
       // Create temp text for measurement
       const tempText = this.svg.append('text')
@@ -685,18 +691,30 @@ export class ChartScaffold {
         .attr('font-weight', this.theme.fontWeightBold)
         .attr('visibility', 'hidden');
       const textNode = tempText.node()!;
-      textNode.textContent = config.title;
-      let titleWidth: number;
-      try {
-        const computed = textNode.getComputedTextLength();
-        titleWidth = computed > 0 ? computed : config.title.length * CHAR_WIDTH;
-      } catch {
-        titleWidth = config.title.length * CHAR_WIDTH;
+      const measureText = (text: string): number => {
+        textNode.textContent = text;
+        try {
+          const computed = textNode.getComputedTextLength();
+          return computed > 0 ? computed : text.length * CHAR_WIDTH;
+        } catch {
+          return text.length * CHAR_WIDTH;
+        }
+      };
+      const words = config.title.split(/\s+/);
+      let titleLineCount = 0;
+      let currentLine = '';
+      for (const word of words) {
+        const candidate = currentLine ? `${currentLine} ${word}` : word;
+        if (titleMaxWidth > 0 && measureText(candidate) > titleMaxWidth && currentLine) {
+          titleLineCount++;
+          currentLine = word;
+        } else {
+          currentLine = candidate;
+        }
       }
+      if (currentLine) titleLineCount++;
       tempText.remove();
-      const titleLineCount = titleMaxWidth > 0
-        ? Math.max(1, Math.ceil(titleWidth / titleMaxWidth))
-        : 1;
+      titleLineCount = Math.max(1, titleLineCount);
       let headerHeight = titleLineCount * TITLE_LINE_HEIGHT + HEADER_PADDING;
       if (config.subtitle) {
         headerHeight += SUBTITLE_LINE_HEIGHT;

@@ -83,6 +83,20 @@ describe('ChartScaffold', () => {
     expect(context.plotArea.y).toBe(48);
   });
 
+  it('wraps the header title before the burger menu', () => {
+    const scaffold = new ChartScaffold(createScaffoldConfig({
+      container: createContainer(240),
+      config: {
+        title: 'A very long chart heading',
+        showHeader: true,
+        burgerMenuVisible: true,
+      },
+    }));
+    scaffold.render();
+
+    expect(document.querySelectorAll('.jsc-title tspan')).toHaveLength(2);
+  });
+
   it('render() uses custom tick positions from getTickPositions', () => {
     const scaffold = new ChartScaffold(createScaffoldConfig({ valueRange: [0, 1000] }));
     const context = scaffold.render();

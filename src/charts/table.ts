@@ -180,7 +180,9 @@ function renderTable(
   headerEl.style.boxSizing = 'border-box';
   const hasHeaderContent = Boolean(config.title?.trim() || config.subtitle?.trim());
   headerEl.style.minHeight = burgerMenuVisible && !hasHeaderContent ? '3rem' : '2.5rem';
+  headerEl.style.paddingLeft = '20px';
   headerEl.style.paddingRight = '3rem';
+  headerEl.style.marginBottom = '8px';
   headerEl.style.display = 'flex';
   headerEl.style.flexDirection = 'column';
   headerEl.style.justifyContent = 'center';

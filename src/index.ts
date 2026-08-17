@@ -404,8 +404,8 @@ function transformScatterDataForChart(
   }
 
   return transformScatterData(dataset, {
-    xContentValue: contentCodes[0],
-    yContentValue: contentCodes[1],
+    xContentValue: contentCodes[1],
+    yContentValue: contentCodes[0],
     observationDimension: cfg.layout?.columns[0],
     activeCategoryCodes,
   });

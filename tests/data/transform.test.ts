@@ -1244,8 +1244,8 @@ describe('transformScatterData', () => {
 
   test('observationLabel is populated from observation dimension label', () => {
     const result = transformScatterData(scatterDataset, {
-      xContentValue: 'price',
-      yContentValue: 'cost',
+      xContentValue: 'cost',
+      yContentValue: 'price',
     });
     expect(result.observationLabel).toBe('Year');
   });
@@ -1261,20 +1261,20 @@ describe('transformScatterData', () => {
       },
     };
     const result = transformScatterData(datasetNoLabel, {
-      xContentValue: 'price',
-      yContentValue: 'cost',
+      xContentValue: 'cost',
+      yContentValue: 'price',
     });
     expect(result.observationLabel).toBeUndefined();
   });
 
   test('points are correctly extracted with x and y values', () => {
     const result = transformScatterData(scatterDataset, {
-      xContentValue: 'price',
-      yContentValue: 'cost',
+      xContentValue: 'cost',
+      yContentValue: 'price',
     });
     expect(result.points).toHaveLength(3);
-    expect(result.points[2].x).toBe(1513);
-    expect(result.points[2].y).toBe(423);
+    expect(result.points[2].x).toBe(423);
+    expect(result.points[2].y).toBe(1513);
     expect(result.points[2].label).toBe('2025');
   });
 
@@ -1296,8 +1296,8 @@ describe('transformScatterData', () => {
       },
     };
     const result = transformScatterData(ds, {
-      xContentValue: 'price',
-      yContentValue: 'cost',
+      xContentValue: 'cost',
+      yContentValue: 'price',
     });
     expect(result.xUnit).toBeUndefined();
     expect(result.yUnit).toBeUndefined();
@@ -1321,8 +1321,8 @@ describe('transformScatterData', () => {
       },
     };
     const result = transformScatterData(ds, {
-      xContentValue: 'price',
-      yContentValue: 'cost',
+      xContentValue: 'cost',
+      yContentValue: 'price',
     });
     expect(result.xUnit).toBeUndefined();
     expect(result.yUnit).toBeUndefined();

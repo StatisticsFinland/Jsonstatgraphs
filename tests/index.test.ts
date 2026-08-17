@@ -502,6 +502,16 @@ describe('sorting wiring (cfg.sorting)', () => {
 });
 
 describe('selectable non-categorical renderers', () => {
+  it('maps scatter series[1] to X and series[0] to Y', () => {
+    createChart(container, selectableScatterDataset, { chartType: 'scatterPlot' });
+
+    const points = Array.from(container.querySelectorAll<SVGCircleElement>('.jsc-scatter-point'));
+    const firstPoint = points[0];
+    expect(firstPoint).not.toBeNull();
+    expect(firstPoint?.getAttribute('aria-label')).toContain('Y: 10');
+    expect(firstPoint?.getAttribute('aria-label')).toContain('X: 1');
+  });
+
   it('filters scatter observations', () => {
     createChart(
       container,
