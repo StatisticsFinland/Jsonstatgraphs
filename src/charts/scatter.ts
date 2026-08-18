@@ -16,8 +16,8 @@ export interface ScatterChartInstance {
   destroy(): void;
 }
 
-export const MIN_SCATTER_POINT_RADIUS_RATIO = 0.005;
-export const MAX_SCATTER_POINT_RADIUS_RATIO = 0.02;
+export const MIN_SCATTER_POINT_RADIUS_RATIO = 0.0075;
+export const MAX_SCATTER_POINT_RADIUS_RATIO = 0.015;
 
 export interface ScatterPointPosition {
   x: number;
@@ -39,9 +39,9 @@ export function computeScatterPointRadius(
   }
 
   const plotSize = Math.min(plotWidth, plotHeight);
-  const minimumRadius = Math.max(1, plotSize * MIN_SCATTER_POINT_RADIUS_RATIO);
-  const maximumRadius = Math.max(minimumRadius, plotSize * MAX_SCATTER_POINT_RADIUS_RATIO);
-  if (points.length <= 1) return maximumRadius;
+  const baseMinimumRadius = Math.max(1, plotSize * MIN_SCATTER_POINT_RADIUS_RATIO);
+  const maximumRadius = Math.max(baseMinimumRadius, plotSize * MAX_SCATTER_POINT_RADIUS_RATIO);
+  if (points.length <= 8) return maximumRadius;
 
   const globalSpacing = Math.sqrt((plotWidth * plotHeight) / points.length);
   const buckets = new Map<string, ScatterPointPosition[]>();
@@ -86,9 +86,10 @@ export function computeScatterPointRadius(
 
   const lowerQuartile = nearestDistances[Math.floor(0.25 * (points.length - 1))];
   const usableSpacing = Math.min(globalSpacing, lowerQuartile);
+  const densityWeight = 0.25 - 0.1 * Math.min(1, points.length / 100);
   return Math.max(
-    minimumRadius,
-    Math.min(maximumRadius, usableSpacing * 0.2),
+    baseMinimumRadius,
+    Math.min(maximumRadius, usableSpacing * 0.2 * densityWeight),
   );
 }
 

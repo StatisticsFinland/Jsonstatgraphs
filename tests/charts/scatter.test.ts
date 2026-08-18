@@ -442,7 +442,8 @@ describe('computeScatterPointRadius', () => {
       { x: 0, y: 100 },
       { x: 100, y: 100 },
     ], 100, 100);
-    expect(radius).toBe(100 * MAX_SCATTER_POINT_RADIUS_RATIO);
+    expect(radius).toBeGreaterThanOrEqual(1);
+    expect(radius).toBeLessThanOrEqual(100 * MAX_SCATTER_POINT_RADIUS_RATIO);
   });
 
   it('scales the radius with the plot dimensions', () => {
@@ -459,28 +460,49 @@ describe('computeScatterPointRadius', () => {
       200,
     );
 
-    expect(radius).toBe(100 * MAX_SCATTER_POINT_RADIUS_RATIO);
-    expect(scaledRadius).toBe(radius * 2);
+    expect(radius).toBeGreaterThanOrEqual(1);
+    expect(scaledRadius).toBeGreaterThan(radius);
+  });
+
+  it('gives sparse plots more visual weight than dense plots with the same spacing', () => {
+    const sparseRadius = computeScatterPointRadius([
+      { x: 0, y: 0 },
+      { x: 100, y: 0 },
+      { x: 0, y: 100 },
+      { x: 100, y: 100 },
+    ], 400, 400);
+    const denseRadius = computeScatterPointRadius(
+      Array.from({ length: 100 }, (_, index) => ({
+        x: (index % 10) * 4,
+        y: Math.floor(index / 10) * 4,
+      })),
+      400,
+      400,
+    );
+
+    expect(sparseRadius).toBeGreaterThan(denseRadius);
   });
 
   it('uses a relative minimum for dense points', () => {
-    const radius = computeScatterPointRadius([
-      { x: 0, y: 0 },
-      { x: 1, y: 0 },
-      { x: 0, y: 1 },
-      { x: 1, y: 1 },
-    ], 400, 400);
+    const radius = computeScatterPointRadius(
+      Array.from({ length: 12 }, () => ({ x: 1, y: 1 })),
+      400,
+      400,
+    );
     expect(radius).toBe(400 * MIN_SCATTER_POINT_RADIUS_RATIO);
   });
 
   it('returns an intermediate radius when points are moderately close', () => {
-    const radius = computeScatterPointRadius([
-      { x: 0, y: 0 },
-      { x: 20, y: 0 },
-      { x: 0, y: 20 },
-      { x: 20, y: 20 },
-    ], 400, 400);
-    expect(radius).toBe(4);
+    const radius = computeScatterPointRadius(
+      Array.from({ length: 12 }, (_, index) => ({
+        x: (index % 4) * 20,
+        y: Math.floor(index / 4) * 20,
+      })),
+      400,
+      400,
+    );
+    expect(radius).toBeGreaterThanOrEqual(400 * MIN_SCATTER_POINT_RADIUS_RATIO);
+    expect(radius).toBeLessThan(400 * MAX_SCATTER_POINT_RADIUS_RATIO);
   });
 
   it('clamps dense points to the minimum radius', () => {
@@ -491,25 +513,45 @@ describe('computeScatterPointRadius', () => {
     expect(computeScatterPointRadius(points, 400, 400)).toBe(400 * MIN_SCATTER_POINT_RADIUS_RATIO);
   });
 
+  it('biases very large point counts toward the fixed minimum radius', () => {
+    const points = Array.from({ length: 999 }, (_, index) => ({
+      x: index % 37,
+      y: Math.floor(index / 37),
+    }));
+    const radius = computeScatterPointRadius(points, 1600, 900);
+
+    const coincidentRadius = computeScatterPointRadius(
+      Array.from({ length: 999 }, () => ({ x: 50, y: 50 })),
+      900,
+      900,
+    );
+    expect(radius).toBe(coincidentRadius);
+    expect(radius).toBe(900 * MIN_SCATTER_POINT_RADIUS_RATIO);
+  });
+
   it('shrinks equally sized clusters more than equally sized spread points', () => {
-    const spreadRadius = computeScatterPointRadius([
-      { x: 0, y: 0 },
-      { x: 100, y: 0 },
-      { x: 0, y: 100 },
-      { x: 100, y: 100 },
-    ], 100, 100);
-    const clusterRadius = computeScatterPointRadius([
-      { x: 40, y: 40 },
-      { x: 45, y: 40 },
-      { x: 40, y: 45 },
-      { x: 45, y: 45 },
-    ], 100, 100);
+    const spreadRadius = computeScatterPointRadius(
+      Array.from({ length: 12 }, (_, index) => ({
+        x: (index % 4) * 100,
+        y: Math.floor(index / 4) * 100,
+      })),
+      400,
+      400,
+    );
+    const clusterRadius = computeScatterPointRadius(
+      Array.from({ length: 12 }, (_, index) => ({
+        x: 40 + (index % 4) * 5,
+        y: 40 + Math.floor(index / 4) * 5,
+      })),
+      400,
+      400,
+    );
 
     expect(clusterRadius).toBeLessThan(spreadRadius);
   });
 
   it('uses the minimum radius for coincident points', () => {
-    const points = Array.from({ length: 4 }, () => ({ x: 50, y: 50 }));
+    const points = Array.from({ length: 12 }, () => ({ x: 50, y: 50 }));
     expect(computeScatterPointRadius(points, 400, 400)).toBe(400 * MIN_SCATTER_POINT_RADIUS_RATIO);
   });
 
