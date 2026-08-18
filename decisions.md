@@ -486,3 +486,14 @@ The initial premise — that `.jsc-bar { fill: blue }` has no effect — was inc
 **Decision:** `table-transform.ts` removes every size-1 dimension from visible rows and columns after rebuilding, regardless of whether it was named in `layout`. Singleton and otherwise unplaced dimensions remain in `hiddenDimensions`. An all-singleton dataset produces no visible dimensions and a one-cell values grid; hidden coordinates continue to use category index 0.
 
 **Consequences:** Table orientation depends on active rebuilt sizes, while dimension metadata remains available to headers, exports, and consumers of normalized `TableData`. Manual layout validation still rejects unknown, duplicate, and overlapping dimension codes.
+
+### ADR-037: Automatic uniform scatter point sizing
+
+**Status:** accepted
+**Date:** 2026-08-18
+
+**Context:** Scatter points previously used a fixed 5 px radius, but point size still needs to adapt to chart dimensions and point density.
+
+**Decision:** Every valid point in a scatter chart uses one automatically calculated radius. The radius is computed from projected screen-space coordinates: global spacing comes from plot area and point count, while a bucketed nearest-neighbor search captures local clustering. The lower-quartile local spacing and global spacing are combined, scaled by 0.2, and clamped between 0.5% and 2% of the shorter plot dimension. A 1 px minimum fallback applies when the relative minimum would be subpixel. The calculation runs during every scaffold render, so resizing and data updates recalculate it. No public configuration or theme token is added.
+
+**Consequences:** Sparse plots receive larger points and dense or clustered plots receive smaller points without introducing a third visual data encoding. Invalid points do not affect density. Screen-space calculation keeps behavior independent of raw data units and naturally accounts for the available plot size, from mobile canvases to large displays. The radius policy is exported as a pure helper for focused tests.
