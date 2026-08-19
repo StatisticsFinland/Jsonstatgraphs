@@ -11,7 +11,7 @@ This package is not yet published to npm. Install it locally:
 npm run pack
 
 # In your consuming project, install the .tgz:
-npm install ../jsonstatgraphs/statisticsfinland-jsonstatgraphs-0.1.0.tgz
+npm install ../jsonstatgraphs/statisticsfinland-jsonstatgraphs-0.2.1.tgz
 ```
 
 Or link for development:
