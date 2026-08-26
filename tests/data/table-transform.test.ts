@@ -310,6 +310,34 @@ describe('transformTableData', () => {
     expect(result.hiddenDimensions.map(dimension => dimension.code)).toEqual(['A', 'B']);
   });
 
+  it('uses the observation status as the missing-value text when descriptions are absent', () => {
+    const ds = makeDataset({
+      id: ['A'],
+      size: [1],
+      dimension: { A: { category: { index: ['a'] } } },
+      value: [null],
+      status: { '0': 'confidential' },
+    });
+
+    expect(transformTableData(ds).missingValueDescriptions).toEqual([['confidential']]);
+  });
+
+  it('uses the observation status when its code has no mapped description', () => {
+    const ds = makeDataset({
+      id: ['A'],
+      size: [2],
+      dimension: { A: { category: { index: ['a', 'b'] } } },
+      value: [null, null],
+      status: { '0': 'mapped', '1': 'unmapped' },
+      extension: { missingValueDescriptions: { mapped: 'Not available' } },
+    });
+
+    expect(transformTableData(ds).missingValueDescriptions).toEqual([
+      ['Not available'],
+      ['unmapped'],
+    ]);
+  });
+
   it('uses dataset.id rather than dimension dictionary order for configured layouts', () => {
     const ds = makeDataset({
       id: ['Region', 'Year', 'Metric'],

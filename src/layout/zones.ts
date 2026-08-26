@@ -32,6 +32,13 @@ const HORIZONTAL_CHART_TYPES = new Set<ChartType>([
   'pyramid',
 ]);
 
+const HORIZONTAL_BAR_CHART_TYPES = new Set<ChartType>([
+  'horizontalBar',
+  'groupedHorizontalBar',
+  'stackedHorizontalBar',
+  'percentHorizontalBar',
+]);
+
 export function applyMeasuredSizes(
   zones: ZoneConfig[],
   measurements: Partial<Record<ZoneType, number>>
@@ -65,7 +72,7 @@ export function createZones(options: CreateZonesOptions): ZoneConfig[] {
     },
     {
       type: ZoneType.YAxisTitle,
-      visible: !isPie && !isMap,
+      visible: !isPie && !isMap && !HORIZONTAL_BAR_CHART_TYPES.has(chartType),
       minSize: 0,
       preferredSize: 25,
       priority: ZONE_PRIORITIES[ZoneType.YAxisTitle],

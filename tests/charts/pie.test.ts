@@ -53,6 +53,33 @@ describe('createPieChart', () => {
     expect(slices.length).toBe(3);
   });
 
+  it('does not render scaffold grid lines behind the pie', () => {
+    createPieChart({ container, data: pieData, config: defaultConfig });
+    expect(container.querySelector('.jsc-grid')).toBeNull();
+  });
+
+  it('keeps every callout connector point clear of its label text', () => {
+    createPieChart({ container, data: pieData, config: defaultConfig });
+    const lines = container.querySelectorAll<SVGPolylineElement>('.jsc-pie-callout-line');
+    const labels = container.querySelectorAll<SVGTextElement>('.jsc-pie-callout-label');
+
+    expect(lines).toHaveLength(labels.length);
+    lines.forEach((line, index) => {
+      const label = labels[index];
+      const labelX = Number(label.getAttribute('x'));
+      const pointXs = (line.getAttribute('points') ?? '')
+        .trim()
+        .split(/\s+/)
+        .map(point => Number(point.split(',')[0]));
+
+      if (label.getAttribute('text-anchor') === 'start') {
+        expect(Math.max(...pointXs)).toBeLessThanOrEqual(labelX - 12);
+      } else {
+        expect(Math.min(...pointXs)).toBeGreaterThanOrEqual(labelX + 12);
+      }
+    });
+  });
+
   it('null values are excluded from slices', () => {
     const dataWithMoreNulls: ChartData = {
       series: [{

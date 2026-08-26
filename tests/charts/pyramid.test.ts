@@ -206,6 +206,30 @@ describe('createPyramidChart', () => {
     expect(Math.max(...positiveLabels)).toBeGreaterThanOrEqual(100);
   });
 
+  it('keeps boundary labels and omits interior labels in a dense layout', () => {
+    const categories = Array.from({ length: 30 }, (_, index) => `age-${index}`);
+    const points = categories.map((categoryCode, index) => ({
+      value: index + 1,
+      label: categoryCode,
+      categoryCode,
+    }));
+    const denseData: PyramidChartData = {
+      leftSeries: { name: 'Left', code: 'left', points },
+      rightSeries: { name: 'Right', code: 'right', points },
+      categories,
+      categoryLabels: categories,
+    };
+
+    createPyramidChart({ container, data: denseData, config: defaultConfig });
+
+    const visibleLabels = Array.from(container.querySelectorAll<SVGGElement>('.jsc-axis-y .tick'))
+      .filter(tick => tick.style.display !== 'none')
+      .map(tick => tick.textContent);
+    expect(visibleLabels).toContain(categories[0]);
+    expect(visibleLabels).toContain(categories.at(-1));
+    expect(visibleLabels.length).toBeLessThan(categories.length / 2);
+  });
+
   it('accessibility mode applies patterned fills to bars', () => {
     createPyramidChart({
       container,

@@ -148,7 +148,9 @@ function buildTbody(table: HTMLTableElement, data: TableData, rowDimSizes: numbe
       const td = document.createElement('td');
       td.className = 'jsc-table-cell';
       const val = rowValues[colIndex] ?? null;
-      td.textContent = val === null ? '\u2013' : val.toLocaleString(config.locale);
+      td.textContent = val === null
+        ? (data.missingValueDescriptions?.[rowIndex]?.[colIndex] ?? '\u2013')
+        : val.toLocaleString(config.locale);
       applyCellStyle(td, theme);
       tr.appendChild(td);
     }

@@ -8,6 +8,7 @@ import { computeLayout } from '../layout/layout-engine';
 import { renderSvgFooter } from './footer';
 import { Tooltip, TooltipData } from '../interaction/tooltip';
 import { BURGER_MENU_CLEARANCE } from './base';
+import { formatNumber } from '../locale/number';
 
 
 export interface MapChartConfig {
@@ -32,6 +33,7 @@ function renderMap(
   theme: ResolvedTheme,
   tooltip: Tooltip,
   touchState: { activeRegion: string | null },
+  locale?: string,
 ): void {
   const featureCollection = {
     type: 'FeatureCollection' as const,
@@ -61,12 +63,12 @@ function renderMap(
       if (value === null) {
         return '\u2013';
       } else if (data.decimals !== undefined) {
-        return value.toLocaleString(undefined, {
+        return formatNumber(value, locale, {
           minimumFractionDigits: data.decimals,
           maximumFractionDigits: data.decimals,
         });
       } else {
-        return value.toLocaleString();
+        return formatNumber(value, locale);
       }
     }
 
@@ -140,6 +142,7 @@ function renderMap(
 function renderScreenReaderTable(
   container: HTMLElement,
   data: MapChartData,
+  locale?: string,
 ): HTMLTableElement {
   const table = document.createElement('table');
   table.className = 'jsc-sr-only';
@@ -189,12 +192,12 @@ function renderScreenReaderTable(
       valueCell.textContent = '\u2013';
       valueCell.setAttribute('aria-label', 'No data');
     } else if (data.decimals !== undefined) {
-      valueCell.textContent = region.value.toLocaleString(undefined, {
+      valueCell.textContent = formatNumber(region.value, locale, {
         minimumFractionDigits: data.decimals,
         maximumFractionDigits: data.decimals,
       });
     } else {
-      valueCell.textContent = region.value.toLocaleString();
+      valueCell.textContent = formatNumber(region.value, locale);
     }
     row.appendChild(nameCell);
     row.appendChild(valueCell);
@@ -296,6 +299,7 @@ function renderLegend(
   data: MapChartData,
   theme: ResolvedTheme,
   mapRightEdge?: number,
+  locale?: string,
 ): void {
   // Check if we should render in the right margin (vertical) or bottom (horizontal)
   const rightMarginRect = layout.zones.get(ZoneType.RightMargin);
@@ -316,7 +320,7 @@ function renderLegend(
     .attr('transform', `translate(${legendX},${targetRect.y})`);
 
   if (data.classification.method === 'linear') {
-    renderGradientLegend(legendGroup, targetRect, data, theme, useRightSide);
+    renderGradientLegend(legendGroup, targetRect, data, theme, useRightSide, locale);
     return;
   }
 
@@ -329,14 +333,14 @@ function renderLegend(
   const breaks = getClassificationBreaks(data);
   for (const brk of breaks) {
     const fmtMin = data.decimals !== undefined
-      ? brk.min.toLocaleString(undefined, { minimumFractionDigits: data.decimals, maximumFractionDigits: data.decimals })
-      : brk.min.toLocaleString();
+      ? formatNumber(brk.min, locale, { minimumFractionDigits: data.decimals, maximumFractionDigits: data.decimals })
+      : formatNumber(brk.min, locale);
     if (brk.openEnded) {
       items.push({ color: brk.color, label: `\u2265\u2009${fmtMin}` });
     } else {
       const fmtMax = data.decimals !== undefined
-        ? brk.max.toLocaleString(undefined, { minimumFractionDigits: data.decimals, maximumFractionDigits: data.decimals })
-        : brk.max.toLocaleString();
+        ? formatNumber(brk.max, locale, { minimumFractionDigits: data.decimals, maximumFractionDigits: data.decimals })
+        : formatNumber(brk.max, locale);
       items.push({ color: brk.color, label: `${fmtMin}\u2013${fmtMax}` });
     }
   }
@@ -418,17 +422,18 @@ function renderGradientLegend(
   data: MapChartData,
   theme: ResolvedTheme,
   useRightSide: boolean,
+  locale?: string,
 ): void {
   if (data.classification.method !== 'linear') return;
   const { scaleMin, scaleMax, colors } = data.classification;
   const fontSize = Number.parseFloat(theme.fontSizeTick) || 12;
 
   const fmtMin = data.decimals !== undefined
-    ? scaleMin.toLocaleString(undefined, { minimumFractionDigits: data.decimals, maximumFractionDigits: data.decimals })
-    : scaleMin.toLocaleString();
+    ? formatNumber(scaleMin, locale, { minimumFractionDigits: data.decimals, maximumFractionDigits: data.decimals })
+    : formatNumber(scaleMin, locale);
   const fmtMax = data.decimals !== undefined
-    ? scaleMax.toLocaleString(undefined, { minimumFractionDigits: data.decimals, maximumFractionDigits: data.decimals })
-    : scaleMax.toLocaleString();
+    ? formatNumber(scaleMax, locale, { minimumFractionDigits: data.decimals, maximumFractionDigits: data.decimals })
+    : formatNumber(scaleMax, locale);
 
   // Degenerate data: render a single solid swatch instead of a gradient
   if (scaleMin === scaleMax) {
@@ -715,11 +720,11 @@ function measureMapZoneSizes(
     if (data.classification.method === 'linear') {
       const { scaleMin, scaleMax } = data.classification;
       const fmtMin = data.decimals !== undefined
-        ? scaleMin.toLocaleString(undefined, { minimumFractionDigits: data.decimals, maximumFractionDigits: data.decimals })
-        : scaleMin.toLocaleString();
+        ? formatNumber(scaleMin, config.locale, { minimumFractionDigits: data.decimals, maximumFractionDigits: data.decimals })
+        : formatNumber(scaleMin, config.locale);
       const fmtMax = data.decimals !== undefined
-        ? scaleMax.toLocaleString(undefined, { minimumFractionDigits: data.decimals, maximumFractionDigits: data.decimals })
-        : scaleMax.toLocaleString();
+        ? formatNumber(scaleMax, config.locale, { minimumFractionDigits: data.decimals, maximumFractionDigits: data.decimals })
+        : formatNumber(scaleMax, config.locale);
       maxLabelWidth = Math.max(fmtMin.length, fmtMax.length) * CHAR_WIDTH_ESTIMATE;
     }
     measurements[ZoneType.RightMargin] = SWATCH_SIZE + 4 + maxLabelWidth + LEGEND_PADDING;
@@ -736,11 +741,11 @@ function measureMapZoneSizes(
     let maxLabelWidth = 0;
     for (const brk of breaks) {
       const fmtMin = data.decimals !== undefined
-        ? brk.min.toLocaleString(undefined, { minimumFractionDigits: data.decimals, maximumFractionDigits: data.decimals })
-        : brk.min.toLocaleString();
+        ? formatNumber(brk.min, config.locale, { minimumFractionDigits: data.decimals, maximumFractionDigits: data.decimals })
+        : formatNumber(brk.min, config.locale);
       const fmtMax = data.decimals !== undefined
-        ? brk.max.toLocaleString(undefined, { minimumFractionDigits: data.decimals, maximumFractionDigits: data.decimals })
-        : brk.max.toLocaleString();
+        ? formatNumber(brk.max, config.locale, { minimumFractionDigits: data.decimals, maximumFractionDigits: data.decimals })
+        : formatNumber(brk.max, config.locale);
       const label = `${fmtMin}\u2013${fmtMax}`;
       const labelWidth = label.length * CHAR_WIDTH_ESTIMATE;
       if (labelWidth > maxLabelWidth) maxLabelWidth = labelWidth;
@@ -893,10 +898,10 @@ export function createMapChart(chartConfig: MapChartConfig): MapChartInstance {
     touchState.activeRegion = null;
 
     renderHeader(svg, layout, config, theme);
-    renderMap(svg, data, mapContentRect, theme, tooltip, touchState);
+    renderMap(svg, data, mapContentRect, theme, tooltip, touchState, config.locale);
     if (config.showLegend !== false) {
       const mapRightEdge = mapContentRect.x + mapContentRect.width;
-      renderLegend(svg, layout, data, theme, mapRightEdge);
+      renderLegend(svg, layout, data, theme, mapRightEdge, config.locale);
     }
 
     if (footerRect && config.footerItems && config.footerItems.length > 0) {
@@ -916,7 +921,7 @@ export function createMapChart(chartConfig: MapChartConfig): MapChartInstance {
     svg.attr('role', 'img');
     svg.attr('aria-label', ariaLabel);
 
-    srTable = renderScreenReaderTable(container, data);
+    srTable = renderScreenReaderTable(container, data, config.locale);
   }
 
   render();

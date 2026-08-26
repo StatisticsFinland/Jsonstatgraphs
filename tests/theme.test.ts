@@ -44,8 +44,8 @@ describe('getSeriesColor', () => {
 
   it('returns hardcoded fallback when palette is empty', () => {
     const empty: ResolvedTheme = { ...DEFAULT_THEME, seriesColors: [] };
-    expect(getSeriesColor(empty, 0)).toBe('#4e79a7');
-    expect(getSeriesColor(empty, 5)).toBe('#4e79a7');
+    expect(getSeriesColor(empty, 0)).toBe('#1A56EC');
+    expect(getSeriesColor(empty, 5)).toBe('#1A56EC');
   });
 });
 
@@ -255,10 +255,10 @@ describe('resolveTheme', () => {
       expect(result.seriesColors).toEqual(custom);
     });
 
-    it('reads CSS --jsc-series-1 through --jsc-series-8 when no JS config', () => {
+    it('reads CSS series variables and preserves remaining default colors', () => {
       const el = document.createElement('div');
       document.body.appendChild(el);
-      const cssColors = ['#c1', '#c2', '#c3', '#c4', '#c5', '#c6', '#c7', '#c8'];
+      const cssColors = ['#c1', '#c2', '#c3', '#c4', '#c5', '#c6', '#c7', '#c8', '#c9', '#c10'];
       cssColors.forEach((c, i) => el.style.setProperty(`--jsc-series-${i + 1}`, c));
       const result = resolveTheme(el);
       expect(result.seriesColors).toEqual(cssColors);
@@ -269,7 +269,7 @@ describe('resolveTheme', () => {
       document.body.appendChild(el);
       el.style.setProperty('--jsc-series-1', '#a1');
       el.style.setProperty('--jsc-series-2', '#a2');
-      // series 3-8 are not set
+      // series 3-10 are not set
       const result = resolveTheme(el);
       const expected = [...DEFAULT_THEME.seriesColors];
       expected[0] = '#a1';
@@ -314,7 +314,7 @@ describe('resolveTheme', () => {
     it('mutating returned seriesColors does not affect DEFAULT_THEME', () => {
       const result = resolveTheme(null);
       result.seriesColors[0] = '#mutated';
-      expect(DEFAULT_THEME.seriesColors[0]).toBe('#4e79a7');
+      expect(DEFAULT_THEME.seriesColors[0]).toBe('#1A56EC');
     });
   });
 

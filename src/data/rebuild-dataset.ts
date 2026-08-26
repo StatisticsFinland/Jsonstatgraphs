@@ -110,6 +110,17 @@ export function rebuildDataset(
     });
     return dataset.value[computeFlatIndex(sourceCoordinates, sourceStrides)];
   });
+  const status = dataset.status
+    ? Object.fromEntries(Array.from({ length: valueCount }, (_, targetFlatIndex) => {
+        const targetCoordinates = decodeIndex(targetFlatIndex, targetSize, targetStrides);
+        const sourceCoordinates = new Array<number>(dataset.id.length).fill(0);
+        targetDimensions.forEach((dimension, targetIndex) => {
+          sourceCoordinates[dimension.sourceIndex] = dimension.categories[targetCoordinates[targetIndex]].sourceIndex;
+        });
+        const sourceStatus = dataset.status?.[String(computeFlatIndex(sourceCoordinates, sourceStrides))];
+        return sourceStatus === undefined ? [] : [String(targetFlatIndex), sourceStatus];
+      }).filter((entry): entry is [string, string] => entry.length > 0))
+    : undefined;
 
   const dimension = Object.fromEntries(targetDimensions.map(activeDimension => {
     const codes = activeDimension.categories.map(category => category.code);
@@ -126,6 +137,7 @@ export function rebuildDataset(
       size: targetSize,
       dimension,
       value,
+      status,
       extension,
     },
   };

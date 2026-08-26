@@ -145,7 +145,7 @@ function buildValuesGrid(
   columns: string[],
   codeToIdx: Map<string, number>,
   strides: number[]
-): (number | null)[][] {
+): { values: (number | null)[][]; missingValueDescriptions: (string | null)[][] } {
   const { id, value } = dataset;
 
   const rowSizes = rows.map(code => dataset.size[codeToIdx.get(code) ?? 0]);
@@ -155,10 +155,13 @@ function buildValuesGrid(
   const numColCombos = colSizes.reduce((acc, s) => acc * s, 1);
 
   const grid: (number | null)[][] = [];
+  const missingValueDescriptions: (string | null)[][] = [];
+  const descriptions = dataset.extension?.missingValueDescriptions;
 
   for (let r = 0; r < numRowCombos; r++) {
     const rowCatIndices = decodeCombo(r, rowSizes);
     const row: (number | null)[] = [];
+    const missingRow: (string | null)[] = [];
 
     for (let c = 0; c < numColCombos; c++) {
       const colCatIndices = decodeCombo(c, colSizes);
@@ -179,12 +182,19 @@ function buildValuesGrid(
 
       const v = value[flatIdx];
       row.push(v === null || typeof v === 'string' ? null : v);
+      const statusCode = dataset.status?.[String(flatIdx)];
+      missingRow.push(
+        (v === null || typeof v === 'string') && statusCode
+          ? (descriptions?.[statusCode] ?? statusCode)
+          : null,
+      );
     }
 
     grid.push(row);
+    missingValueDescriptions.push(missingRow);
   }
 
-  return grid;
+  return { values: grid, missingValueDescriptions };
 }
 
 // ---------------------------------------------------------------------------
@@ -281,7 +291,7 @@ export function transformTableData(
 
   const rowDimensions = rows.map(buildTableDimension);
   const columnDimensions = columns.map(buildTableDimension);
-  const values = buildValuesGrid(dataset, rows, columns, codeToIdx, strides);
+  const { values, missingValueDescriptions } = buildValuesGrid(dataset, rows, columns, codeToIdx, strides);
 
   const hiddenDimensions = hidden.map(code => {
     const codes = getOrderedCategoryCodes(code);
@@ -289,5 +299,5 @@ export function transformTableData(
     return { code, label: getDimLabel(code), value: getCatLabel(code, catCode) };
   });
 
-  return { rowDimensions, columnDimensions, values, hiddenDimensions };
+  return { rowDimensions, columnDimensions, values, missingValueDescriptions, hiddenDimensions };
 }

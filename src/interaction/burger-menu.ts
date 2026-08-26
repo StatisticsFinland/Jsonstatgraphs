@@ -1,4 +1,4 @@
-import { BurgerMenuItemDefinition, ChartType, JsonStatDataset, ResolvedTheme } from '../types';
+import { BurgerMenuItemDefinition, ChartType, JsonStatDataset, Layout, ResolvedTheme } from '../types';
 import { getLocaleStrings } from '../locale/strings';
 import { exportCsv } from './csvUtils';
 import { exportPng } from './pngUtils';
@@ -29,6 +29,7 @@ export interface BurgerMenuConfig {
   menuIconInheritColor?: boolean;
   tableToggle?: BurgerMenuTableToggleConfig;
   theme?: ResolvedTheme;
+  layout?: Layout;
 }
 
 let burgerMenuCounter = 0;
@@ -44,6 +45,7 @@ function createBuiltInItems(
   locale: string,
   chartType?: ChartType,
   dataset?: JsonStatDataset,
+  layout?: Layout,
   tableToggle?: BurgerMenuTableToggleConfig,
   accessibilityMode?: boolean,
   toggleAccessibilityMode?: () => void,
@@ -60,7 +62,7 @@ function createBuiltInItems(
       {
         text: strings.downloadCSV,
         activate: () => {
-          exportCsv(dataset, locale);
+          exportCsv(dataset, locale, { layout });
         },
       },
     );
@@ -297,6 +299,7 @@ export class BurgerMenu {
         resolvedLocale,
         config.chartType,
         config.dataset,
+        config.layout,
         config.tableToggle,
         config.accessibilityMode,
         config.toggleAccessibilityMode,

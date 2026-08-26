@@ -1051,6 +1051,7 @@ export function createChart(
           : undefined,
         menuItemDefinitions: cfg.menuItemDefinitions,
         menuIconInheritColor: cfg.menuIconInheritColor,
+        layout: selectableOptions.layout,
         tableToggle,
       });
     }

@@ -2,7 +2,7 @@ import { transformTableData } from '../data/table-transform';
 import { rebuildDataset } from '../data/rebuild-dataset';
 import { hasSelectableDatasetOptions, resolveSelectableDatasetOptions } from '../data/selectable-settings';
 import { getLocaleStrings } from '../locale/strings';
-import { JsonStatDataset } from '../types';
+import { JsonStatDataset, Layout } from '../types';
 import { buildExportFilename, downloadBlob } from './exportUtils';
 import { decodeCombo, getMetricUnit, product } from './exportTableUtils';
 import { resolveDatasetSource } from '../data/source';
@@ -30,14 +30,14 @@ export function renderCsvRow(cells: (string | number | null | undefined)[], deli
     .join(delimiter);
 }
 
-export function createCsvContent(dataset: JsonStatDataset, locale: string): string {
+export function createCsvContent(dataset: JsonStatDataset, locale: string, options?: { layout?: Layout }): string {
   const strings = getLocaleStrings(locale);
   const delimiter = getCsvDelimiter(locale);
-  const selectableOptions = resolveSelectableDatasetOptions(dataset);
+  const selectableOptions = resolveSelectableDatasetOptions(dataset, { layout: options?.layout });
   const activeDataset = hasSelectableDatasetOptions(selectableOptions)
     ? rebuildDataset(dataset, selectableOptions).dataset
     : dataset;
-  const tableData = transformTableData(activeDataset, { layout: selectableOptions.layout });
+  const tableData = transformTableData(activeDataset, { layout: options?.layout });
   const rows: (string | number | null)[][] = [];
 
   rows.push([dataset.label ?? '']);
@@ -75,7 +75,10 @@ export function createCsvContent(dataset: JsonStatDataset, locale: string): stri
 
     const rowValues = tableData.values[rowIndex] ?? [];
     for (let colIndex = 0; colIndex < totalCols; colIndex++) {
-      row.push(rowValues[colIndex]);
+      const value = rowValues[colIndex];
+      row.push(value === null
+        ? (tableData.missingValueDescriptions?.[rowIndex]?.[colIndex] ?? null)
+        : value);
     }
 
     rows.push(row);
@@ -94,8 +97,8 @@ export function createCsvContent(dataset: JsonStatDataset, locale: string): stri
   return rows.map(row => renderCsvRow(row, delimiter, locale)).join('\n');
 }
 
-export function exportCsv(dataset: JsonStatDataset, locale: string): void {
-  const csvContent = createCsvContent(dataset, locale);
+export function exportCsv(dataset: JsonStatDataset, locale: string, options?: { layout?: Layout }): void {
+  const csvContent = createCsvContent(dataset, locale, options);
   const blob = new Blob(['\uFEFF', csvContent], { type: 'text/csv;charset=utf-8' });
   downloadBlob(blob, buildExportFilename(dataset, 'csv'));
 }

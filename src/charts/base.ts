@@ -9,6 +9,7 @@ import { fitLabels, LabelFitResult, NiceSkipOptions } from '../layout/label-fitt
 import { resolveTheme } from '../theme/theme';
 import { createZones, applyMeasuredSizes, PLOT_AREA_MIN_SIZE } from '../layout/zones';
 import { computeLayout } from '../layout/layout-engine';
+import { formatNumber } from '../locale/number';
 
 type XScale = ScaleBand<string> | ScalePoint<string> | ScaleLinear<number, number>;
 type YScale = ScaleLinear<number, number> | ScaleBand<string> | ScalePoint<string>;
@@ -26,6 +27,13 @@ const HORIZONTAL_CHART_TYPES = new Set<ChartType>([
   'stackedHorizontalBar',
   'percentHorizontalBar',
   'pyramid',
+]);
+
+const HORIZONTAL_BAR_CHART_TYPES = new Set<ChartType>([
+  'horizontalBar',
+  'groupedHorizontalBar',
+  'stackedHorizontalBar',
+  'percentHorizontalBar',
 ]);
 
 let scaffoldInstanceCounter = 0;
@@ -191,7 +199,9 @@ export class ChartScaffold {
           .range([0, plotAreaRect.width]),
         yScale: scaleBand<string>()
           .domain(categories)
-          .range([0, plotAreaRect.height])
+          .range(this.scaffoldConfig.chartType === 'pyramid'
+            ? [plotAreaRect.height, 0]
+            : [0, plotAreaRect.height])
           .padding(0.2)
           .paddingOuter(0.5),
       };
@@ -436,7 +446,7 @@ export class ChartScaffold {
         .attr('aria-hidden', 'true')
         .attr('transform', `translate(${plotAreaRect.x},${plotAreaRect.y})`);
       yAxisGroup
-        .call(axisLeft(yScale).tickValues(yTickValues) as never)
+        .call(axisLeft(yScale).tickValues(yTickValues).tickFormat(d => formatNumber(Number(d), this.config.locale)) as never)
         .call(styleAxis);
     }
 
@@ -447,7 +457,7 @@ export class ChartScaffold {
         .attr('aria-hidden', 'true')
         .attr('transform', `translate(${plotAreaRect.x},${plotAreaRect.y + plotAreaRect.height})`);
       xAxisGroup
-        .call(axisBottom(xScale).tickValues(xTickValues) as never)
+        .call(axisBottom(xScale).tickValues(xTickValues).tickFormat(d => formatNumber(Number(d), this.config.locale)) as never)
         .call(styleAxis);
     }
   }
@@ -525,10 +535,10 @@ export class ChartScaffold {
 
       if (isHorizontal) {
         const axis = axisBottom(xScale as ScaleLinear<number, number>).tickValues(tickValues);
-        if (this.scaffoldConfig.chartType === 'pyramid') {
-          const fmt = (xScale as ScaleLinear<number, number>).tickFormat(tickValues.length);
-          axis.tickFormat((d) => fmt(Math.abs(d as number)));
-        }
+        axis.tickFormat((d) => formatNumber(
+          this.scaffoldConfig.chartType === 'pyramid' ? Math.abs(Number(d)) : Number(d),
+          this.config.locale,
+        ));
         xAxisGroup
           .call(axis as never)
           .call(styleAxis);
@@ -800,8 +810,7 @@ export class ChartScaffold {
       // Linear axis on Y — estimate tick label width from a rough axis height pass
       const estimatedAxisHeight = containerHeight * 0.6;
       const ticks = getTickPositions(paddedMin, paddedMax, estimatedAxisHeight, undefined, this.theme.fontSizeTick, this.isCategoricalValueAxisZeroForced());
-      const fmt = scaleLinear().domain([paddedMin, paddedMax]).tickFormat();
-      const maxTickLen = ticks.reduce((max, t) => Math.max(max, fmt(t).length), 0);
+      const maxTickLen = ticks.reduce((max, t) => Math.max(max, formatNumber(t, this.config.locale).length), 0);
       return maxTickLen * CHAR_WIDTH + 16;
     }
   }
@@ -830,8 +839,7 @@ export class ChartScaffold {
       const ticks = getTickPositions(paddedMin, paddedMax, estimatedPlotWidth, undefined, this.theme.fontSizeTick);
       if (ticks.length > 0) {
         const lastTick = ticks.at(-1)!;
-        const hFmt = scaleLinear().domain([paddedMin, paddedMax]).tickFormat();
-        return Math.min(Math.ceil(hFmt(lastTick).length * CHAR_WIDTH / 2), 40);
+        return Math.min(Math.ceil(formatNumber(lastTick, this.config.locale).length * CHAR_WIDTH / 2), 40);
       } else {
         return 0;
       }
@@ -892,8 +900,7 @@ export class ChartScaffold {
 
     const estimatedAxisHeight = containerHeight * 0.6;
     const yTicks = getTickPositions(yPadded[0], yPadded[1], estimatedAxisHeight, undefined, this.theme.fontSizeTick, yForceZeroBaseline);
-    const yFmt = scaleLinear().domain(yPadded).tickFormat();
-    const maxYTickLen = yTicks.reduce((max, t) => Math.max(max, yFmt(t).length), 0);
+    const maxYTickLen = yTicks.reduce((max, t) => Math.max(max, formatNumber(t, this.config.locale).length), 0);
     measurements[ZoneType.YAxisLabels] = maxYTickLen * CHAR_WIDTH + 16;
 
     // X-axis labels — single line of numeric ticks
@@ -904,8 +911,7 @@ export class ChartScaffold {
     const estimatedPlotWidth = Math.max(100, containerWidth - yAxisWidth);
     const xTicks = getTickPositions(xPadded[0], xPadded[1], estimatedPlotWidth, undefined, this.theme.fontSizeTick, true);
     if (xTicks.length > 0) {
-      const xFmt = scaleLinear().domain(xPadded).tickFormat();
-      const lastTickStr = xFmt(xTicks.at(-1)!);
+      const lastTickStr = formatNumber(xTicks.at(-1)!, this.config.locale);
       measurements[ZoneType.RightMargin] = Math.min(Math.ceil(lastTickStr.length * CHAR_WIDTH / 2), 40);
     } else {
       measurements[ZoneType.RightMargin] = 0;
@@ -967,7 +973,9 @@ export class ChartScaffold {
     );
 
     // Axis title zones
-    const yAxisTitleLabel = isHorizontal ? this.scaffoldConfig.xLabel : this.scaffoldConfig.yLabel;
+    const yAxisTitleLabel = isHorizontal && HORIZONTAL_BAR_CHART_TYPES.has(this.scaffoldConfig.chartType)
+      ? undefined
+      : (isHorizontal ? this.scaffoldConfig.xLabel : this.scaffoldConfig.yLabel);
     const xAxisTitleLabel = isHorizontal ? this.scaffoldConfig.yLabel : this.scaffoldConfig.xLabel;
     measurements[ZoneType.YAxisTitle] = yAxisTitleLabel ? 25 : 0;
     measurements[ZoneType.XAxisTitle] = xAxisTitleLabel ? 25 : 0;
@@ -1079,6 +1087,23 @@ export class ChartScaffold {
           skipInterval: 1,
           labels: fittedLabels.labels.map(l => ({ ...l, skip: false })),
         };
+        if (this.scaffoldConfig.chartType === 'pyramid') {
+          const lineHeight = (Number.parseFloat(this.theme.fontSizeTick) || 12) * 1.4;
+          const maxVisibleLabels = Math.max(1, Math.floor(plotAreaRect.height / (lineHeight * 2)));
+          const interval = Math.max(1, Math.ceil(categories.length / maxVisibleLabels));
+          if (interval > 1) {
+            fittedLabels = {
+              ...fittedLabels,
+              skipInterval: interval,
+              labels: fittedLabels.labels.map((label, index) => ({
+                ...label,
+                skip: index !== 0
+                  && index !== categories.length - 1
+                  && (categories.length - 1 - index) % interval !== 0,
+              })),
+            };
+          }
+        }
       } else {
         // Vertical chart: band/point axis on X, labels are below plot area
         const isLine = this.scaffoldConfig.chartType === 'line';
@@ -1090,7 +1115,9 @@ export class ChartScaffold {
       }
 
       this.renderHeader(layout);
-      this.renderGrid(isHorizontal, xScale, yScale, plotAreaRect, tickValues);
+      if (this.scaffoldConfig.chartType !== 'pie') {
+        this.renderGrid(isHorizontal, xScale, yScale, plotAreaRect, tickValues);
+      }
       this.renderAxes(isHorizontal, xScale, yScale, layout, plotAreaRect, tickValues, fittedLabels);
       this.renderAxisTitles(isHorizontal, layout);
       this.renderFooter(layout);

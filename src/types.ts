@@ -29,6 +29,8 @@ export interface JsonStatChartExtension {
 export interface JsonStatDatasetExtension {
   selectableConfig?: SelectableConfig;
   jsonstatChart?: JsonStatChartExtension;
+  /** Status code to human-readable missing-value description. */
+  missingValueDescriptions?: Record<string, string>;
   [key: string]: unknown;
 }
 
@@ -48,6 +50,8 @@ export interface JsonStatDataset {
   size: number[];
   dimension: Record<string, JsonStatDimension>;
   value: (number | null | string)[];
+  /** JSON-stat observation status codes keyed by flat observation index. */
+  status?: Record<string, string>;
   extension?: JsonStatDatasetExtension;
   role?: {
     time?: string[];
@@ -358,6 +362,8 @@ export interface TableData {
   columnDimensions: TableDimension[];
   /** 2D values array: values[rowIndex][colIndex]. Row index is the Cartesian product of row dimensions, col index is the Cartesian product of column dimensions. */
   values: (number | null)[][];
+  /** Missing-value descriptions parallel to `values`; null means use the fallback marker. */
+  missingValueDescriptions?: (string | null)[][];
   /** Dimensions with only 1 value that were hidden from the table structure. Useful for metadata display. */
   hiddenDimensions: { code: string; label: string; value: string }[];
 }

@@ -27,7 +27,7 @@ export const DEFAULT_THEME: ResolvedTheme = {
   burgerMenuItemHoverBackground: '#f5f5f5',
   burgerMenuItemActiveBackground: '#eef5ff',
   burgerMenuItemSeparatorColor: '#e3e3e3',
-  seriesColors: ['#4e79a7', '#e15759', '#76b7b2', '#59a14f', '#edc949', '#af7aa1', '#ff9da7', '#9c755f'],
+  seriesColors: ['#1A56EC', '#F2644C', '#1B3160', '#9C8D87', '#26625D', '#7791E8', '#8C1131', '#878EAF', '#C73268', '#288C72'],
   mapColors: ['#c6dbef', '#9ecae1', '#6baed6', '#3182bd', '#08519c'],
 };
 

@@ -415,6 +415,22 @@ describe('createLineChart', () => {
     expect(firstMarkerPath.getAttribute('d')).toContain('5');
   });
 
+  it('default mode renders transparent focus and hover targets for every non-null point', () => {
+    createLineChart({ container, data: multiSeriesData, config: defaultConfig });
+
+    const expectedCount = multiSeriesData.series.reduce(
+      (count, series) => count + series.points.filter(point => point.value !== null).length,
+      0,
+    );
+    const hitAreas = container.querySelectorAll<SVGCircleElement>('.jsc-line-hit-area');
+    expect(hitAreas).toHaveLength(expectedCount);
+    hitAreas.forEach(hitArea => {
+      expect(hitArea.getAttribute('r')).toBe('8');
+      expect(hitArea.getAttribute('fill')).toBe('transparent');
+      expect(hitArea.hasAttribute('tabindex')).toBe(true);
+    });
+  });
+
   it('marker stroke uses theme.colorSurface in accessibility mode', () => {
     const darkColorSurface = '#1a1a2e';
     createLineChart({
