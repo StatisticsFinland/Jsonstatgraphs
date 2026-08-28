@@ -268,6 +268,21 @@ describe('ChartScaffold', () => {
     });
   });
 
+  it.each(['verticalBar', 'horizontalBar'] as const)(
+    '%s axis domain paths are straight lines without outer end caps',
+    (chartType) => {
+      const scaffold = new ChartScaffold(createScaffoldConfig({ chartType }));
+      scaffold.render();
+
+      const yDomain = document.querySelector('.jsc-axis-y .domain')?.getAttribute('d') ?? '';
+      const xDomain = document.querySelector('.jsc-axis-x .domain')?.getAttribute('d') ?? '';
+      expect(yDomain).toContain('V');
+      expect(yDomain).not.toContain('H');
+      expect(xDomain).toContain('H');
+      expect(xDomain).not.toContain('V');
+    },
+  );
+
   it('grid lines use colorBorder (#aaaaaa), not colorTick (#555555)', () => {
     const scaffold = new ChartScaffold(
       createScaffoldConfig({ config: { theme: { colorBorder: '#aaaaaa', colorTick: '#555555' } } }),

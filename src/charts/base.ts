@@ -449,7 +449,10 @@ export class ChartScaffold {
         .attr('aria-hidden', 'true')
         .attr('transform', `translate(${plotAreaRect.x},${plotAreaRect.y})`);
       yAxisGroup
-        .call(axisLeft(yScale).tickValues(yTickValues).tickFormat(d => formatNumber(Number(d), this.config.locale)) as never)
+        .call(axisLeft(yScale)
+          .tickValues(yTickValues)
+          .tickFormat(d => formatNumber(Number(d), this.config.locale))
+          .tickSizeOuter(0) as never)
         .call(styleAxis);
     }
 
@@ -460,7 +463,10 @@ export class ChartScaffold {
         .attr('aria-hidden', 'true')
         .attr('transform', `translate(${plotAreaRect.x},${plotAreaRect.y + plotAreaRect.height})`);
       xAxisGroup
-        .call(axisBottom(xScale).tickValues(xTickValues).tickFormat(d => formatNumber(Number(d), this.config.locale)) as never)
+        .call(axisBottom(xScale)
+          .tickValues(xTickValues)
+          .tickFormat(d => formatNumber(Number(d), this.config.locale))
+          .tickSizeOuter(0) as never)
         .call(styleAxis);
     }
   }
@@ -492,7 +498,7 @@ export class ChartScaffold {
         .attr('transform', `translate(${plotAreaRect.x},${plotAreaRect.y})`);
 
       if (isHorizontal) {
-        yAxisGroup.call(axisLeft(yScale as ScaleBand<string>) as never).call(styleAxis);
+        yAxisGroup.call(axisLeft(yScale as ScaleBand<string>).tickSizeOuter(0) as never).call(styleAxis);
         // Replace D3's default tick text with fitted labels for horizontal band (Y) axis
         yAxisGroup.selectAll('.tick text').remove();
         yAxisGroup.selectAll<SVGGElement, unknown>('.tick').each(function(_d, i) {
@@ -521,7 +527,9 @@ export class ChartScaffold {
         yAxisGroup.call(styleAxis);
       } else {
         yAxisGroup
-          .call(axisLeft(yScale as ScaleLinear<number, number>).tickValues(tickValues) as never)
+          .call(axisLeft(yScale as ScaleLinear<number, number>)
+            .tickValues(tickValues)
+            .tickSizeOuter(0) as never)
           .call(styleAxis);
       }
     }
@@ -537,7 +545,9 @@ export class ChartScaffold {
         );
 
       if (isHorizontal) {
-        const axis = axisBottom(xScale as ScaleLinear<number, number>).tickValues(tickValues);
+        const axis = axisBottom(xScale as ScaleLinear<number, number>)
+          .tickValues(tickValues)
+          .tickSizeOuter(0);
         axis.tickFormat((d) => formatNumber(
           this.scaffoldConfig.chartType === 'pyramid' ? Math.abs(Number(d)) : Number(d),
           this.config.locale,
