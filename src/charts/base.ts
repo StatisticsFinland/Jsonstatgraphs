@@ -193,6 +193,9 @@ export class ChartScaffold {
     const domainMax = tickValues && tickValues.length >= 2 ? tickValues.at(-1) as number : maxValue;
 
     if (isHorizontal) {
+      const pyramidBoundaryInset = this.scaffoldConfig.chartType === 'pyramid'
+        ? (Number.parseFloat(this.theme.fontSizeTick) || 12) * 0.7
+        : 0;
       return {
         xScale: scaleLinear()
           .domain([domainMin, domainMax])
@@ -200,7 +203,7 @@ export class ChartScaffold {
         yScale: scaleBand<string>()
           .domain(categories)
           .range(this.scaffoldConfig.chartType === 'pyramid'
-            ? [plotAreaRect.height, 0]
+            ? [plotAreaRect.height - pyramidBoundaryInset, pyramidBoundaryInset]
             : [0, plotAreaRect.height])
           .padding(0.2)
           .paddingOuter(0.5),
@@ -1090,16 +1093,29 @@ export class ChartScaffold {
         if (this.scaffoldConfig.chartType === 'pyramid') {
           const lineHeight = (Number.parseFloat(this.theme.fontSizeTick) || 12) * 1.4;
           const maxVisibleLabels = Math.max(1, Math.floor(plotAreaRect.height / (lineHeight * 2)));
-          const interval = Math.max(1, Math.ceil(categories.length / maxVisibleLabels));
-          if (interval > 1) {
+          let visibleLabelCount = Math.min(
+            categories.length,
+            categories.length > 1 ? Math.max(2, maxVisibleLabels) : 1,
+          );
+          if (visibleLabelCount < categories.length) {
+            const lastIndex = categories.length - 1;
+            while (
+              visibleLabelCount > 2
+              && Math.ceil(lastIndex / (visibleLabelCount - 1))
+                / Math.floor(lastIndex / (visibleLabelCount - 1)) > 1.25
+            ) {
+              visibleLabelCount--;
+            }
+            const selectedIndices = new Set(Array.from(
+              { length: visibleLabelCount },
+              (_, position) => Math.round(position * lastIndex / (visibleLabelCount - 1)),
+            ));
             fittedLabels = {
               ...fittedLabels,
-              skipInterval: interval,
+              skipInterval: Math.ceil(lastIndex / (visibleLabelCount - 1)),
               labels: fittedLabels.labels.map((label, index) => ({
                 ...label,
-                skip: index !== 0
-                  && index !== categories.length - 1
-                  && (categories.length - 1 - index) % interval !== 0,
+                skip: !selectedIndices.has(index),
               })),
             };
           }
