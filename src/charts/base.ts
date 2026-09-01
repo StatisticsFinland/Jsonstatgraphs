@@ -10,6 +10,7 @@ import { resolveTheme } from '../theme/theme';
 import { createZones, applyMeasuredSizes } from '../layout/zones';
 import { computeLayout } from '../layout/layout-engine';
 import { formatNumber } from '../locale/number';
+import { getLocaleStrings } from '../locale/strings';
 import {
   buildCategoricalScales,
   getCategoricalValuePadding,
@@ -27,6 +28,7 @@ import {
   measureFooterZone,
   measureHeaderZone,
 } from '../layout/zone-measurement';
+import { captureChartFocusBeforeRedraw } from '../interaction/keyboard';
 
 type XScale = ScaleBand<string> | ScalePoint<string> | ScaleLinear<number, number>;
 type YScale = ScaleLinear<number, number> | ScaleBand<string> | ScalePoint<string>;
@@ -623,13 +625,15 @@ export class ChartScaffold {
     if (!legendRect) return;
 
     const { seriesCount, seriesNames } = this.scaffoldConfig;
+    const strings = getLocaleStrings(this.config.locale);
     const names: string[] = seriesNames && seriesNames.length > 0
       ? seriesNames
-      : Array.from({ length: seriesCount }, (_, i) => `Series ${i + 1}`);
+      : Array.from({ length: seriesCount }, (_, i) => `${strings.series} ${i + 1}`);
 
     this.legend = new Legend(this.container, names, this.theme, {
       accessibilityMode: this.config.accessibilityMode,
       chartType: this.scaffoldConfig.chartType,
+      locale: this.config.locale,
     });
 
     const legendEl = this.container.querySelector('.jsc-legend') as HTMLDivElement | null;
@@ -1101,6 +1105,7 @@ export class ChartScaffold {
     const layout = computeLayout(width, height, measuredZones);
 
     this.svg.attr('viewBox', `0 0 ${width} ${height}`);
+    captureChartFocusBeforeRedraw(this.container);
     this.svg.selectAll('*').remove();
 
     const plotAreaRect = layout.zones.get(ZoneType.PlotArea) ?? {

@@ -17,6 +17,11 @@ const EN_STRINGS = {
   toggleAccessibilityModeOn: 'Show symbols in the figure',
   toggleAccessibilityModeOff: 'Remove symbols from the figure',
   externalLink: 'External link',
+  series: 'Series',
+  dataPoint: 'Data point',
+  noData: 'No data',
+  toggleSeries: 'Toggle series',
+  regions: 'regions',
 };
 
 const FI_STRINGS = {
@@ -36,6 +41,11 @@ const FI_STRINGS = {
   toggleAccessibilityModeOn: 'Näytä kuviossa symbolit',
   toggleAccessibilityModeOff: 'Poista kuviosta symbolit',
   externalLink: 'Ulkoinen linkki',
+  series: 'Sarja',
+  dataPoint: 'Datapiste',
+  noData: 'Ei tietoa',
+  toggleSeries: 'Näytä tai piilota sarja',
+  regions: 'aluetta',
 };
 
 const SV_STRINGS = {
@@ -55,6 +65,11 @@ const SV_STRINGS = {
   toggleAccessibilityModeOn: 'Visa symboler i diagrammet',
   toggleAccessibilityModeOff: 'Ta bort symbolerna från diagrammet',
   externalLink: 'Extern länk',
+  series: 'Serie',
+  dataPoint: 'Datapunkt',
+  noData: 'Ingen uppgift',
+  toggleSeries: 'Visa eller dölj serie',
+  regions: 'regioner',
 };
 
 describe('getLocaleStrings', () => {

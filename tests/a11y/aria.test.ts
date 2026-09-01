@@ -16,9 +16,9 @@ describe('applyChartAriaAttributes', () => {
     container.remove();
   });
 
-  it('sets role to figure', () => {
+  it('sets role to region', () => {
     applyChartAriaAttributes(container, 'My Chart');
-    expect(container.getAttribute('role')).toBe('figure');
+    expect(container.getAttribute('role')).toBe('region');
   });
 
   it('sets aria-label', () => {
@@ -50,6 +50,11 @@ describe('applySeriesGroupAttributes', () => {
     applySeriesGroupAttributes(group, 'Revenue', 1);
     expect(group.getAttribute('aria-label')).toContain('Revenue');
   });
+
+  it('localizes the series label', () => {
+    applySeriesGroupAttributes(group, 'Myynti', 0, 'fi');
+    expect(group.getAttribute('aria-label')).toBe('Sarja: Myynti');
+  });
 });
 
 describe('applyDataPointAttributes', () => {
@@ -71,9 +76,11 @@ describe('applyDataPointAttributes', () => {
     expect(rect.getAttribute('role')).toBe('listitem');
   });
 
-  it('sets aria-roledescription to data point', () => {
+  it('sets aria-roledescription to localized data point', () => {
     applyDataPointAttributes(rect, 'Q1', '1000');
-    expect(rect.getAttribute('aria-roledescription')).toBe('data point');
+    expect(rect.getAttribute('aria-roledescription')).toBe('Data point');
+    applyDataPointAttributes(rect, 'Q1', '1000', 'fi');
+    expect(rect.getAttribute('aria-roledescription')).toBe('Datapiste');
   });
 
   it('sets aria-label with label and value', () => {

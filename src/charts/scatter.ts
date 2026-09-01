@@ -75,7 +75,7 @@ export function computeScatterPointRadius(
           if (candidate === point) continue;
           const distanceX = candidate.x - point.x;
           const distanceY = candidate.y - point.y;
-          const distance = Math.sqrt(distanceX * distanceX + distanceY * distanceY);
+          const distance = Math.hypot(distanceX, distanceY);
           nearestDistance = Math.min(nearestDistance, distance);
         }
       }
@@ -173,9 +173,14 @@ export function createScatterChart(chartConfig: ScatterChartConfig): ScatterChar
       ctx.plotArea.height,
     );
 
-    const listGroup = plotAreaGroup.append('g')
+    const chartAriaLabel = config.ariaLabel ?? config.title ?? `${data.yLabel} vs ${data.xLabel}`;
+    const interactionGroup = plotAreaGroup.append('g')
+      .attr('role', 'application')
+      .attr('aria-label', chartAriaLabel);
+
+    const listGroup = interactionGroup.append('g')
       .attr('role', 'list')
-      .attr('aria-label', `${data.yLabel} vs ${data.xLabel}`);
+      .attr('aria-label', `${data.yLabel}, ${data.xLabel}`);
 
     validPoints.forEach((point, i) => {
       const projectedPoint = projectedPoints[i];
@@ -206,20 +211,21 @@ export function createScatterChart(chartConfig: ScatterChartConfig): ScatterChar
         element: circle,
         seriesIndex: 0,
         pointIndex: i,
+        pointKey: point.code,
         category: point.label,
         seriesName: config.title ?? config.ariaLabel ?? 'Data',
         value: null,
         formattedValue,
+        ariaLabel: data.observationLabel
+          ? `${data.observationLabel}: ${point.label}, ${formattedValue}`
+          : `${point.label}: ${formattedValue}`,
         dimensionLabels,
         hideValueLine: true,
       });
     });
 
     // ARIA
-    applyChartAriaAttributes(
-      container,
-      config.ariaLabel ?? config.title ?? `${data.yLabel} vs ${data.xLabel}`
-    );
+    applyChartAriaAttributes(container, chartAriaLabel);
 
     // Bind interactions
     if (elements.length > 0) {
@@ -237,6 +243,7 @@ export function createScatterChart(chartConfig: ScatterChartConfig): ScatterChar
         theme,
         locale,
         chartData: chartDataForSR,
+        pointAxis: 'horizontal',
         caption: config.title ?? config.ariaLabel,
       });
     }

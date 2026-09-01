@@ -3,6 +3,7 @@ import type { Config } from 'jest';
 const config: Config = {
   preset: 'ts-jest',
   testEnvironment: 'jsdom',
+  maxWorkers: 4,
   roots: ['<rootDir>/tests'],
   setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
   transform: {

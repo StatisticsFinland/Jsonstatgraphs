@@ -1,17 +1,19 @@
 import { ResolvedTheme, ChartData } from '../types';
 import { Tooltip, TooltipData } from '../interaction/tooltip';
-import { KeyboardNavigator, FocusableElement } from '../interaction/keyboard';
+import { KeyboardNavigator, FocusableElement, PointNavigationAxis } from '../interaction/keyboard';
 import { applyDataPointAttributes } from '../a11y/aria';
-import { createScreenReaderTable } from '../a11y/screen-reader';
 
 export interface DataElementInfo {
   element: SVGElement;
   seriesIndex: number;
   pointIndex: number;
+  /** Stable identity (e.g. category code) used to keep focus on the same datapoint across redraws, even if its positional index shifts. */
+  pointKey?: string;
   category: string;
   seriesName: string;
   value: number | null;
   formattedValue: string;
+  ariaLabel?: string;
   dimensionLabels?: { label: string; value: string }[];
   hideValueLine?: boolean;
 }
@@ -24,6 +26,7 @@ export interface BindInteractionsConfig {
   chartData?: ChartData;
   ariaLabel?: string;
   caption?: string;
+  pointAxis?: PointNavigationAxis;
 }
 
 export interface BoundInteractions {
@@ -38,16 +41,40 @@ export function ensureFocusStyles(): void {
   const style = document.createElement('style');
   style.id = styleId;
   style.textContent = [
-    '.jsc-chart .jsc-marker:focus-visible,',
-    '.jsc-chart .jsc-bar:focus-visible,',
-    '.jsc-chart .jsc-slice:focus-visible,',
-    '.jsc-chart .jsc-scatter-point:focus-visible,',
-    'svg.jsc-chart [tabindex]:focus-visible {',
-    '  outline: 2px solid var(--jsc-color-focus-ring, #0066cc);',
-    '  outline-offset: 2px;',
+    'svg.jsc-chart [tabindex]:focus {',
+    '  outline: none;',
+    '}',
+    'svg.jsc-chart .jsc-focus-indicator {',
+    '  fill: none;',
+    '  stroke: var(--jsc-color-focus-ring, #0066cc);',
+    '  stroke-width: 4px;',
+    '  vector-effect: non-scaling-stroke;',
+    '  pointer-events: none;',
     '}',
   ].join('\n');
   document.head.appendChild(style);
+}
+
+function removeFocusIndicator(container: HTMLElement): void {
+  container.querySelector('.jsc-focus-indicator')?.remove();
+}
+
+function renderFocusIndicator(container: HTMLElement, element: SVGElement): void {
+  removeFocusIndicator(container);
+  const parent = element.parentNode;
+  if (!parent) return;
+
+  const indicator = element.cloneNode(false) as SVGElement;
+  indicator.removeAttribute('id');
+  indicator.removeAttribute('role');
+  indicator.removeAttribute('tabindex');
+  indicator.removeAttribute('aria-label');
+  indicator.removeAttribute('aria-roledescription');
+  delete indicator.dataset.jscSeriesIndex;
+  delete indicator.dataset.jscPointIndex;
+  indicator.setAttribute('class', 'jsc-focus-indicator');
+  indicator.setAttribute('aria-hidden', 'true');
+  parent.appendChild(indicator);
 }
 
 function buildTooltipData(
@@ -82,10 +109,10 @@ function buildTooltipData(
 
 export function bindInteractions(config: BindInteractionsConfig): BoundInteractions {
   ensureFocusStyles();
-  const { container, elements, theme, locale, chartData, caption } = config;
+  const { container, elements, theme, locale, chartData, pointAxis } = config;
 
   const tooltip = new Tooltip(container, theme);
-  const keyboard = new KeyboardNavigator(container);
+  const keyboard = new KeyboardNavigator(container, pointAxis);
 
   // AbortController lets us remove all listeners in one shot on destroy()
   const controller = new AbortController();
@@ -98,7 +125,10 @@ export function bindInteractions(config: BindInteractionsConfig): BoundInteracti
     const { element, seriesName, category, value, formattedValue } = info;
 
     // ARIA attributes
-    applyDataPointAttributes(element, `${seriesName}: ${category}`, formattedValue);
+    applyDataPointAttributes(element, `${seriesName}: ${category}`, formattedValue, locale);
+    if (info.ariaLabel) {
+      element.setAttribute('aria-label', info.ariaLabel);
+    }
 
     // Tooltip data shared across handlers
     const { dimensionLabels, hideValueLine } = info;
@@ -135,6 +165,8 @@ export function bindInteractions(config: BindInteractionsConfig): BoundInteracti
 
     // Focus/blur for keyboard navigation
     element.addEventListener('focus', (e: Event) => {
+      element.classList.add('jsc-keyboard-focus');
+      renderFocusIndicator(container, element);
       const fe = e as FocusEvent;
       const rect = container.getBoundingClientRect();
       const targetRect = (fe.target as SVGElement).getBoundingClientRect();
@@ -143,7 +175,11 @@ export function bindInteractions(config: BindInteractionsConfig): BoundInteracti
         targetRect.top - rect.top
       );
     }, { signal });
-    element.addEventListener('blur', () => tooltip.hide(), { signal });
+    element.addEventListener('blur', () => {
+      element.classList.remove('jsc-keyboard-focus');
+      removeFocusIndicator(container);
+      tooltip.hide();
+    }, { signal });
   }
 
   // Dismiss touch tooltip on touchstart elsewhere in container
@@ -157,34 +193,43 @@ export function bindInteractions(config: BindInteractionsConfig): BoundInteracti
     }, { signal });
   }
 
-  // Group elements by series for keyboard navigator
-  const grouped: FocusableElement[][] = [];
+  // Group elements by series for keyboard navigator. Points are sorted (not
+  // indexed) by pointIndex so gaps left by filtered-out values (e.g. null
+  // segments) never leave sparse array holes for the navigator to dereference.
+  const bySeriesIndex = new Map<number, FocusableElement[]>();
   for (const info of elements) {
-    const { element, seriesIndex, pointIndex } = info;
-    if (!grouped[seriesIndex]) {
-      grouped[seriesIndex] = [];
-    }
-    grouped[seriesIndex][pointIndex] = { element, seriesIndex, pointIndex };
+    const { element, seriesIndex, pointIndex, pointKey } = info;
+    const series = bySeriesIndex.get(seriesIndex) ?? [];
+    series.push({ element, seriesIndex, pointIndex, pointKey });
+    bySeriesIndex.set(seriesIndex, series);
   }
-  const compactGrouped = grouped.filter(Boolean);
+  const compactGrouped = Array.from(bySeriesIndex.entries())
+    .sort(([a], [b]) => a - b)
+    .map(([, series]) => {
+      series.sort((a, b) => a.pointIndex - b.pointIndex);
+      return series;
+    });
 
   keyboard.setElements(compactGrouped);
   keyboard.attach();
 
-  // Screen reader table
-  let srTable: HTMLTableElement | null = null;
-  if (chartData) {
-    srTable = createScreenReaderTable(container, chartData, caption, locale);
+  const activeElement = document.activeElement;
+  if (activeElement instanceof Element && elements.some(info => info.element === activeElement)) {
+    activeElement.classList.add('jsc-keyboard-focus');
+    renderFocusIndicator(container, activeElement as SVGElement);
   }
 
   return {
     tooltip,
     keyboard,
     destroy() {
+      removeFocusIndicator(container);
+      for (const info of elements) {
+        info.element.classList.remove('jsc-keyboard-focus');
+      }
       controller.abort();
       tooltip.destroy();
       keyboard.destroy();
-      srTable?.remove();
     },
   };
 }

@@ -96,7 +96,7 @@ describe('ChartScaffold', () => {
     const expectedTicks = rawTicks.length >= 2 ? rawTicks : [0, paddedMax];
     const gridLines = document.querySelectorAll('.jsc-grid line');
     expect(gridLines.length).toBeGreaterThan(0);
-    expect(gridLines.length).toBe(expectedTicks.length);
+    expect(gridLines).toHaveLength(expectedTicks.length);
   });
 
   it('render() applies fitted labels to band axis', () => {
@@ -226,7 +226,7 @@ describe('ChartScaffold', () => {
     scaffold.render();
     scaffold.render();
     const legends = cfg.container.querySelectorAll('.jsc-legend');
-    expect(legends.length).toBe(1);
+    expect(legends).toHaveLength(1);
   });
 
   it('render() renders footer items', () => {

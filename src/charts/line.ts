@@ -68,6 +68,7 @@ export function createLineChart(chartConfig: LineChartConfig): LineChartInstance
       chartData: data,
       ariaLabel: config.ariaLabel,
       caption: config.title ?? config.ariaLabel,
+      pointAxis: 'horizontal',
     });
   }
 
@@ -113,7 +114,7 @@ export function createLineChart(chartConfig: LineChartConfig): LineChartInstance
         .attr('class', `jsc-series jsc-series-${si}`) as unknown as import('d3-selection').Selection<SVGGElement, unknown, null, undefined>;
 
       const seriesGroupEl = seriesGroup.node() as SVGGElement;
-      applySeriesGroupAttributes(seriesGroupEl, series.name, si);
+      applySeriesGroupAttributes(seriesGroupEl, series.name, si, config.locale);
       seriesGroupElements.set(si, seriesGroupEl);
 
       // Build line generator
@@ -129,6 +130,7 @@ export function createLineChart(chartConfig: LineChartConfig): LineChartInstance
         .append('path')
         .datum(series.points)
         .attr('class', 'jsc-line')
+        .attr('aria-hidden', 'true')
         .attr('fill', 'none')
         .attr('stroke', color)
         .attr('stroke-width', '2')
@@ -179,6 +181,7 @@ export function createLineChart(chartConfig: LineChartConfig): LineChartInstance
           element: markerEl,
           seriesIndex: si,
           pointIndex: pi,
+          pointKey: point.categoryCode,
           category: point.label,
           seriesName: series.name,
           value: point.value,

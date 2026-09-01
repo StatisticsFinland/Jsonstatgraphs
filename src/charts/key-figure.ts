@@ -2,6 +2,7 @@ import { ChartConfig, FooterItem } from '../types';
 import { renderHtmlFooter } from './footer';
 import { resolveTheme } from '../theme/theme';
 import { applyChartAriaAttributes } from '../a11y/aria';
+import { getLocaleStrings } from '../locale/strings';
 
 export interface KeyFigureChartConfig {
   container: HTMLElement;
@@ -25,6 +26,7 @@ function renderKeyFigure(
   wrapper.appendChild(styleEl);
 
   const theme = resolveTheme(wrapper.parentElement, config.theme);
+  const strings = getLocaleStrings(config.locale);
 
   const container = document.createElement('div');
   container.className = 'jsc-key-figure';
@@ -62,7 +64,7 @@ function renderKeyFigure(
   valueEl.className = 'jsc-key-figure-value';
   if (value === null) {
     valueEl.textContent = '\u2013';
-    valueEl.setAttribute('aria-label', 'No data');
+    valueEl.setAttribute('aria-label', strings.noData);
   } else {
     const formatOptions: Intl.NumberFormatOptions =
       decimals === undefined

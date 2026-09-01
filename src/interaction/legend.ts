@@ -1,6 +1,7 @@
 import { ChartType, ResolvedTheme } from '../types';
 import { getSeriesColor } from '../theme/palette';
 import { PATTERN_PATHS, getMarkerPath } from '../a11y/patterns';
+import { getLocaleStrings } from '../locale/strings';
 
 export interface LegendItem {
   name: string;
@@ -13,6 +14,7 @@ export type LegendToggleCallback = (index: number, active: boolean) => void;
 export interface LegendOptions {
   accessibilityMode?: boolean;
   chartType?: ChartType;
+  locale?: string;
 }
 
 let legendStyleRefCount = 0;
@@ -79,6 +81,7 @@ export class Legend {
 
   render(): void {
     const el = this.element;
+    const strings = getLocaleStrings(this.options.locale);
     while (el.firstChild) {
       el.firstChild.remove();
     }
@@ -98,7 +101,7 @@ export class Legend {
       btn.style.color = this.theme.colorText;
       btn.style.opacity = item.active ? '1' : '0.4';
       btn.setAttribute('aria-pressed', String(item.active));
-      btn.setAttribute('aria-label', `Toggle series ${item.name}`);
+      btn.setAttribute('aria-label', `${strings.toggleSeries}: ${item.name}`);
 
       const swatch = document.createElement('span');
       swatch.className = 'jsc-legend-swatch';

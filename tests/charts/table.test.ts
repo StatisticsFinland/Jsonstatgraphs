@@ -191,14 +191,14 @@ describe('createTableChart', () => {
   it('correct number of body rows', () => {
     createTableChart({ container, data: tableData2D, config: defaultConfig });
     const rows = container.querySelectorAll('tbody tr');
-    expect(rows.length).toBe(2);
+    expect(rows).toHaveLength(2);
   });
 
   it('correct number of body columns', () => {
     createTableChart({ container, data: tableData2D, config: defaultConfig });
     const rows = container.querySelectorAll('tbody tr');
     rows.forEach((row) => {
-      expect(row.querySelectorAll('td').length).toBe(2);
+      expect(row.querySelectorAll('td')).toHaveLength(2);
     });
   });
 
@@ -207,25 +207,25 @@ describe('createTableChart', () => {
   it('single column dimension renders one header row', () => {
     createTableChart({ container, data: tableData2D, config: defaultConfig });
     const theadRows = container.querySelectorAll('thead tr');
-    expect(theadRows.length).toBe(1);
+    expect(theadRows).toHaveLength(1);
     // corner (Region label) + 2020 + 2021
-    expect(theadRows[0].querySelectorAll('th').length).toBe(3);
+    expect(theadRows[0].querySelectorAll('th')).toHaveLength(3);
   });
 
   it('multi-level column headers with colspan', () => {
     createTableChart({ container, data: tableData3D, config: defaultConfig });
     const theadRows = container.querySelectorAll('thead tr');
-    expect(theadRows.length).toBe(2);
+    expect(theadRows).toHaveLength(2);
 
     // First row: corner (rowspan=2) + 2020 (colspan=2) + 2021 (colspan=2)
     const firstRowThs = theadRows[0].querySelectorAll('th');
-    expect(firstRowThs.length).toBe(3);
+    expect(firstRowThs).toHaveLength(3);
     expect(firstRowThs[1].getAttribute('colspan')).toBe('2');
     expect(firstRowThs[2].getAttribute('colspan')).toBe('2');
 
     // Second row: 4 Indicator headers (Population, Area, Population, Area)
     const secondRowThs = theadRows[1].querySelectorAll('th');
-    expect(secondRowThs.length).toBe(4);
+    expect(secondRowThs).toHaveLength(4);
   });
 
   // --- Row headers ---
@@ -240,23 +240,23 @@ describe('createTableChart', () => {
   it('multi-level row headers with rowspan', () => {
     createTableChart({ container, data: tableData2RowDim, config: defaultConfig });
     const bodyRows = container.querySelectorAll('tbody tr');
-    expect(bodyRows.length).toBe(4);
+    expect(bodyRows).toHaveLength(4);
 
     // Row 0: Helsinki (rowspan=2) + Male
     const row0Ths = bodyRows[0].querySelectorAll('th');
-    expect(row0Ths.length).toBe(2);
+    expect(row0Ths).toHaveLength(2);
     expect(row0Ths[0].textContent).toBe('Helsinki');
     expect(row0Ths[0].getAttribute('rowspan')).toBe('2');
     expect(row0Ths[1].textContent).toBe('Male');
 
     // Row 1: only Female (Helsinki spans from row 0)
     const row1Ths = bodyRows[1].querySelectorAll('th');
-    expect(row1Ths.length).toBe(1);
+    expect(row1Ths).toHaveLength(1);
     expect(row1Ths[0].textContent).toBe('Female');
 
     // Row 2: Tampere (rowspan=2) + Male
     const row2Ths = bodyRows[2].querySelectorAll('th');
-    expect(row2Ths.length).toBe(2);
+    expect(row2Ths).toHaveLength(2);
     expect(row2Ths[0].textContent).toBe('Tampere');
     expect(row2Ths[0].getAttribute('rowspan')).toBe('2');
   });
@@ -401,11 +401,11 @@ describe('createTableChart', () => {
   it('update() re-renders with new data', () => {
     const instance = createTableChart({ container, data: singleDimData, config: defaultConfig });
     // singleDimData: no row dims, 2 col categories → tbody has 1 row with 2 td
-    expect(container.querySelectorAll('tbody td').length).toBe(2);
+    expect(container.querySelectorAll('tbody td')).toHaveLength(2);
 
     instance.update(tableData2D);
     // tableData2D: 2 rows × 2 cols → 4 td total
-    expect(container.querySelectorAll('tbody td').length).toBe(4);
+    expect(container.querySelectorAll('tbody td')).toHaveLength(4);
   });
 
   it('update() preserves burger menu spacing from the chart config', () => {

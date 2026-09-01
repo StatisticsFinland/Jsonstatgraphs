@@ -70,6 +70,7 @@ export function createBarChart(chartConfig: BarChartConfig): BarChartInstance {
       theme: lastTheme!,
       locale: config.locale,
       chartData: renderData,
+      pointAxis: resolvedChartType === 'horizontalBar' ? 'vertical' : 'horizontal',
       ariaLabel: config.ariaLabel,
       caption: config.title ?? config.ariaLabel,
     });
@@ -122,7 +123,7 @@ export function createBarChart(chartConfig: BarChartConfig): BarChartInstance {
       .attr('class', `jsc-series jsc-series-${si}`) as unknown as import('d3-selection').Selection<SVGGElement, unknown, null, undefined>;
 
     const seriesGroupEl = seriesGroup.node() as SVGGElement;
-    applySeriesGroupAttributes(seriesGroupEl, series.name, si);
+    applySeriesGroupAttributes(seriesGroupEl, series.name, si, config.locale);
     seriesGroupElements.set(si, seriesGroupEl);
 
     type BarPoint = { value: number; categoryCode: string; label: string };
@@ -177,6 +178,7 @@ export function createBarChart(chartConfig: BarChartConfig): BarChartInstance {
         element: rectEl,
         seriesIndex: si,
         pointIndex: pi,
+        pointKey: point.categoryCode,
         category: point.label,
         seriesName: series.name,
         value: point.value,

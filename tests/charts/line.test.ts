@@ -66,7 +66,7 @@ describe('createLineChart', () => {
   it('draws correct number of line paths — one per series', () => {
     createLineChart({ container, data: multiSeriesData, config: defaultConfig });
     const paths = container.querySelectorAll('.jsc-line');
-    expect(paths.length).toBe(2);
+    expect(paths).toHaveLength(2);
   });
 
   it('does not draw point markers by default', () => {
@@ -88,7 +88,7 @@ describe('createLineChart', () => {
   it('multi-series — series have different colors', () => {
     createLineChart({ container, data: multiSeriesData, config: defaultConfig });
     const lines = container.querySelectorAll<SVGPathElement>('.jsc-line');
-    expect(lines.length).toBe(2);
+    expect(lines).toHaveLength(2);
     const color0 = lines[0].getAttribute('stroke');
     const color1 = lines[1].getAttribute('stroke');
     expect(color0).not.toBeNull();
@@ -96,9 +96,9 @@ describe('createLineChart', () => {
     expect(color0).not.toBe(color1);
   });
 
-  it('ARIA: container has role="figure"', () => {
+  it('ARIA: container has role="region"', () => {
     createLineChart({ container, data: singleSeriesData, config: defaultConfig });
-    expect(container.getAttribute('role')).toBe('figure');
+    expect(container.getAttribute('role')).toBe('region');
   });
 
   it('ARIA: markers are only interactive when accessibility mode is enabled', () => {
@@ -119,10 +119,23 @@ describe('createLineChart', () => {
     }
   });
 
-  it('screen reader table is created', () => {
+  it('does not create a hidden screen reader table', () => {
     createLineChart({ container, data: singleSeriesData, config: defaultConfig });
     const table = container.querySelector('table.jsc-sr-only');
-    expect(table).not.toBeNull();
+    expect(table).toBeNull();
+  });
+
+  it('preserves focused datapoint across an update redraw', () => {
+    const instance = createLineChart({ container, data: singleSeriesData, config: defaultConfig });
+    const initialPoints = container.querySelectorAll<SVGElement>('.jsc-line-hit-area');
+    initialPoints[1].focus();
+
+    instance.update(singleSeriesData, defaultConfig);
+
+    const updatedPoints = container.querySelectorAll<SVGElement>('.jsc-line-hit-area');
+    expect(document.activeElement).toBe(updatedPoints[1]);
+    expect(updatedPoints[0].getAttribute('tabindex')).toBe('-1');
+    expect(updatedPoints[1].getAttribute('tabindex')).toBe('0');
   });
 
   it('destroy() cleans up DOM', () => {
@@ -163,7 +176,7 @@ describe('createLineChart', () => {
     createLineChart({ container, data: allNullData, config: defaultConfig });
     expect(container.querySelector('svg.jsc-chart')).not.toBeNull();
     const circles = container.querySelectorAll('.jsc-marker');
-    expect(circles.length).toBe(0);
+    expect(circles).toHaveLength(0);
   });
 
   it('empty series array — renders chart with no data elements', () => {
@@ -174,8 +187,8 @@ describe('createLineChart', () => {
     };
     createLineChart({ container, data: emptyData, config: defaultConfig });
     expect(container.querySelector('svg.jsc-chart')).not.toBeNull();
-    expect(container.querySelectorAll('.jsc-line').length).toBe(0);
-    expect(container.querySelectorAll('.jsc-marker').length).toBe(0);
+    expect(container.querySelectorAll('.jsc-line')).toHaveLength(0);
+    expect(container.querySelectorAll('.jsc-marker')).toHaveLength(0);
   });
 
   it('update() with new title updates aria-label on container', () => {
@@ -326,7 +339,7 @@ describe('createLineChart', () => {
       createLineChart({ container, data: singleSeriesData, config: defaultConfig });
       // singleSeriesData has 3 categories: 2020, 2021, 2022
       const ticks = container.querySelectorAll('.jsc-axis-x .tick');
-      expect(ticks.length).toBe(singleSeriesData.categories.length);
+      expect(ticks).toHaveLength(singleSeriesData.categories.length);
     });
 
     it('all x-axis labels have text-anchor="middle"', () => {
@@ -401,7 +414,7 @@ describe('createLineChart', () => {
     const markerPaths = container.querySelectorAll('path.jsc-marker');
     const markerCircles = container.querySelectorAll('circle.jsc-marker');
     expect(markerPaths.length).toBeGreaterThan(0);
-    expect(markerCircles.length).toBe(0);
+    expect(markerCircles).toHaveLength(0);
     const firstMarkerPath = markerPaths[0] as SVGPathElement;
     expect(firstMarkerPath.getAttribute('d')).toContain('5');
   });

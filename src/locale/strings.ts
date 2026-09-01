@@ -15,6 +15,11 @@ export interface LocaleStrings {
   toggleAccessibilityModeOn: string;
   toggleAccessibilityModeOff: string;
   externalLink: string;
+  series: string;
+  dataPoint: string;
+  noData: string;
+  toggleSeries: string;
+  regions: string;
 }
 
 const STRINGS: Record<string, LocaleStrings> = {
@@ -35,6 +40,11 @@ const STRINGS: Record<string, LocaleStrings> = {
     toggleAccessibilityModeOn: 'Show symbols in the figure',
     toggleAccessibilityModeOff: 'Remove symbols from the figure',
     externalLink: 'External link',
+    series: 'Series',
+    dataPoint: 'Data point',
+    noData: 'No data',
+    toggleSeries: 'Toggle series',
+    regions: 'regions',
   },
   fi: {
     source: 'Lähde',
@@ -53,6 +63,11 @@ const STRINGS: Record<string, LocaleStrings> = {
     toggleAccessibilityModeOn: 'Näytä kuviossa symbolit',
     toggleAccessibilityModeOff: 'Poista kuviosta symbolit',
     externalLink: 'Ulkoinen linkki',
+    series: 'Sarja',
+    dataPoint: 'Datapiste',
+    noData: 'Ei tietoa',
+    toggleSeries: 'Näytä tai piilota sarja',
+    regions: 'aluetta',
   },
   sv: {
     source: 'Källa',
@@ -71,6 +86,11 @@ const STRINGS: Record<string, LocaleStrings> = {
     toggleAccessibilityModeOn: 'Visa symboler i diagrammet',
     toggleAccessibilityModeOff: 'Ta bort symbolerna från diagrammet',
     externalLink: 'Extern länk',
+    series: 'Serie',
+    dataPoint: 'Datapunkt',
+    noData: 'Ingen uppgift',
+    toggleSeries: 'Visa eller dölj serie',
+    regions: 'regioner',
   },
 };
 

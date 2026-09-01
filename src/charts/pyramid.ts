@@ -54,6 +54,7 @@ export function createPyramidChart(chartConfig: PyramidChartConfig): PyramidChar
         xLabel: data.categoryDimensionLabel,
         seriesLabel: data.splitDimensionLabel,
       },
+      pointAxis: 'vertical',
       ariaLabel: config.ariaLabel,
       caption: config.title ?? config.ariaLabel,
     });
@@ -102,7 +103,7 @@ export function createPyramidChart(chartConfig: PyramidChartConfig): PyramidChar
         .attr('class', `jsc-series jsc-series-${si}`) as unknown as import('d3-selection').Selection<SVGGElement, unknown, null, undefined>;
 
       const seriesGroupEl = seriesGroup.node() as SVGGElement;
-      applySeriesGroupAttributes(seriesGroupEl, series.name, si);
+      applySeriesGroupAttributes(seriesGroupEl, series.name, si, config.locale);
       seriesGroupElements.set(si, seriesGroupEl);
 
       type BarPoint = { value: number; label: string; categoryCode: string };
@@ -152,6 +153,7 @@ export function createPyramidChart(chartConfig: PyramidChartConfig): PyramidChar
           element: rectEl,
           seriesIndex: si,
           pointIndex: pi,
+          pointKey: point.categoryCode,
           category: point.label,
           seriesName: series.name,
           value: point.value,

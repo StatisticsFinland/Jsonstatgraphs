@@ -497,3 +497,16 @@ The initial premise — that `.jsc-bar { fill: blue }` has no effect — was inc
 **Decision:** Every valid point in a scatter chart uses one automatically calculated radius. Plots with at most eight valid points use the responsive maximum radius so sparse observations remain visible and navigable. Larger plots use projected screen-space coordinates: global spacing comes from plot area and point count, while a bucketed nearest-neighbor search captures local clustering. The lower-quartile local spacing and global spacing are combined, scaled from 0.25 for small datasets toward 0.15 as point count reaches 100, and then clamped between a fixed 0.75% and 1.5% of the shorter plot dimension. A 1 px minimum fallback applies when the relative minimum would be subpixel. The calculation runs during every scaffold render, so resizing and data updates recalculate it. No public configuration or theme token is added.
 
 **Consequences:** Sparse plots receive larger points and dense or clustered plots receive smaller points without introducing a third visual data encoding. Invalid points do not affect density. Screen-space calculation keeps behavior independent of raw data units and naturally accounts for the available plot size, from mobile canvases to large displays. The radius policy is exported as a pure helper for focused tests.
+
+### ADR-038: Named chart regions and host-owned alternate tables
+
+**Status:** accepted
+**Date:** 2026-09-01
+
+**Context:** Screen-reader testing found that `role="figure"` and nested SVG image semantics produced an incorrect illustration announcement, chart titles were not announced reliably, cyclic chart-level arrow handling transferred focus from unrelated controls, redraws reset the visible tab stop, and implicit hidden tables created an unexpected navigation target after each chart. Hard-coded English role descriptions also leaked into Finnish and Swedish interfaces.
+
+**Decision:** Every visual chart exposes one localized, named `region`; nested noninteractive SVG image semantics are removed. Focusable datapoints use localized list semantics and chart-orientation-aware roving `tabindex`. Only a registered datapoint owns arrow events, navigation stops at boundaries, and Tab/Shift+Tab leave the chart. Stable logical datapoint coordinates preserve the active tab stop and DOM focus when a redraw replaces SVG nodes. The library no longer creates hidden data tables. Host applications own visible alternate data presentations, and the explicit chart/table menu mode remains supported.
+
+Maps remain nonfocusable because geographic regions have no meaningful linear keyboard order. The map region provides a localized summary; a host application must provide a visible table when users need access to all region values.
+
+**Consequences:** This decision supersedes ADR-029 and the screen-reader-table consequence in ADR-007. Consumers no longer encounter duplicate figure/image announcements or an implicit table after a chart. Applications embedding maps must deliberately provide an alternate data view. Accessibility acceptance is tested primarily with NVDA in Chromium and Firefox, with automated coverage for semantics, localization, focus ownership, boundaries, and redraw restoration.

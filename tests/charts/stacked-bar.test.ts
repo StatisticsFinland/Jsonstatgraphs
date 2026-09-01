@@ -85,7 +85,7 @@ describe('createStackedBarChart', () => {
     });
     // 3 series × 2 categories = 6, minus 1 null (Services/2021) = 5
     const rects = container.querySelectorAll('.jsc-bar');
-    expect(rects.length).toBe(5);
+    expect(rects).toHaveLength(5);
   });
 
   it('stacked horizontal: draws rects', () => {
@@ -97,7 +97,7 @@ describe('createStackedBarChart', () => {
     });
     // Same: 5 non-null rects
     const rects = container.querySelectorAll('.jsc-bar');
-    expect(rects.length).toBe(5);
+    expect(rects).toHaveLength(5);
   });
 
   it('percent vertical: draws rects and uses 100 as value range upper bound', () => {
@@ -109,7 +109,7 @@ describe('createStackedBarChart', () => {
     });
     // 2 series × 2 categories = 4 rects (no nulls)
     const rects = container.querySelectorAll('.jsc-bar');
-    expect(rects.length).toBe(4);
+    expect(rects).toHaveLength(4);
 
     // The y-axis should have tick labels reaching 100
     const tickTexts = Array.from(container.querySelectorAll('.jsc-axis-y text, text')).map(
@@ -127,7 +127,7 @@ describe('createStackedBarChart', () => {
       chartType: 'percentHorizontalBar',
     });
     const rects = container.querySelectorAll('.jsc-bar');
-    expect(rects.length).toBe(4);
+    expect(rects).toHaveLength(4);
   });
 
   it('null values are omitted — no rect rendered for null segments', () => {
@@ -139,16 +139,65 @@ describe('createStackedBarChart', () => {
     });
     // Only 5 rects: Services/2021 is null, should not have a rect
     const rects = container.querySelectorAll('.jsc-bar');
-    expect(rects.length).toBe(5);
+    expect(rects).toHaveLength(5);
 
     // The Services series (idx 2) should have exactly 1 rect (only 2020)
     const serviceRects = container.querySelectorAll('.jsc-series-2 .jsc-bar');
-    expect(serviceRects.length).toBe(1);
+    expect(serviceRects).toHaveLength(1);
   });
 
-  it('ARIA: container has role="figure"', () => {
+  it('does not crash and keeps keyboard navigation working when a null sits between two valid categories', () => {
+    const dataWithMiddleNull: ChartData = {
+      series: [
+        {
+          name: 'Agriculture',
+          code: 'agr',
+          points: [
+            { value: 10, label: '2020', categoryCode: '2020' },
+            { value: null, label: '2021', categoryCode: '2021' },
+            { value: 30, label: '2022', categoryCode: '2022' },
+          ],
+        },
+        {
+          name: 'Industry',
+          code: 'ind',
+          points: [
+            { value: 40, label: '2020', categoryCode: '2020' },
+            { value: 45, label: '2021', categoryCode: '2021' },
+            { value: 20, label: '2022', categoryCode: '2022' },
+          ],
+        },
+      ],
+      categories: ['2020', '2021', '2022'],
+      categoryLabels: ['2020', '2021', '2022'],
+    };
+
+    expect(() => {
+      createStackedBarChart({
+        container,
+        data: dataWithMiddleNull,
+        config: defaultConfig,
+        chartType: 'stackedVerticalBar',
+      });
+    }).not.toThrow();
+
+    const agricultureRects = container.querySelectorAll('.jsc-series-0 .jsc-bar');
+    expect(agricultureRects).toHaveLength(2);
+
+    // Arrow-key navigation across the gap must not throw or dereference a hole.
+    (agricultureRects[0] as SVGElement).focus();
+    expect(() => {
+      agricultureRects[0].dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }),
+      );
+    }).not.toThrow();
+    expect(document.activeElement).toBe(agricultureRects[1]);
+  });
+
+
+  it('ARIA: container has role="region"', () => {
     createStackedBarChart({ container, data: stackedData, config: defaultConfig });
-    expect(container.getAttribute('role')).toBe('figure');
+    expect(container.getAttribute('role')).toBe('region');
   });
 
   it('ARIA: rects have role="listitem" and aria-label', () => {
@@ -178,11 +227,11 @@ describe('createStackedBarChart', () => {
       chartType: 'stackedVerticalBar',
     });
     // Initially 5 rects
-    expect(container.querySelectorAll('.jsc-bar').length).toBe(5);
+    expect(container.querySelectorAll('.jsc-bar')).toHaveLength(5);
 
     // Update with data where all values are non-null: 2 series × 2 categories = 4 rects
     instance.update(twoSeriesData);
-    expect(container.querySelectorAll('.jsc-bar').length).toBe(4);
+    expect(container.querySelectorAll('.jsc-bar')).toHaveLength(4);
   });
 
   it('update() with new title updates aria-label on container', () => {
@@ -273,18 +322,18 @@ describe('createStackedBarChart', () => {
     });
 
     // Initially both series groups are present
-    expect(container.querySelectorAll('.jsc-series-0 .jsc-bar').length).toBe(2);
-    expect(container.querySelectorAll('.jsc-series-1 .jsc-bar').length).toBe(2);
+    expect(container.querySelectorAll('.jsc-series-0 .jsc-bar')).toHaveLength(2);
+    expect(container.querySelectorAll('.jsc-series-1 .jsc-bar')).toHaveLength(2);
 
     const legendButtons = container.querySelectorAll('.jsc-legend-item');
     expect(legendButtons.length).toBeGreaterThanOrEqual(2);
     (legendButtons[1] as HTMLElement).click(); // toggle off Series B
 
     // Series 1 group should no longer exist in the DOM
-    expect(container.querySelectorAll('.jsc-series-1 .jsc-bar').length).toBe(0);
+    expect(container.querySelectorAll('.jsc-series-1 .jsc-bar')).toHaveLength(0);
 
     // Series 0 bars should still be present
-    expect(container.querySelectorAll('.jsc-series-0 .jsc-bar').length).toBe(2);
+    expect(container.querySelectorAll('.jsc-series-0 .jsc-bar')).toHaveLength(2);
   });
 
   it('toggling series off then on restores original bar count', () => {
@@ -299,8 +348,8 @@ describe('createStackedBarChart', () => {
     (legendButtons[1] as HTMLElement).click(); // toggle off
     (container.querySelectorAll('.jsc-legend-item')[1] as HTMLElement).click(); // toggle on
 
-    expect(container.querySelectorAll('.jsc-series-0 .jsc-bar').length).toBe(2);
-    expect(container.querySelectorAll('.jsc-series-1 .jsc-bar').length).toBe(2);
+    expect(container.querySelectorAll('.jsc-series-0 .jsc-bar')).toHaveLength(2);
+    expect(container.querySelectorAll('.jsc-series-1 .jsc-bar')).toHaveLength(2);
   });
 
   it('percent mode: bars still fill 100% after toggling a series off', () => {
@@ -312,14 +361,14 @@ describe('createStackedBarChart', () => {
     });
 
     // Before toggle: two series, both present
-    expect(container.querySelectorAll('.jsc-bar').length).toBe(4);
+    expect(container.querySelectorAll('.jsc-bar')).toHaveLength(4);
 
     const legendButtons = container.querySelectorAll('.jsc-legend-item');
     (legendButtons[1] as HTMLElement).click(); // hide Series B
 
     // Only Series A bars should remain
-    expect(container.querySelectorAll('.jsc-series-0 .jsc-bar').length).toBe(2);
-    expect(container.querySelectorAll('.jsc-series-1 .jsc-bar').length).toBe(0);
+    expect(container.querySelectorAll('.jsc-series-0 .jsc-bar')).toHaveLength(2);
+    expect(container.querySelectorAll('.jsc-series-1 .jsc-bar')).toHaveLength(0);
 
     // The remaining series A bars should show 100% in their aria-label
     // (since percent is recomputed from visible series only)
@@ -340,10 +389,10 @@ describe('createStackedBarChart', () => {
 
     const legendButtons = container.querySelectorAll('.jsc-legend-item');
     (legendButtons[1] as HTMLElement).click(); // hide Series B
-    expect(container.querySelectorAll('.jsc-series-1 .jsc-bar').length).toBe(0);
+    expect(container.querySelectorAll('.jsc-series-1 .jsc-bar')).toHaveLength(0);
 
     instance.update(twoSeriesData);
-    expect(container.querySelectorAll('.jsc-bar').length).toBe(4);
+    expect(container.querySelectorAll('.jsc-bar')).toHaveLength(4);
   });
 
   it('accessibility mode applies patterned fills to bars', () => {

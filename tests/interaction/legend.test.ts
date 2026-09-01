@@ -63,7 +63,7 @@ describe('Legend', () => {
     const legend = new Legend(container, seriesNames, mockTheme);
     legend.render();
     const buttons = container.querySelectorAll('.jsc-legend-item');
-    expect(buttons.length).toBe(3);
+    expect(buttons).toHaveLength(3);
   });
 
   it('each button shows series name', () => {
@@ -177,8 +177,18 @@ describe('Legend', () => {
     legend.render();
 
     const buttons = container.querySelectorAll('.jsc-legend-item') as NodeListOf<HTMLButtonElement>;
-    expect(buttons[0].getAttribute('aria-label')).toBe('Toggle series Series A');
-    expect(buttons[1].getAttribute('aria-label')).toBe('Toggle series Series B');
+    expect(buttons[0].getAttribute('aria-label')).toBe('Toggle series: Series A');
+    expect(buttons[1].getAttribute('aria-label')).toBe('Toggle series: Series B');
+  });
+
+  it('localizes button aria-labels', () => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    const legend = new Legend(container, seriesNames, mockTheme, { locale: 'fi' });
+    legend.render();
+
+    const button = container.querySelector('.jsc-legend-item') as HTMLButtonElement;
+    expect(button.getAttribute('aria-label')).toBe('Näytä tai piilota sarja: Series A');
   });
 
   it('injects focus-visible CSS style into document head', () => {
@@ -197,7 +207,7 @@ describe('Legend', () => {
     new Legend(container, seriesNames, mockTheme);
     new Legend(container, seriesNames, mockTheme);
     const styles = document.querySelectorAll('#jsc-legend-styles');
-    expect(styles.length).toBe(1);
+    expect(styles).toHaveLength(1);
   });
 
   it('destroy() removes element from container', () => {

@@ -50,8 +50,8 @@ describe('createPyramidChart', () => {
     const leftRects = container.querySelectorAll('.jsc-bar-left');
     const rightRects = container.querySelectorAll('.jsc-bar-right');
     // 3 non-null left, 2 non-null right
-    expect(leftRects.length).toBe(3);
-    expect(rightRects.length).toBe(2);
+    expect(leftRects).toHaveLength(3);
+    expect(rightRects).toHaveLength(2);
   });
 
   it('left series bars extend leftward from center (x < center, positive width)', () => {
@@ -100,12 +100,12 @@ describe('createPyramidChart', () => {
     createPyramidChart({ container, data: pyramidData, config: defaultConfig });
     // right series has 1 null → 2 rects; left has 0 nulls → 3 rects
     const allBars = container.querySelectorAll('.jsc-bar');
-    expect(allBars.length).toBe(5);
+    expect(allBars).toHaveLength(5);
   });
 
-  it('ARIA: container has role="figure"', () => {
+  it('ARIA: container has role="region"', () => {
     createPyramidChart({ container, data: pyramidData, config: defaultConfig });
-    expect(container.getAttribute('role')).toBe('figure');
+    expect(container.getAttribute('role')).toBe('region');
   });
 
   it('ARIA: container has aria-label', () => {
@@ -124,7 +124,7 @@ describe('createPyramidChart', () => {
 
   it('update() re-renders with new data', () => {
     const instance = createPyramidChart({ container, data: pyramidData, config: defaultConfig });
-    expect(container.querySelectorAll('.jsc-bar').length).toBe(5);
+    expect(container.querySelectorAll('.jsc-bar')).toHaveLength(5);
 
     const updatedData: PyramidChartData = {
       leftSeries: {
@@ -146,7 +146,7 @@ describe('createPyramidChart', () => {
     };
 
     instance.update(updatedData);
-    expect(container.querySelectorAll('.jsc-bar').length).toBe(2);
+    expect(container.querySelectorAll('.jsc-bar')).toHaveLength(2);
   });
 
   it('passes xLabel and seriesLabel to bindInteractions when dimension labels are set', () => {

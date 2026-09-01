@@ -6,6 +6,7 @@ import { bindInteractions, DataElementInfo, BoundInteractions } from './bindInte
 import { applyChartAriaAttributes, applySeriesGroupAttributes } from '../a11y/aria';
 import { getSeriesColor } from '../theme/palette';
 import { ensureDefs, getPatternFillUrl, injectPatternDefs } from '../a11y/patterns';
+import { captureChartFocusBeforeRedraw } from '../interaction/keyboard';
 
 export interface GroupedBarChartConfig {
   container: HTMLElement;
@@ -65,6 +66,7 @@ export function createGroupedBarChart(chartConfig: GroupedBarChartConfig): Group
       theme: lastTheme!,
       locale: config.locale,
       chartData: visibleData,
+      pointAxis: resolvedChartType === 'groupedHorizontalBar' ? 'vertical' : 'horizontal',
       ariaLabel: config.ariaLabel,
       caption: config.title ?? config.ariaLabel,
     });
@@ -86,6 +88,7 @@ export function createGroupedBarChart(chartConfig: GroupedBarChartConfig): Group
   });
 
   function drawBars(ctx: ScaffoldRenderContext): void {
+    captureChartFocusBeforeRedraw(container);
     ctx.svg.select('.jsc-plot-area').selectAll('*').remove();
 
     const { svg, theme } = ctx;
@@ -123,7 +126,7 @@ export function createGroupedBarChart(chartConfig: GroupedBarChartConfig): Group
           .attr('class', `jsc-series jsc-series-${si}`) as unknown as import('d3-selection').Selection<SVGGElement, unknown, null, undefined>;
 
         const seriesGroupEl = seriesGroup.node() as SVGGElement;
-        applySeriesGroupAttributes(seriesGroupEl, series.name, si);
+        applySeriesGroupAttributes(seriesGroupEl, series.name, si, config.locale);
 
         const nonNullPoints = series.points.filter(
           (p): p is BarPoint => p.value !== null
@@ -153,6 +156,7 @@ export function createGroupedBarChart(chartConfig: GroupedBarChartConfig): Group
             element: rectEl,
             seriesIndex: si,
             pointIndex: pi,
+            pointKey: point.categoryCode,
             category: point.label,
             seriesName: series.name,
             value: point.value,
@@ -180,7 +184,7 @@ export function createGroupedBarChart(chartConfig: GroupedBarChartConfig): Group
           .attr('class', `jsc-series jsc-series-${si}`) as unknown as import('d3-selection').Selection<SVGGElement, unknown, null, undefined>;
 
         const seriesGroupEl = seriesGroup.node() as SVGGElement;
-        applySeriesGroupAttributes(seriesGroupEl, series.name, si);
+        applySeriesGroupAttributes(seriesGroupEl, series.name, si, config.locale);
 
         const nonNullPoints = series.points.filter(
           (p): p is BarPoint => p.value !== null
@@ -210,6 +214,7 @@ export function createGroupedBarChart(chartConfig: GroupedBarChartConfig): Group
             element: rectEl,
             seriesIndex: si,
             pointIndex: pi,
+            pointKey: point.categoryCode,
             category: point.label,
             seriesName: series.name,
             value: point.value,

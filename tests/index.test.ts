@@ -405,9 +405,11 @@ describe('update', () => {
 
     instance.setChartType('line');
 
-    expect(container.querySelectorAll('.jsc-series').length).toBe(1);
-    expect(container.textContent).toContain('220');
-    expect(container.textContent).not.toContain('300');
+    expect(container.querySelectorAll('.jsc-series')).toHaveLength(1);
+    const datapointLabels = Array.from(container.querySelectorAll('[role="listitem"]'))
+      .map(element => element.getAttribute('aria-label'));
+    expect(datapointLabels.some(label => label?.includes('220'))).toBe(true);
+    expect(datapointLabels.some(label => label?.includes('300'))).toBe(false);
   });
 
   it('rebuilds selectable data only once per render cycle', () => {

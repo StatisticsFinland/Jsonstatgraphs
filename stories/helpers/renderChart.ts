@@ -45,9 +45,6 @@ export function renderChart(args: RenderChartArgs): HTMLElement {
   wrapper.style.boxSizing = 'border-box';
   wrapper.style.margin = '20px auto';
 
-  wrapper.setAttribute('role', 'figure');
-  wrapper.setAttribute('aria-label', 'Chart loading');
-
   // Defer chart creation until element is in DOM
   requestAnimationFrame(() => {
     if (wrapper.isConnected) {

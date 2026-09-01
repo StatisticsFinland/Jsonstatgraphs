@@ -9,6 +9,7 @@ import { renderSvgFooter } from './footer';
 import { Tooltip, TooltipData } from '../interaction/tooltip';
 import { BURGER_MENU_CLEARANCE } from './base';
 import { formatNumber } from '../locale/number';
+import { getLocaleStrings } from '../locale/strings';
 
 
 export interface MapChartConfig {
@@ -139,75 +140,6 @@ function renderMap(
   });
 }
 
-function renderScreenReaderTable(
-  container: HTMLElement,
-  data: MapChartData,
-  locale?: string,
-): HTMLTableElement {
-  const table = document.createElement('table');
-  table.className = 'jsc-sr-only';
-  table.setAttribute('role', 'table');
-
-  table.style.position = 'absolute';
-  table.style.width = '1px';
-  table.style.height = '1px';
-  table.style.padding = '0';
-  table.style.margin = '-1px';
-  table.style.overflow = 'hidden';
-  table.style.clipPath = 'inset(50%)';
-  table.style.whiteSpace = 'nowrap';
-  table.style.border = '0';
-
-  const caption = document.createElement('caption');
-  let captionText = `Data table: ${data.valueDimensionLabel} by ${data.geoDimensionLabel}`;
-  if (data.classification.method === 'linear') {
-    captionText += ' (continuous scale)';
-  } else {
-    captionText += ` (${data.classification.breaks.length} classes)`;
-  }
-  caption.textContent = captionText;
-  table.appendChild(caption);
-
-  const thead = document.createElement('thead');
-  const headerRow = document.createElement('tr');
-  const th1 = document.createElement('th');
-  th1.textContent = data.geoDimensionLabel;
-  th1.setAttribute('scope', 'col');
-  const th2 = document.createElement('th');
-  th2.textContent = data.valueDimensionLabel;
-  th2.setAttribute('scope', 'col');
-  headerRow.appendChild(th1);
-  headerRow.appendChild(th2);
-  thead.appendChild(headerRow);
-  table.appendChild(thead);
-
-  const tbody = document.createElement('tbody');
-  for (const region of data.regions) {
-    const row = document.createElement('tr');
-    const nameCell = document.createElement('th');
-    nameCell.textContent = region.label;
-    nameCell.setAttribute('scope', 'row');
-    const valueCell = document.createElement('td');
-    if (region.value === null) {
-      valueCell.textContent = '\u2013';
-      valueCell.setAttribute('aria-label', 'No data');
-    } else if (data.decimals !== undefined) {
-      valueCell.textContent = formatNumber(region.value, locale, {
-        minimumFractionDigits: data.decimals,
-        maximumFractionDigits: data.decimals,
-      });
-    } else {
-      valueCell.textContent = formatNumber(region.value, locale);
-    }
-    row.appendChild(nameCell);
-    row.appendChild(valueCell);
-    tbody.appendChild(row);
-  }
-  table.appendChild(tbody);
-  container.appendChild(table);
-  return table;
-}
-
 function renderHeader(
   svg: Selection<SVGSVGElement, unknown, null, undefined>,
   layout: LayoutResult,
@@ -301,6 +233,7 @@ function renderLegend(
   mapRightEdge?: number,
   locale?: string,
 ): void {
+  const strings = getLocaleStrings(locale);
   // Check if we should render in the right margin (vertical) or bottom (horizontal)
   const rightMarginRect = layout.zones.get(ZoneType.RightMargin);
   const legendRect = layout.zones.get(ZoneType.Legend);
@@ -346,7 +279,7 @@ function renderLegend(
   }
 
   if (data.hasNoData) {
-    items.push({ color: data.noDataColor, label: 'No data' });
+    items.push({ color: data.noDataColor, label: strings.noData });
   }
 
   if (useRightSide) {
@@ -425,6 +358,7 @@ function renderGradientLegend(
   locale?: string,
 ): void {
   if (data.classification.method !== 'linear') return;
+  const strings = getLocaleStrings(locale);
   const { scaleMin, scaleMax, colors } = data.classification;
   const fontSize = Number.parseFloat(theme.fontSizeTick) || 12;
 
@@ -546,7 +480,7 @@ function renderGradientLegend(
         .attr('font-size', theme.fontSizeTick)
         .attr('font-family', theme.fontFamily)
         .attr('fill', theme.colorTextSecondary)
-        .text('No data');
+        .text(strings.noData);
     }
   } else {
     gradient.attr('x1', '0').attr('y1', '0').attr('x2', '1').attr('y2', '0');
@@ -615,7 +549,7 @@ function renderGradientLegend(
         .attr('font-size', theme.fontSizeTick)
         .attr('font-family', theme.fontFamily)
         .attr('fill', theme.colorTextSecondary)
-        .text('No data');
+        .text(strings.noData);
     }
   }
 }
@@ -780,16 +714,12 @@ function measureMapZoneSizes(
   return measurements;
 }
 
-let mapInstanceCounter = 0;
-
 export function createMapChart(chartConfig: MapChartConfig): MapChartInstance {
   const { container } = chartConfig;
-  const instanceId = ++mapInstanceCounter;
   let data = chartConfig.data;
   let config = chartConfig.config;
 
   let tooltip: Tooltip | null = null;
-  let srTable: HTMLTableElement | null = null;
   let resizeObserver: ResizeObserver | null = null;
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
   let cachedAspectRatio: number | null = null;
@@ -816,11 +746,6 @@ export function createMapChart(chartConfig: MapChartConfig): MapChartInstance {
       tooltip = null;
     }
 
-    if (srTable) {
-      srTable.remove();
-      srTable = null;
-    }
-
     const width = container.clientWidth;
     const height = container.clientHeight;
 
@@ -842,18 +767,17 @@ export function createMapChart(chartConfig: MapChartConfig): MapChartInstance {
     const layout = computeLayout(width, height, measuredZones);
 
     const regionCount = data.regions.filter(r => r.classIndex >= 0).length;
-    const ariaLabel = config.ariaLabel ??
-      `Choropleth map showing ${data.valueDimensionLabel} by ${data.geoDimensionLabel}, ${regionCount} regions`;
-    const titleId = `jsc-map-title-${instanceId}`;
-
-    container.setAttribute('role', 'figure');
+    const strings = getLocaleStrings(config.locale);
+    const ariaLabel = config.ariaLabel
+      ?? config.title
+      ?? `${data.valueDimensionLabel} ${strings.titleVariable} ${data.geoDimensionLabel} (${regionCount} ${strings.regions})`;
+    container.setAttribute('role', 'region');
     container.setAttribute('aria-label', ariaLabel);
 
     svg.attr('viewBox', `0 0 ${width} ${height}`);
     svg.selectAll('*').remove();
 
-    svg.append('title').attr('id', titleId).text(ariaLabel);
-    svg.attr('aria-labelledby', titleId);
+    svg.attr('aria-hidden', 'true');
 
     const plotArea = layout.zones.get(ZoneType.PlotArea) ?? {
       x: 0, y: 0, width: Math.max(0, width), height: Math.max(0, height),
@@ -918,10 +842,6 @@ export function createMapChart(chartConfig: MapChartConfig): MapChartInstance {
       });
     }
 
-    svg.attr('role', 'img');
-    svg.attr('aria-label', ariaLabel);
-
-    srTable = renderScreenReaderTable(container, data, config.locale);
   }
 
   render();
@@ -954,10 +874,6 @@ export function createMapChart(chartConfig: MapChartConfig): MapChartInstance {
       if (tooltip) {
         tooltip.destroy();
         tooltip = null;
-      }
-      if (srTable) {
-        srTable.remove();
-        srTable = null;
       }
       svg.node()?.remove();
       container.style.overflow = originalOverflow;

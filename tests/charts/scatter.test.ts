@@ -43,7 +43,7 @@ describe('createScatterChart', () => {
   it('draws correct number of circles — one per valid point', () => {
     createScatterChart({ container, data: scatterData, config: defaultConfig });
     const circles = container.querySelectorAll('.jsc-scatter-point');
-    expect(circles.length).toBe(3);
+    expect(circles).toHaveLength(3);
   });
 
   it('excludes points where x or y is null', () => {
@@ -58,7 +58,7 @@ describe('createScatterChart', () => {
     };
     createScatterChart({ container, data: dataWithNulls, config: defaultConfig });
     const circles = container.querySelectorAll('.jsc-scatter-point');
-    expect(circles.length).toBe(1);
+    expect(circles).toHaveLength(1);
   });
 
   it('renders X and Y axes', () => {
@@ -69,7 +69,7 @@ describe('createScatterChart', () => {
 
   it('applies ARIA attributes to container', () => {
     createScatterChart({ container, data: scatterData, config: defaultConfig });
-    expect(container.getAttribute('role')).toBe('figure');
+    expect(container.getAttribute('role')).toBe('region');
     expect(container.getAttribute('aria-label')).toBeTruthy();
   });
 
@@ -88,7 +88,7 @@ describe('createScatterChart', () => {
 
   it('update() re-renders with new data', () => {
     const instance = createScatterChart({ container, data: scatterData, config: defaultConfig });
-    expect(container.querySelectorAll('.jsc-scatter-point').length).toBe(3);
+    expect(container.querySelectorAll('.jsc-scatter-point')).toHaveLength(3);
 
     const newData: ScatterChartData = {
       points: [
@@ -99,7 +99,7 @@ describe('createScatterChart', () => {
       yLabel: 'Population',
     };
     instance.update(newData);
-    expect(container.querySelectorAll('.jsc-scatter-point').length).toBe(2);
+    expect(container.querySelectorAll('.jsc-scatter-point')).toHaveLength(2);
   });
 
   it('renders with zero valid points without throwing', () => {
@@ -114,7 +114,7 @@ describe('createScatterChart', () => {
       createScatterChart({ container, data: emptyData, config: defaultConfig });
     }).not.toThrow();
     const circles = container.querySelectorAll('.jsc-scatter-point');
-    expect(circles.length).toBe(0);
+    expect(circles).toHaveLength(0);
   });
 
   it('data points are wrapped in a role="list" group', () => {
@@ -124,22 +124,56 @@ describe('createScatterChart', () => {
     expect(listGroup!.getAttribute('aria-label')).toBeTruthy();
   });
 
+  it('keeps screen-reader arrow navigation inside the data point list', () => {
+    createScatterChart({
+      container,
+      data: scatterData,
+      config: { ...defaultConfig, title: 'City prosperity and health' },
+    });
+    const application = container.querySelector('[role="application"]');
+    const circles = container.querySelectorAll<SVGCircleElement>('.jsc-scatter-point');
+
+    expect(application?.getAttribute('aria-label')).toBe('City prosperity and health');
+    expect(application?.querySelector('[role="list"]')).not.toBeNull();
+    expect(circles).toHaveLength(3);
+
+    circles[0].focus();
+    const arrowEvent = new KeyboardEvent('keydown', {
+      key: 'ArrowRight',
+      bubbles: true,
+      cancelable: true,
+    });
+    circles[0].dispatchEvent(arrowEvent);
+
+    expect(arrowEvent.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(circles[1]);
+
+    const tabEvent = new KeyboardEvent('keydown', {
+      key: 'Tab',
+      bubbles: true,
+      cancelable: true,
+    });
+    circles[1].dispatchEvent(tabEvent);
+
+    expect(tabEvent.defaultPrevented).toBe(false);
+  });
+
   it('destroy() removes ARIA attributes from container', () => {
     const instance = createScatterChart({ container, data: scatterData, config: defaultConfig });
-    expect(container.getAttribute('role')).toBe('figure');
+    expect(container.getAttribute('role')).toBe('region');
     instance.destroy();
     expect(container.getAttribute('role')).toBeNull();
     expect(container.getAttribute('aria-label')).toBeNull();
   });
 
-  it('uses title as seriesName when provided', () => {
+  it('does not repeat the title in each datapoint label', () => {
     const config: ChartConfig = { title: 'My Scatter' };
     createScatterChart({ container, data: scatterData, config });
     const circles = container.querySelectorAll('.jsc-scatter-point');
     expect(circles.length).toBeGreaterThan(0);
-    // aria-label on circles should include the title as series name
     const label = circles[0].getAttribute('aria-label') ?? '';
-    expect(label).toContain('My Scatter');
+    expect(label).not.toContain('My Scatter');
+    expect(label).toContain('Helsinki');
   });
 
   it('data elements include dimensionLabels with xLabel and yLabel', () => {
@@ -150,7 +184,7 @@ describe('createScatterChart', () => {
     createScatterChart({ container, data: dataWithObs, config: defaultConfig });
     // Verify tooltip shows correctly by checking ARIA label contains x/y values
     const circles = container.querySelectorAll('.jsc-scatter-point');
-    expect(circles.length).toBe(3);
+    expect(circles).toHaveLength(3);
     // The formattedValue used for ARIA should contain xLabel and yLabel
     const ariaLabel = circles[0].getAttribute('aria-label') ?? '';
     expect(ariaLabel).toContain('GDP per capita');
@@ -171,7 +205,7 @@ describe('createScatterChart', () => {
     // Scatter provides dimensionLabels directly (xLabel + yLabel = 2 divs)
     // and sets hideValueLine: true, so no strong element is rendered
     const divs = tooltip!.querySelectorAll('div');
-    expect(divs.length).toBe(2);
+    expect(divs).toHaveLength(2);
 
     // The tooltip text should reference the axis labels
     expect(tooltip!.textContent).toContain('GDP per capita');
@@ -188,6 +222,19 @@ describe('createScatterChart', () => {
     const titleEl = container.querySelector('.jsc-title');
     expect(titleEl).not.toBeNull();
     expect(titleEl!.textContent).toContain('Test Title');
+  });
+
+  it('updates the screen-reader title when config changes', () => {
+    const instance = createScatterChart({
+      container,
+      data: scatterData,
+      config: { title: 'Initial title' },
+    });
+
+    instance.update(scatterData, { title: 'Updated title' });
+
+    expect(container.querySelector('[role="application"]')?.getAttribute('aria-label'))
+      .toBe('Updated title');
   });
 
   it('renders subtitle when config.subtitle is provided', () => {
@@ -250,7 +297,7 @@ describe('createScatterChart', () => {
       createScatterChart({ container, data: scatterData, config: defaultConfig });
     }).not.toThrow();
     const circles = container.querySelectorAll('.jsc-scatter-point');
-    expect(circles.length).toBe(3);
+    expect(circles).toHaveLength(3);
 
     // Verify plot group transform is within container bounds
     const plotGroup = container.querySelector('.jsc-plot-area');
