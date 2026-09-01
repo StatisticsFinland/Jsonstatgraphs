@@ -35,6 +35,18 @@ type YScale = ScaleLinear<number, number> | ScaleBand<string> | ScalePoint<strin
 const X_AXIS_TICK_SIZE = 8;
 /** Gap (px) between the X-axis tick mark and the label text. */
 const X_AXIS_TICK_LABEL_GAP = 4;
+/** Estimated width (px) per character when fitting axis labels without DOM measurement. */
+const AXIS_LABEL_CHAR_WIDTH = 8;
+/** Fallback width (px) available to horizontal category labels when their zone is absent. */
+const HORIZONTAL_LABEL_FALLBACK_WIDTH = 100;
+/** Line-height multiplier used to estimate wrapped horizontal label height. */
+const HORIZONTAL_LABEL_LINE_HEIGHT = 1.4;
+/** Maximum number of wrapped lines shown for a horizontal category label. */
+const HORIZONTAL_LABEL_MAX_LINES = 3;
+/** Pyramid labels reserve two estimated line heights per visible category. */
+const PYRAMID_LABEL_HEIGHT_MULTIPLIER = 2;
+/** Maximum imbalance allowed between adjacent pyramid label skip intervals. */
+const PYRAMID_SKIP_BALANCE_RATIO = 1.25;
 
 export const BURGER_MENU_CLEARANCE = 24;
 
@@ -85,6 +97,11 @@ export interface ScaffoldRenderContext {
   layout: LayoutResult;
   setSeriesToggle?: (callback: (index: number, active: boolean) => void) => void;
   setLegendItemStates?: (activeStates: boolean[]) => void;
+}
+
+interface RenderedScales {
+  xScale: XScale;
+  yScale: YScale;
 }
 
 export class ChartScaffold {
@@ -817,6 +834,241 @@ export class ChartScaffold {
     return measurements;
   }
 
+  private fitHorizontalCategoryLabels(
+    categories: string[],
+    labelTexts: string[],
+    yScale: YScale,
+    layout: LayoutResult,
+    plotAreaRect: ZoneRect,
+  ): LabelFitResult {
+    const labelWidth = layout.zones.get(ZoneType.YAxisLabels)?.width
+      ?? HORIZONTAL_LABEL_FALLBACK_WIDTH;
+    let fittedLabels = fitLabels(
+      labelTexts,
+      labelWidth,
+      labelWidth,
+      AXIS_LABEL_CHAR_WIDTH,
+    );
+    const lineHeight = (Number.parseFloat(this.theme.fontSizeTick) || 12)
+      * HORIZONTAL_LABEL_LINE_HEIGHT;
+    const categoryBandHeight = (yScale as ScaleBand<string>).bandwidth();
+    const maxLabelLines = Math.max(
+      1,
+      Math.min(HORIZONTAL_LABEL_MAX_LINES, Math.floor(categoryBandHeight / lineHeight)),
+    );
+    const maxVisibleLabels = Math.max(
+      1,
+      Math.floor(plotAreaRect.height / (lineHeight * maxLabelLines)),
+    );
+    const visibleLabelIndices = new Set<number>();
+
+    if (categories.length <= maxVisibleLabels) {
+      categories.forEach((_category, index) => visibleLabelIndices.add(index));
+    } else if (categories.length === 1) {
+      visibleLabelIndices.add(0);
+    } else {
+      const visibleCount = Math.max(2, maxVisibleLabels);
+      for (let position = 0; position < visibleCount; position++) {
+        visibleLabelIndices.add(Math.round(
+          position * (categories.length - 1) / (visibleCount - 1),
+        ));
+      }
+    }
+
+    fittedLabels = {
+      ...fittedLabels,
+      skipInterval: categories.length > maxVisibleLabels
+        ? Math.ceil((categories.length - 1) / Math.max(maxVisibleLabels - 1, 1))
+        : 1,
+      labels: fittedLabels.labels.map((label, index) => {
+        let lines = label.lines;
+        let wasTruncated = label.truncated;
+        if (lines.length > maxLabelLines) {
+          const preservedLines = lines.slice(0, maxLabelLines - 1);
+          const remainingText = lines.slice(maxLabelLines - 1).join(' ');
+          const truncated = truncateLabel(
+            remainingText,
+            labelWidth,
+            AXIS_LABEL_CHAR_WIDTH,
+          );
+          lines = [...preservedLines, truncated.text];
+          wasTruncated = true;
+        }
+        return {
+          ...label,
+          lines,
+          truncated: wasTruncated,
+          skip: !visibleLabelIndices.has(index),
+        };
+      }),
+    };
+
+    if (this.scaffoldConfig.chartType !== 'pyramid') return fittedLabels;
+
+    const pyramidMaxVisibleLabels = Math.max(
+      1,
+      Math.floor(
+        plotAreaRect.height / (lineHeight * PYRAMID_LABEL_HEIGHT_MULTIPLIER),
+      ),
+    );
+    let visibleLabelCount = Math.min(
+      categories.length,
+      categories.length > 1 ? Math.max(2, pyramidMaxVisibleLabels) : 1,
+    );
+    if (visibleLabelCount >= categories.length) return fittedLabels;
+
+    const lastIndex = categories.length - 1;
+    while (
+      visibleLabelCount > 2
+      && Math.ceil(lastIndex / (visibleLabelCount - 1))
+        / Math.floor(lastIndex / (visibleLabelCount - 1)) > PYRAMID_SKIP_BALANCE_RATIO
+    ) {
+      visibleLabelCount--;
+    }
+    const selectedIndices = new Set(Array.from(
+      { length: visibleLabelCount },
+      (_, position) => Math.round(position * lastIndex / (visibleLabelCount - 1)),
+    ));
+    return {
+      ...fittedLabels,
+      skipInterval: Math.ceil(lastIndex / (visibleLabelCount - 1)),
+      labels: fittedLabels.labels.map((label, index) => ({
+        ...label,
+        skip: !selectedIndices.has(index),
+      })),
+    };
+  }
+
+  private renderCategoricalContent(
+    layout: LayoutResult,
+    plotAreaRect: ZoneRect,
+    isHorizontal: boolean,
+  ): RenderedScales {
+    if (this.scaffoldConfig.mode !== 'categorical') {
+      throw new Error('Categorical rendering requires categorical scaffold configuration');
+    }
+
+    const { categories, valueRange } = this.scaffoldConfig;
+    const [minValue, maxValue] = valueRange;
+    const isPercent = this.scaffoldConfig.chartType === 'percentVerticalBar'
+      || this.scaffoldConfig.chartType === 'percentHorizontalBar';
+    const [paddedMin, paddedMax] = getCategoricalValuePadding(
+      this.scaffoldConfig.chartType,
+      this.config,
+      minValue,
+      maxValue,
+      isPercent,
+    );
+    const forceZeroBaseline = isCategoricalValueAxisZeroForced(
+      this.scaffoldConfig.chartType,
+      this.config,
+    );
+    const axisLength = isHorizontal ? plotAreaRect.width : plotAreaRect.height;
+    const rawTicks = getTickPositions(
+      paddedMin,
+      paddedMax,
+      axisLength,
+      undefined,
+      this.theme.fontSizeTick,
+      forceZeroBaseline,
+    );
+    const tickValues = rawTicks.length >= 2 ? rawTicks : [paddedMin, paddedMax];
+    const scaleType = this.scaffoldConfig.chartType === 'line' ? 'point' : 'band';
+    const { xScale, yScale } = this.buildScales(
+      isHorizontal,
+      categories,
+      paddedMin,
+      paddedMax,
+      plotAreaRect,
+      tickValues,
+      scaleType,
+    );
+
+    const labelTexts = this.scaffoldConfig.categoryLabels ?? categories;
+    let fittedLabels: LabelFitResult;
+    if (isHorizontal) {
+      fittedLabels = this.fitHorizontalCategoryLabels(
+        categories,
+        labelTexts,
+        yScale,
+        layout,
+        plotAreaRect,
+      );
+    } else {
+      const slotDivisor = this.scaffoldConfig.chartType === 'line'
+        ? Math.max(categories.length - 1, 1)
+        : Math.max(categories.length, 1);
+      fittedLabels = fitLabels(
+        labelTexts,
+        plotAreaRect.width,
+        plotAreaRect.width / slotDivisor,
+        AXIS_LABEL_CHAR_WIDTH,
+        this.scaffoldConfig.timeSeriesLabels,
+      );
+    }
+
+    this.renderHeader(layout);
+    if (this.scaffoldConfig.chartType !== 'pie') {
+      this.renderGrid(isHorizontal, xScale, yScale, plotAreaRect, tickValues);
+    }
+    this.renderAxes(isHorizontal, xScale, yScale, layout, plotAreaRect, tickValues, fittedLabels);
+    this.renderAxisTitles(isHorizontal, layout);
+    this.renderFooter(layout);
+    this.renderLegend(layout);
+
+    return { xScale, yScale };
+  }
+
+  private renderNumericContent(
+    layout: LayoutResult,
+    plotAreaRect: ZoneRect,
+  ): RenderedScales {
+    if (this.scaffoldConfig.mode !== 'numeric') {
+      throw new Error('Numeric rendering requires numeric scaffold configuration');
+    }
+
+    const [xRawMin, xRawMax] = this.scaffoldConfig.xValueRange;
+    const [yRawMin, yRawMax] = this.scaffoldConfig.yValueRange;
+    const yForceZeroBaseline = isNumericValueAxisZeroForced(this.scaffoldConfig.config);
+    const [xPadMin, xPadMax] = padValueRange(xRawMin, xRawMax);
+    const [yPadMin, yPadMax] = yForceZeroBaseline
+      ? padValueRange(yRawMin, yRawMax)
+      : padNumericRange(yRawMin, yRawMax);
+    const xRawTicks = getTickPositions(
+      xPadMin,
+      xPadMax,
+      plotAreaRect.width,
+      undefined,
+      this.theme.fontSizeTick,
+      true,
+    );
+    const yRawTicks = getTickPositions(
+      yPadMin,
+      yPadMax,
+      plotAreaRect.height,
+      undefined,
+      this.theme.fontSizeTick,
+      yForceZeroBaseline,
+    );
+    const xTickValues = xRawTicks.length >= 2 ? xRawTicks : [xPadMin, xPadMax];
+    const yTickValues = yRawTicks.length >= 2 ? yRawTicks : [yPadMin, yPadMax];
+    const xScale = scaleLinear()
+      .domain([xTickValues[0], xTickValues.at(-1) as number])
+      .range([0, plotAreaRect.width]);
+    const yScale = scaleLinear()
+      .domain([yTickValues[0], yTickValues.at(-1) as number])
+      .range([plotAreaRect.height, 0]);
+
+    this.renderHeader(layout);
+    this.renderNumericGrid(xScale, yScale, plotAreaRect, xTickValues, yTickValues);
+    this.renderNumericAxes(xScale, yScale, layout, plotAreaRect, xTickValues, yTickValues);
+    this.renderAxisTitles(false, layout);
+    this.renderFooter(layout);
+    this.renderLegend(layout);
+
+    return { xScale, yScale };
+  }
+
   render(): ScaffoldRenderContext {
     this.theme = resolveTheme(this.container, this.config.theme);
     // colorFocusRing is consumed via var(--jsc-color-focus-ring) in injected <style>
@@ -869,184 +1121,9 @@ export class ChartScaffold {
       .attr('width', plotAreaRect.width)
       .attr('height', plotAreaRect.height);
 
-    let xScale: XScale;
-    let yScale: YScale;
-
-    if (this.scaffoldConfig.mode === 'categorical') {
-      const { categories, valueRange } = this.scaffoldConfig;
-      const [minValue, maxValue] = valueRange;
-      const isPercent = this.scaffoldConfig.chartType === 'percentVerticalBar' || this.scaffoldConfig.chartType === 'percentHorizontalBar';
-      const [paddedMin, paddedMax] = getCategoricalValuePadding(
-        this.scaffoldConfig.chartType,
-        this.config,
-        minValue,
-        maxValue,
-        isPercent,
-      );
-      const forceZeroBaseline = isCategoricalValueAxisZeroForced(
-        this.scaffoldConfig.chartType,
-        this.config,
-      );
-
-      const rawTicks = isHorizontal
-        ? getTickPositions(paddedMin, paddedMax, plotAreaRect.width, undefined, this.theme.fontSizeTick, forceZeroBaseline)
-        : getTickPositions(paddedMin, paddedMax, plotAreaRect.height, undefined, this.theme.fontSizeTick, forceZeroBaseline);
-      const tickValues = rawTicks.length >= 2 ? rawTicks : [paddedMin, paddedMax];
-
-      const scaleType = this.scaffoldConfig.chartType === 'line' ? 'point' : 'band';
-      const result = this.buildScales(
-        isHorizontal,
-        categories,
-        paddedMin,
-        paddedMax,
-        plotAreaRect,
-        tickValues,
-        scaleType
-      );
-      xScale = result.xScale;
-      yScale = result.yScale;
-
-      // Compute fitted labels using real plot-area dimensions
-      const labelTexts = this.scaffoldConfig.categoryLabels ?? categories;
-      let fittedLabels: LabelFitResult;
-      if (isHorizontal) {
-        // Horizontal chart: band axis on Y, labels are horizontal text
-        // Fit labels against Y-axis label zone width
-        const yLabelRect = layout.zones.get(ZoneType.YAxisLabels);
-        const labelWidth = yLabelRect ? yLabelRect.width : 100;
-        fittedLabels = fitLabels(labelTexts, labelWidth, labelWidth, 8);
-        const lineHeight = (Number.parseFloat(this.theme.fontSizeTick) || 12) * 1.4;
-        const categoryBandHeight = (yScale as ScaleBand<string>).bandwidth();
-        const maxLabelLines = Math.max(1, Math.min(3, Math.floor(categoryBandHeight / lineHeight)));
-        const maxVisibleLabels = Math.max(1, Math.floor(plotAreaRect.height / (lineHeight * maxLabelLines)));
-        const visibleLabelIndices = new Set<number>();
-        if (categories.length <= maxVisibleLabels) {
-          categories.forEach((_category, index) => visibleLabelIndices.add(index));
-        } else if (categories.length === 1) {
-          visibleLabelIndices.add(0);
-        } else {
-          const visibleCount = Math.max(2, maxVisibleLabels);
-          for (let position = 0; position < visibleCount; position++) {
-            visibleLabelIndices.add(Math.round(
-              position * (categories.length - 1) / (visibleCount - 1),
-            ));
-          }
-        }
-        fittedLabels = {
-          ...fittedLabels,
-          skipInterval: categories.length > maxVisibleLabels
-            ? Math.ceil((categories.length - 1) / Math.max(maxVisibleLabels - 1, 1))
-            : 1,
-          labels: fittedLabels.labels.map((label, index) => {
-            let lines = label.lines;
-            let wasTruncated = label.truncated;
-            if (lines.length > maxLabelLines) {
-              const preservedLines = lines.slice(0, maxLabelLines - 1);
-              const remainingText = lines.slice(maxLabelLines - 1).join(' ');
-              const truncated = truncateLabel(remainingText, labelWidth, 8);
-              lines = [...preservedLines, truncated.text];
-              wasTruncated = true;
-            }
-            return {
-              ...label,
-              lines,
-              truncated: wasTruncated,
-              skip: !visibleLabelIndices.has(index),
-            };
-          }),
-        };
-        if (this.scaffoldConfig.chartType === 'pyramid') {
-          const maxVisibleLabels = Math.max(1, Math.floor(plotAreaRect.height / (lineHeight * 2)));
-          let visibleLabelCount = Math.min(
-            categories.length,
-            categories.length > 1 ? Math.max(2, maxVisibleLabels) : 1,
-          );
-          if (visibleLabelCount < categories.length) {
-            const lastIndex = categories.length - 1;
-            while (
-              visibleLabelCount > 2
-              && Math.ceil(lastIndex / (visibleLabelCount - 1))
-                / Math.floor(lastIndex / (visibleLabelCount - 1)) > 1.25
-            ) {
-              visibleLabelCount--;
-            }
-            const selectedIndices = new Set(Array.from(
-              { length: visibleLabelCount },
-              (_, position) => Math.round(position * lastIndex / (visibleLabelCount - 1)),
-            ));
-            fittedLabels = {
-              ...fittedLabels,
-              skipInterval: Math.ceil(lastIndex / (visibleLabelCount - 1)),
-              labels: fittedLabels.labels.map((label, index) => ({
-                ...label,
-                skip: !selectedIndices.has(index),
-              })),
-            };
-          }
-        }
-      } else {
-        // Vertical chart: band/point axis on X, labels are below plot area
-        const isLine = this.scaffoldConfig.chartType === 'line';
-        const slotDivisor = isLine
-          ? Math.max(categories.length - 1, 1)
-          : Math.max(categories.length, 1);
-        const slotWidth = plotAreaRect.width / slotDivisor;
-        fittedLabels = fitLabels(labelTexts, plotAreaRect.width, slotWidth, 8, this.scaffoldConfig.timeSeriesLabels);
-      }
-
-      this.renderHeader(layout);
-      if (this.scaffoldConfig.chartType !== 'pie') {
-        this.renderGrid(isHorizontal, xScale, yScale, plotAreaRect, tickValues);
-      }
-      this.renderAxes(isHorizontal, xScale, yScale, layout, plotAreaRect, tickValues, fittedLabels);
-      this.renderAxisTitles(isHorizontal, layout);
-      this.renderFooter(layout);
-      this.renderLegend(layout);
-    } else {
-      // Numeric-numeric mode (scatter)
-      const cfg = this.scaffoldConfig as NumericScaffoldConfig;
-      const [xRawMin, xRawMax] = cfg.xValueRange;
-      const [yRawMin, yRawMax] = cfg.yValueRange;
-      const yForceZeroBaseline = isNumericValueAxisZeroForced(cfg.config);
-      const [xPadMin, xPadMax] = padValueRange(xRawMin, xRawMax);
-      const [yPadMin, yPadMax] = yForceZeroBaseline
-        ? padValueRange(yRawMin, yRawMax)
-        : padNumericRange(yRawMin, yRawMax);
-
-      const xRawTicks = getTickPositions(xPadMin, xPadMax, plotAreaRect.width, undefined, this.theme.fontSizeTick, true);
-      const yRawTicks = getTickPositions(yPadMin, yPadMax, plotAreaRect.height, undefined, this.theme.fontSizeTick, yForceZeroBaseline);
-      const xTickValues = xRawTicks.length >= 2 ? xRawTicks : [xPadMin, xPadMax];
-      const yTickValues = yRawTicks.length >= 2 ? yRawTicks : [yPadMin, yPadMax];
-
-      // Derive scale domains from tick range
-      const xDomainMin = xTickValues.length >= 2 ? xTickValues[0] : xPadMin;
-      const xDomainMax = xTickValues.length >= 2 ? xTickValues.at(-1) as number : xPadMax;
-      const yDomainMin = yTickValues.length >= 2 ? yTickValues[0] : yPadMin;
-      const yDomainMax = yTickValues.length >= 2 ? yTickValues.at(-1) as number : yPadMax;
-
-      xScale = scaleLinear().domain([xDomainMin, xDomainMax]).range([0, plotAreaRect.width]);
-      yScale = scaleLinear().domain([yDomainMin, yDomainMax]).range([plotAreaRect.height, 0]);
-
-      this.renderHeader(layout);
-      this.renderNumericGrid(
-        xScale as ScaleLinear<number, number>,
-        yScale as ScaleLinear<number, number>,
-        plotAreaRect,
-        xTickValues,
-        yTickValues
-      );
-      this.renderNumericAxes(
-        xScale as ScaleLinear<number, number>,
-        yScale as ScaleLinear<number, number>,
-        layout,
-        plotAreaRect,
-        xTickValues,
-        yTickValues
-      );
-      this.renderAxisTitles(false, layout);
-      this.renderFooter(layout);
-      this.renderLegend(layout);
-    }
+    const { xScale, yScale } = this.scaffoldConfig.mode === 'categorical'
+      ? this.renderCategoricalContent(layout, plotAreaRect, isHorizontal)
+      : this.renderNumericContent(layout, plotAreaRect);
 
     // Plot area group for chart renderers
     this.svg

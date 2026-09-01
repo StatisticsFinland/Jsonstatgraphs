@@ -7,15 +7,6 @@ import {
 } from '../../src/charts/scatter';
 import { ScatterChartData, ChartConfig } from '../../src/types';
 
-beforeAll(() => {
-  (globalThis as any).ResizeObserver = class {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
-  };
-  (window as any).matchMedia = jest.fn().mockReturnValue({ matches: false });
-});
-
 const scatterData: ScatterChartData = {
   points: [
     { x: 10, y: 20, label: 'Helsinki', code: 'hel' },

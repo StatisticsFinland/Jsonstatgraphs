@@ -4,6 +4,7 @@ const config: Config = {
   preset: 'ts-jest',
   testEnvironment: 'jsdom',
   roots: ['<rootDir>/tests'],
+  setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
   transform: {
     '^.+\\.tsx?$': ['ts-jest', { useESM: true, tsconfig: 'tests/tsconfig.json' }],
     '^.+\\.js$': ['ts-jest', { useESM: true, tsconfig: { allowJs: true } }],

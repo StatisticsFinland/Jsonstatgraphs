@@ -2,15 +2,6 @@ import { createBarChart } from '../../src/charts/bar';
 import { ChartData, ChartConfig } from '../../src/types';
 
 // Mock ResizeObserver
-beforeAll(() => {
-  (globalThis as any).ResizeObserver = class {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
-  };
-  (window as any).matchMedia = jest.fn().mockReturnValue({ matches: false });
-});
-
 const singleSeriesData: ChartData = {
   series: [{
     name: 'Population',

@@ -2,17 +2,6 @@ import { ChartScaffold, ChartScaffoldConfig, CategoricalScaffoldConfig } from '.
 import { getTickPositions } from '../../src/layout/tick-positions';
 import { ZoneType } from '../../src/types';
 
-// Mock ResizeObserver (not available in jsdom)
-class MockResizeObserver {
-  observe() {}
-  unobserve() {}
-  disconnect() {}
-}
-(globalThis as any).ResizeObserver = MockResizeObserver;
-
-// Mock matchMedia (not available in jsdom)
-(window as any).matchMedia = jest.fn().mockReturnValue({ matches: false });
-
 function createContainer(width = 800, height = 400): HTMLDivElement {
   const div = document.createElement('div');
   document.body.appendChild(div);

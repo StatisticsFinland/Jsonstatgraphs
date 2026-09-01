@@ -2,15 +2,6 @@ import { createPieChart } from '../../src/charts/pie';
 import { ChartData, ChartConfig } from '../../src/types';
 import { DEFAULT_THEME } from '../../src/theme/defaults';
 
-beforeAll(() => {
-  (globalThis as any).ResizeObserver = class {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
-  };
-  (window as any).matchMedia = jest.fn().mockReturnValue({ matches: false });
-});
-
 const pieData: ChartData = {
   series: [{
     name: 'Population',

@@ -1228,8 +1228,7 @@ describe('transformScatterData', () => {
           index: ['price', 'cost'],
           label: { price: 'Price of apartments', cost: 'Maintenance costs' },
         },
-        role: undefined,
-      } as any,
+      },
       Year: {
         label: 'Year',
         category: {
@@ -1292,7 +1291,7 @@ describe('transformScatterData', () => {
               cost: { label: '', decimals: 0 },
             },
           },
-        } as any,
+        },
       },
     };
     const result = transformScatterData(ds, {
@@ -1317,7 +1316,7 @@ describe('transformScatterData', () => {
               cost: { label: '  ', decimals: 0 },
             },
           },
-        } as any,
+        },
       },
     };
     const result = transformScatterData(ds, {

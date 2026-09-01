@@ -2,15 +2,6 @@ import { createPyramidChart } from '../../src/charts/pyramid';
 import { PyramidChartData, ChartConfig } from '../../src/types';
 import * as bindInteractionsModule from '../../src/charts/bindInteractions';
 
-beforeAll(() => {
-  (globalThis as any).ResizeObserver = class {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
-  };
-  (window as any).matchMedia = jest.fn().mockReturnValue({ matches: false });
-});
-
 const pyramidData: PyramidChartData = {
   leftSeries: {
     name: 'Male',

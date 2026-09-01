@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/html-vite';
 import { createChart } from '../src';
-import { renderChart } from './helpers/renderChart';
+import { renderChart, storeChartInstance } from './helpers/renderChart';
 import type { ChartInstance } from '../src/types';
 
 import timeSeriesData from './fixtures/time-series.json';
@@ -109,7 +109,7 @@ export const DarkTheme: StoryObj = {
             },
           },
         );
-        (wrapper as any).__jscInstance = instance;
+        storeChartInstance(wrapper, instance);
       }
     });
 
@@ -145,7 +145,7 @@ export const CSSCustomProperties: StoryObj = {
           multiSeriesData,
           { chartType: 'groupedVerticalBar', locale: 'en' },
         );
-        (wrapper as any).__jscInstance = instance;
+        storeChartInstance(wrapper, instance);
       }
     });
 

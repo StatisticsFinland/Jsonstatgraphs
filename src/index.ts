@@ -679,11 +679,31 @@ export function createChart(
   let generation = 0;
   let pendingAbort: AbortController | null = null;
   let pendingSpinnerRaf: number | null = null;
+  let pendingAnnouncementTimer: ReturnType<typeof setTimeout> | null = null;
   let lastMapAvailable = false;
   let resolvedMapGeometry: GeoJsonFeatureCollection | null = null;
   let burgerMenu: BurgerMenu | null = null;
   let chartModeType: ChartType | null = null;
   let accessibilityMode = currentConfig.accessibilityMode ?? false;
+
+  function clearPendingAnnouncement(): void {
+    if (pendingAnnouncementTimer !== null) {
+      clearTimeout(pendingAnnouncementTimer);
+      pendingAnnouncementTimer = null;
+    }
+  }
+
+  function announceChartLoaded(): void {
+    clearPendingAnnouncement();
+    const announcement = createSrOnlyElement('div', 'Chart loaded');
+    announcement.setAttribute('role', 'status');
+    announcement.setAttribute('aria-live', 'polite');
+    container.appendChild(announcement);
+    pendingAnnouncementTimer = setTimeout(() => {
+      announcement.remove();
+      pendingAnnouncementTimer = null;
+    }, 1000);
+  }
 
   function applyChartTypeOverride(type: ChartType): void {
     if (destroyed) return;
@@ -715,6 +735,7 @@ export function createChart(
       cancelAnimationFrame(pendingSpinnerRaf);
       pendingSpinnerRaf = null;
     }
+    clearPendingAnnouncement();
     // Clear stale map state — will be set again when provider resolves or sync path completes
     resolvedMapGeometry = null;
     lastMapAvailable = false;
@@ -839,11 +860,7 @@ export function createChart(
           try {
             container.innerHTML = '';
             finishRebuild(ds, effectiveCfg, dataProps, dimMeta, resolvedLocale, theme, mapAvailable);
-            const announcement = createSrOnlyElement('div', 'Chart loaded');
-            announcement.setAttribute('role', 'status');
-            announcement.setAttribute('aria-live', 'polite');
-            container.appendChild(announcement);
-            setTimeout(() => announcement.remove(), 1000);
+            announceChartLoaded();
           } catch (err) {
             console.warn('[JsonStatChart]', err);
             renderError(container, err instanceof Error ? err.message : 'An unexpected error occurred', theme);
@@ -864,11 +881,7 @@ export function createChart(
           try {
             container.innerHTML = '';
             finishRebuild(ds, catchCfg, dataProps, dimMeta, resolvedLocale, theme, false);
-            const announcement = createSrOnlyElement('div', 'Chart loaded');
-            announcement.setAttribute('role', 'status');
-            announcement.setAttribute('aria-live', 'polite');
-            container.appendChild(announcement);
-            setTimeout(() => announcement.remove(), 1000);
+            announceChartLoaded();
           } catch (finishErr) {
             console.warn('[JsonStatChart]', finishErr);
             renderError(container, finishErr instanceof Error ? finishErr.message : 'An unexpected error occurred', theme);
@@ -1110,6 +1123,7 @@ export function createChart(
         cancelAnimationFrame(pendingSpinnerRaf);
         pendingSpinnerRaf = null;
       }
+      clearPendingAnnouncement();
       if (currentRenderer) {
         currentRenderer.destroy();
         currentRenderer = null;

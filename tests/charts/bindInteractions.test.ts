@@ -2,15 +2,6 @@ import { bindInteractions, DataElementInfo } from '../../src/charts/bindInteract
 import { resolveTheme } from '../../src/theme/theme';
 import { ChartData } from '../../src/types';
 
-beforeAll(() => {
-  (globalThis as any).ResizeObserver = class {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
-  };
-  (window as any).matchMedia = jest.fn().mockReturnValue({ matches: false });
-});
-
 function makeElement(): SVGCircleElement {
   const el = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
   el.setAttribute('tabindex', '0');

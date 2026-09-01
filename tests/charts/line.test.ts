@@ -4,15 +4,6 @@ import { ChartData, ChartConfig, ZoneType } from '../../src/types';
 import { DEFAULT_THEME } from '../../src/theme/defaults';
 
 // Mock ResizeObserver
-beforeAll(() => {
-  (globalThis as any).ResizeObserver = class {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
-  };
-  (window as any).matchMedia = jest.fn().mockReturnValue({ matches: false });
-});
-
 const singleSeriesData: ChartData = {
   series: [{
     name: 'Population',
