@@ -1,15 +1,32 @@
 import { select, Selection } from 'd3-selection';
-import { scaleLinear, scaleBand, scalePoint, ScaleLinear, ScaleBand, ScalePoint } from 'd3-scale';
+import { scaleLinear, ScaleLinear, ScaleBand, ScalePoint } from 'd3-scale';
 import { axisBottom, axisLeft } from 'd3-axis';
 import { ChartType, ChartConfig, ResolvedTheme, ZoneType, ZoneRect, LayoutResult } from '../types';
 import { renderSvgFooter } from './footer';
 import { Legend } from '../interaction/legend';
 import { getTickPositions } from '../layout/tick-positions';
-import { fitLabels, LabelFitResult, NiceSkipOptions } from '../layout/label-fitting';
+import { fitLabels, LabelFitResult, NiceSkipOptions, truncateLabel } from '../layout/label-fitting';
 import { resolveTheme } from '../theme/theme';
-import { createZones, applyMeasuredSizes, PLOT_AREA_MIN_SIZE } from '../layout/zones';
+import { createZones, applyMeasuredSizes } from '../layout/zones';
 import { computeLayout } from '../layout/layout-engine';
 import { formatNumber } from '../locale/number';
+import {
+  buildCategoricalScales,
+  getCategoricalValuePadding,
+  isCategoricalValueAxisZeroForced,
+  isNumericValueAxisZeroForced,
+  padNumericRange,
+  padValueRange,
+} from '../layout/axis-ranges';
+import {
+  createZoneMeasurementContext,
+  measureCategoricalAxisTitles,
+  measureCategoricalRightMargin,
+  measureCategoricalXAxisLabels,
+  measureCategoricalYAxisLabels,
+  measureFooterZone,
+  measureHeaderZone,
+} from '../layout/zone-measurement';
 
 type XScale = ScaleBand<string> | ScalePoint<string> | ScaleLinear<number, number>;
 type YScale = ScaleLinear<number, number> | ScaleBand<string> | ScalePoint<string>;
@@ -27,13 +44,6 @@ const HORIZONTAL_CHART_TYPES = new Set<ChartType>([
   'stackedHorizontalBar',
   'percentHorizontalBar',
   'pyramid',
-]);
-
-const HORIZONTAL_BAR_CHART_TYPES = new Set<ChartType>([
-  'horizontalBar',
-  'groupedHorizontalBar',
-  'stackedHorizontalBar',
-  'percentHorizontalBar',
 ]);
 
 let scaffoldInstanceCounter = 0;
@@ -134,49 +144,6 @@ export class ChartScaffold {
     this.resizeObserver.observe(this.container);
   }
 
-  /**
-   * Pad the value range so that getTickPositions naturally picks a tick
-   * value beyond the data maximum (or below the data minimum).
-   * Only pads the side away from zero — bar charts anchor at zero.
-   */
-  private padValueRange(min: number, max: number): [number, number] {
-    const range = max - min;
-    if (range <= 0) return [min, max];
-    const headroom = range * 0.05;
-    // Only pad the side away from zero
-    const paddedMin = min < 0 ? min - headroom : min;
-    const paddedMax = max > 0 ? max + headroom : max;
-    return [paddedMin, paddedMax];
-  }
-
-  /** Symmetric 5% padding on both sides of a numeric range. */
-  private padNumericRange(min: number, max: number): [number, number] {
-    if (min === max) return [min - 1, max + 1];
-    const pad = (max - min) * 0.05;
-    return [min - pad, max + pad];
-  }
-
-  /**
-   * Whether the categorical value axis must be anchored at 0. False only for line charts
-   * with `cutValueAxis` enabled, letting the axis start/end away from zero.
-   */
-  private isCategoricalValueAxisZeroForced(): boolean {
-    return !(this.scaffoldConfig.chartType === 'line' && this.scaffoldConfig.config.cutValueAxis === true);
-  }
-
-  /** Whether the numeric (scatter) value axis must be anchored at 0. False only when `cutValueAxis` is enabled. */
-  private isNumericValueAxisZeroForced(cfg: NumericScaffoldConfig): boolean {
-    return cfg.config.cutValueAxis !== true;
-  }
-
-  /** Pads the categorical value range, using symmetric padding when the axis isn't zero-anchored. */
-  private getCategoricalValuePadding(minValue: number, maxValue: number, isPercent: boolean): [number, number] {
-    if (isPercent) return [minValue, maxValue];
-    return this.isCategoricalValueAxisZeroForced()
-      ? this.padValueRange(minValue, maxValue)
-      : this.padNumericRange(minValue, maxValue);
-  }
-
   private buildScales(
     isHorizontal: boolean,
     categories: string[],
@@ -189,47 +156,17 @@ export class ChartScaffold {
     xScale: XScale;
     yScale: YScale;
   } {
-    const domainMin = tickValues && tickValues.length >= 2 ? tickValues[0] : minValue;
-    const domainMax = tickValues && tickValues.length >= 2 ? tickValues.at(-1) as number : maxValue;
-
-    if (isHorizontal) {
-      const pyramidBoundaryInset = this.scaffoldConfig.chartType === 'pyramid'
-        ? (Number.parseFloat(this.theme.fontSizeTick) || 12) * 0.7
-        : 0;
-      return {
-        xScale: scaleLinear()
-          .domain([domainMin, domainMax])
-          .range([0, plotAreaRect.width]),
-        yScale: scaleBand<string>()
-          .domain(categories)
-          .range(this.scaffoldConfig.chartType === 'pyramid'
-            ? [plotAreaRect.height - pyramidBoundaryInset, pyramidBoundaryInset]
-            : [0, plotAreaRect.height])
-          .padding(0.2)
-          .paddingOuter(0.5),
-      };
-    }
-    if (scaleType === 'point') {
-      return {
-        xScale: scalePoint<string>()
-          .domain(categories)
-          .range([0, plotAreaRect.width])
-          .padding(0),
-        yScale: scaleLinear()
-          .domain([domainMin, domainMax])
-          .range([plotAreaRect.height, 0]),
-      };
-    }
-    return {
-      xScale: scaleBand<string>()
-        .domain(categories)
-        .range([0, plotAreaRect.width])
-        .padding(0.2)
-        .paddingOuter(0.5),
-      yScale: scaleLinear()
-        .domain([domainMin, domainMax])
-        .range([plotAreaRect.height, 0]),
-    };
+    return buildCategoricalScales(
+      this.scaffoldConfig.chartType,
+      this.theme,
+      isHorizontal,
+      categories,
+      minValue,
+      maxValue,
+      plotAreaRect,
+      tickValues,
+      scaleType,
+    );
   }
 
   private renderHeader(layout: LayoutResult): void {
@@ -692,62 +629,11 @@ export class ChartScaffold {
 
   /** Measures the header zone height (title + subtitle) in px. */
   private measureHeaderZone(containerWidth: number): number {
-    const CHAR_WIDTH = 8;
-    const { config } = this.scaffoldConfig;
-    const titleFontSize = Number.parseFloat(this.theme.fontSizeTitle) || 16;
-    const subtitleFontSize = Number.parseFloat(this.theme.fontSizeLabel) || 14;
-    const TITLE_LINE_HEIGHT = titleFontSize * 1.25;
-    const SUBTITLE_LINE_HEIGHT = subtitleFontSize * 1.25;
-    const HEADER_PADDING = 12;
-    if (config.showHeader === false) {
-      return config.burgerMenuVisible ? 48 : 0;
-    }
-    if (config.title) {
-      const titleMaxWidth = containerWidth - 40 - (
-        config.burgerMenuVisible ? BURGER_MENU_CLEARANCE : 0
-      );
-
-      // Create temp text for measurement
-      const tempText = this.svg.append('text')
-        .attr('font-size', this.theme.fontSizeTitle)
-        .attr('font-family', this.theme.fontFamily)
-        .attr('font-weight', this.theme.fontWeightBold)
-        .attr('visibility', 'hidden');
-      const textNode = tempText.node()!;
-      const measureText = (text: string): number => {
-        textNode.textContent = text;
-        try {
-          const computed = textNode.getComputedTextLength();
-          return computed > 0 ? computed : text.length * CHAR_WIDTH;
-        } catch {
-          return text.length * CHAR_WIDTH;
-        }
-      };
-      const words = config.title.split(/\s+/);
-      let titleLineCount = 0;
-      let currentLine = '';
-      for (const word of words) {
-        const candidate = currentLine ? `${currentLine} ${word}` : word;
-        if (titleMaxWidth > 0 && measureText(candidate) > titleMaxWidth && currentLine) {
-          titleLineCount++;
-          currentLine = word;
-        } else {
-          currentLine = candidate;
-        }
-      }
-      if (currentLine) titleLineCount++;
-      tempText.remove();
-      titleLineCount = Math.max(1, titleLineCount);
-      let headerHeight = titleLineCount * TITLE_LINE_HEIGHT + HEADER_PADDING;
-      if (config.subtitle) {
-        headerHeight += SUBTITLE_LINE_HEIGHT;
-      }
-      return headerHeight;
-    } else if (config.subtitle) {
-      return SUBTITLE_LINE_HEIGHT + HEADER_PADDING;
-    } else {
-      return config.burgerMenuVisible ? 48 : 0;
-    }
+    return measureHeaderZone(
+      createZoneMeasurementContext(this.svg, this.scaffoldConfig.config, this.theme),
+      containerWidth,
+      BURGER_MENU_CLEARANCE,
+    );
   }
 
   /**
@@ -788,106 +674,7 @@ export class ChartScaffold {
 
   /** Measures the footer zone height in px. Returns 0 when there are no footer items. */
   private measureFooterZone(): number {
-    const { config } = this.scaffoldConfig;
-    // Footer zone — always stacked
-    if (config.footerItems && config.footerItems.length > 0) {
-      const footerTickFontSize = Number.parseFloat(this.theme.fontSizeTick) || 12;
-      const FOOTER_LINE_HEIGHT = Math.ceil(footerTickFontSize * 1.4); // ~17px at default 12px tick font
-      return config.footerItems.length * FOOTER_LINE_HEIGHT + 4;
-    }
-    return 0;
-  }
-
-  /** Measures the Y-axis label zone width for categorical charts. */
-  private measureCategoricalYAxisLabels(
-    isHorizontal: boolean,
-    containerWidth: number,
-    containerHeight: number,
-    paddedMin: number,
-    paddedMax: number,
-    labelTexts: string[]
-  ): number {
-    const CHAR_WIDTH = 8;
-    if (isHorizontal) {
-      // Band axis on Y — fit labels against available width (capped at 40% container)
-      const maxWidth = containerWidth * 0.4;
-      const fitResult = fitLabels(labelTexts, maxWidth, maxWidth, CHAR_WIDTH);
-      let maxLineWidth = 0;
-      for (const label of fitResult.labels) {
-        for (const line of label.lines) {
-          maxLineWidth = Math.max(maxLineWidth, line.length * CHAR_WIDTH);
-        }
-      }
-      return maxLineWidth + 16; // +16 for tick mark + margin
-    } else {
-      // Linear axis on Y — estimate tick label width from a rough axis height pass
-      const estimatedAxisHeight = containerHeight * 0.6;
-      const ticks = getTickPositions(paddedMin, paddedMax, estimatedAxisHeight, undefined, this.theme.fontSizeTick, this.isCategoricalValueAxisZeroForced());
-      const maxTickLen = ticks.reduce((max, t) => Math.max(max, formatNumber(t, this.config.locale).length), 0);
-      return maxTickLen * CHAR_WIDTH + 16;
-    }
-  }
-
-  /** Measures the right-margin zone width for categorical charts. */
-  private measureCategoricalRightMargin(
-    categories: string[],
-    containerWidth: number,
-    yAxisWidth: number,
-    paddedMin: number,
-    paddedMax: number
-  ): number {
-    const CHAR_WIDTH = 8;
-    // RightMargin zone — for line charts and horizontal bar charts, reserves space so edge labels don't clip
-    if (this.scaffoldConfig.chartType === 'line') {
-      const n = categories.length;
-      const preMarginPlotWidth = containerWidth - yAxisWidth;
-      if (n > 1 && preMarginPlotWidth > 0) {
-        const slotWidth = preMarginPlotWidth / (n - 1);
-        return Math.max(0, Math.min(Math.ceil(slotWidth / 2), 40));
-      } else {
-        return 0;
-      }
-    } else if (HORIZONTAL_CHART_TYPES.has(this.scaffoldConfig.chartType)) {
-      const estimatedPlotWidth = containerWidth - yAxisWidth;
-      const ticks = getTickPositions(paddedMin, paddedMax, estimatedPlotWidth, undefined, this.theme.fontSizeTick);
-      if (ticks.length > 0) {
-        const lastTick = ticks.at(-1)!;
-        return Math.min(Math.ceil(formatNumber(lastTick, this.config.locale).length * CHAR_WIDTH / 2), 40);
-      } else {
-        return 0;
-      }
-    } else {
-      return 0;
-    }
-  }
-
-  /** Measures the X-axis label zone height for categorical charts. */
-  private measureCategoricalXAxisLabels(
-    isHorizontal: boolean,
-    categories: string[],
-    labelTexts: string[],
-    containerWidth: number,
-    yAxisWidthEstimate: number,
-    rightMarginEstimate: number,
-    timeSeriesLabels?: NiceSkipOptions
-  ): number {
-    const CHAR_WIDTH = 8;
-    if (isHorizontal) {
-      // Linear axis on X — single line of numbers
-      return 24;
-    } else {
-      // Band/point axis on X — use fitLabels to estimate
-      const isLine = this.scaffoldConfig.chartType === 'line';
-      const slotDivisor = isLine
-        ? Math.max(categories.length - 1, 1)
-        : Math.max(categories.length, 1);
-      // For line charts, estimate the actual plot width (after YAxis and RightMargin deductions)
-      const estimatedPlotWidth = Math.max(PLOT_AREA_MIN_SIZE, containerWidth - yAxisWidthEstimate - rightMarginEstimate);
-      const availableWidth = isLine ? estimatedPlotWidth : containerWidth;
-      const slotWidth = availableWidth / slotDivisor;
-      const fitResult = fitLabels(labelTexts, availableWidth, slotWidth, CHAR_WIDTH, timeSeriesLabels);
-      return fitResult.zoneSizeNeeded + X_AXIS_TICK_SIZE + X_AXIS_TICK_LABEL_GAP;
-    }
+    return measureFooterZone(this.scaffoldConfig.config, this.theme);
   }
 
   private measureNumericZoneSizes(
@@ -905,11 +692,11 @@ export class ChartScaffold {
     const [xMin, xMax] = cfg.xValueRange;
     const [yMin, yMax] = cfg.yValueRange;
 
-    const yForceZeroBaseline = this.isNumericValueAxisZeroForced(cfg);
-    const xPadded = this.padValueRange(xMin, xMax);
+    const yForceZeroBaseline = isNumericValueAxisZeroForced(cfg.config);
+    const xPadded = padValueRange(xMin, xMax);
     const yPadded = yForceZeroBaseline
-      ? this.padValueRange(yMin, yMax)
-      : this.padNumericRange(yMin, yMax);
+      ? padValueRange(yMin, yMax)
+      : padNumericRange(yMin, yMax);
 
     const estimatedAxisHeight = containerHeight * 0.6;
     const yTicks = getTickPositions(yPadded[0], yPadded[1], estimatedAxisHeight, undefined, this.theme.fontSizeTick, yForceZeroBaseline);
@@ -958,40 +745,65 @@ export class ChartScaffold {
     const { categories } = this.scaffoldConfig;
     const [minValue, maxValue] = this.scaffoldConfig.valueRange;
     const isPercent = this.scaffoldConfig.chartType === 'percentVerticalBar' || this.scaffoldConfig.chartType === 'percentHorizontalBar';
-    const [paddedMin, paddedMax] = this.getCategoricalValuePadding(minValue, maxValue, isPercent);
+    const [paddedMin, paddedMax] = getCategoricalValuePadding(
+      this.scaffoldConfig.chartType,
+      this.config,
+      minValue,
+      maxValue,
+      isPercent,
+    );
+
+    const measurementContext = createZoneMeasurementContext(this.svg, this.config, this.theme);
+    const measurementOptions = {
+      chartType: this.scaffoldConfig.chartType,
+      categories,
+      categoryLabels: this.scaffoldConfig.categoryLabels,
+      valueRange: this.scaffoldConfig.valueRange,
+      isHorizontal,
+      timeSeriesLabels: this.scaffoldConfig.timeSeriesLabels,
+      xLabel: this.scaffoldConfig.xLabel,
+      yLabel: this.scaffoldConfig.yLabel,
+      isPercent,
+      paddedValueRange: [paddedMin, paddedMax] as [number, number],
+      zeroBaselineForced: isCategoricalValueAxisZeroForced(
+        this.scaffoldConfig.chartType,
+        this.config,
+      ),
+    };
 
     const measurements: Partial<Record<ZoneType, number>> = {};
-
-    const labelTexts = this.scaffoldConfig.categoryLabels ?? categories;
 
     // Header zone — estimate lines for title wrapping
     measurements[ZoneType.Header] = this.measureHeaderZone(containerWidth);
 
     // Y-axis labels zone
-    measurements[ZoneType.YAxisLabels] = this.measureCategoricalYAxisLabels(
-      isHorizontal, containerWidth, containerHeight, paddedMin, paddedMax, labelTexts
+    measurements[ZoneType.YAxisLabels] = measureCategoricalYAxisLabels(
+      measurementContext,
+      measurementOptions,
+      containerWidth,
+      containerHeight,
     );
 
     // RightMargin zone — for line charts and horizontal bar charts, reserves space so edge labels don't clip
-    measurements[ZoneType.RightMargin] = this.measureCategoricalRightMargin(
-      categories, containerWidth, measurements[ZoneType.YAxisLabels] ?? 60, paddedMin, paddedMax
+    measurements[ZoneType.RightMargin] = measureCategoricalRightMargin(
+      measurementContext,
+      measurementOptions,
+      containerWidth,
+      measurements[ZoneType.YAxisLabels] ?? 60,
     );
 
     // X-axis labels zone
-    measurements[ZoneType.XAxisLabels] = this.measureCategoricalXAxisLabels(
-      isHorizontal, categories, labelTexts, containerWidth,
+    measurements[ZoneType.XAxisLabels] = measureCategoricalXAxisLabels(
+      measurementOptions,
+      containerWidth,
       measurements[ZoneType.YAxisLabels] ?? 60,
       measurements[ZoneType.RightMargin] ?? 0,
-      this.scaffoldConfig.timeSeriesLabels
     );
 
     // Axis title zones
-    const yAxisTitleLabel = isHorizontal && HORIZONTAL_BAR_CHART_TYPES.has(this.scaffoldConfig.chartType)
-      ? undefined
-      : (isHorizontal ? this.scaffoldConfig.xLabel : this.scaffoldConfig.yLabel);
-    const xAxisTitleLabel = isHorizontal ? this.scaffoldConfig.yLabel : this.scaffoldConfig.xLabel;
-    measurements[ZoneType.YAxisTitle] = yAxisTitleLabel ? 25 : 0;
-    measurements[ZoneType.XAxisTitle] = xAxisTitleLabel ? 25 : 0;
+    const axisTitles = measureCategoricalAxisTitles(measurementOptions);
+    measurements[ZoneType.YAxisTitle] = axisTitles.yAxisTitle;
+    measurements[ZoneType.XAxisTitle] = axisTitles.xAxisTitle;
 
     // Legend zone — estimate rows based on items fitting container width
     const legendHeight = this.measureLegendZone(containerWidth);
@@ -1064,8 +876,17 @@ export class ChartScaffold {
       const { categories, valueRange } = this.scaffoldConfig;
       const [minValue, maxValue] = valueRange;
       const isPercent = this.scaffoldConfig.chartType === 'percentVerticalBar' || this.scaffoldConfig.chartType === 'percentHorizontalBar';
-      const [paddedMin, paddedMax] = this.getCategoricalValuePadding(minValue, maxValue, isPercent);
-      const forceZeroBaseline = this.isCategoricalValueAxisZeroForced();
+      const [paddedMin, paddedMax] = getCategoricalValuePadding(
+        this.scaffoldConfig.chartType,
+        this.config,
+        minValue,
+        maxValue,
+        isPercent,
+      );
+      const forceZeroBaseline = isCategoricalValueAxisZeroForced(
+        this.scaffoldConfig.chartType,
+        this.config,
+      );
 
       const rawTicks = isHorizontal
         ? getTickPositions(paddedMin, paddedMax, plotAreaRect.width, undefined, this.theme.fontSizeTick, forceZeroBaseline)
@@ -1094,14 +915,47 @@ export class ChartScaffold {
         const yLabelRect = layout.zones.get(ZoneType.YAxisLabels);
         const labelWidth = yLabelRect ? yLabelRect.width : 100;
         fittedLabels = fitLabels(labelTexts, labelWidth, labelWidth, 8);
-        // Y-axis labels are vertically stacked — skip logic doesn't apply
+        const lineHeight = (Number.parseFloat(this.theme.fontSizeTick) || 12) * 1.4;
+        const categoryBandHeight = (yScale as ScaleBand<string>).bandwidth();
+        const maxLabelLines = Math.max(1, Math.min(3, Math.floor(categoryBandHeight / lineHeight)));
+        const maxVisibleLabels = Math.max(1, Math.floor(plotAreaRect.height / (lineHeight * maxLabelLines)));
+        const visibleLabelIndices = new Set<number>();
+        if (categories.length <= maxVisibleLabels) {
+          categories.forEach((_category, index) => visibleLabelIndices.add(index));
+        } else if (categories.length === 1) {
+          visibleLabelIndices.add(0);
+        } else {
+          const visibleCount = Math.max(2, maxVisibleLabels);
+          for (let position = 0; position < visibleCount; position++) {
+            visibleLabelIndices.add(Math.round(
+              position * (categories.length - 1) / (visibleCount - 1),
+            ));
+          }
+        }
         fittedLabels = {
           ...fittedLabels,
-          skipInterval: 1,
-          labels: fittedLabels.labels.map(l => ({ ...l, skip: false })),
+          skipInterval: categories.length > maxVisibleLabels
+            ? Math.ceil((categories.length - 1) / Math.max(maxVisibleLabels - 1, 1))
+            : 1,
+          labels: fittedLabels.labels.map((label, index) => {
+            let lines = label.lines;
+            let wasTruncated = label.truncated;
+            if (lines.length > maxLabelLines) {
+              const preservedLines = lines.slice(0, maxLabelLines - 1);
+              const remainingText = lines.slice(maxLabelLines - 1).join(' ');
+              const truncated = truncateLabel(remainingText, labelWidth, 8);
+              lines = [...preservedLines, truncated.text];
+              wasTruncated = true;
+            }
+            return {
+              ...label,
+              lines,
+              truncated: wasTruncated,
+              skip: !visibleLabelIndices.has(index),
+            };
+          }),
         };
         if (this.scaffoldConfig.chartType === 'pyramid') {
-          const lineHeight = (Number.parseFloat(this.theme.fontSizeTick) || 12) * 1.4;
           const maxVisibleLabels = Math.max(1, Math.floor(plotAreaRect.height / (lineHeight * 2)));
           let visibleLabelCount = Math.min(
             categories.length,
@@ -1153,11 +1007,11 @@ export class ChartScaffold {
       const cfg = this.scaffoldConfig as NumericScaffoldConfig;
       const [xRawMin, xRawMax] = cfg.xValueRange;
       const [yRawMin, yRawMax] = cfg.yValueRange;
-      const yForceZeroBaseline = this.isNumericValueAxisZeroForced(cfg);
-      const [xPadMin, xPadMax] = this.padValueRange(xRawMin, xRawMax);
+      const yForceZeroBaseline = isNumericValueAxisZeroForced(cfg.config);
+      const [xPadMin, xPadMax] = padValueRange(xRawMin, xRawMax);
       const [yPadMin, yPadMax] = yForceZeroBaseline
-        ? this.padValueRange(yRawMin, yRawMax)
-        : this.padNumericRange(yRawMin, yRawMax);
+        ? padValueRange(yRawMin, yRawMax)
+        : padNumericRange(yRawMin, yRawMax);
 
       const xRawTicks = getTickPositions(xPadMin, xPadMax, plotAreaRect.width, undefined, this.theme.fontSizeTick, true);
       const yRawTicks = getTickPositions(yPadMin, yPadMax, plotAreaRect.height, undefined, this.theme.fontSizeTick, yForceZeroBaseline);

@@ -123,6 +123,39 @@ describe('ChartScaffold', () => {
     expect(tspans.length).toBeGreaterThan(0);
   });
 
+  it('shortens and culls dense horizontal category labels', () => {
+    const categories = Array.from({ length: 30 }, (_, index) => `Category ${index} with an exceptionally long industry label that cannot fit`);
+    const scaffold = new ChartScaffold(createScaffoldConfig({
+      chartType: 'horizontalBar',
+      categories,
+      categoryLabels: categories,
+    }));
+    scaffold.render();
+
+    const labels = Array.from(document.querySelectorAll('.jsc-axis-y .tick text'));
+    const visibleLabels = labels.filter(label => (label as SVGTextElement).style.display !== 'none');
+    expect(visibleLabels.length).toBeLessThan(categories.length);
+    expect(visibleLabels.every(label => label.querySelectorAll('tspan').length === 1)).toBe(true);
+    expect(visibleLabels.every(label => (label.textContent ?? '').length < categories[0].length)).toBe(true);
+  });
+
+  it('keeps wrapped horizontal labels when category bands have room', () => {
+    const categories = ['First category with a long descriptive label', 'Second category with a long descriptive label'];
+    const scaffold = new ChartScaffold(createScaffoldConfig({
+      container: createContainer(800, 600),
+      chartType: 'horizontalBar',
+      categories,
+      categoryLabels: categories,
+    }));
+    scaffold.render();
+
+    const visibleLabels = Array.from(document.querySelectorAll('.jsc-axis-y .tick text'))
+      .filter(label => (label as SVGTextElement).style.display !== 'none');
+    expect(visibleLabels).toHaveLength(2);
+    expect(visibleLabels.some(label => label.querySelectorAll('tspan').length > 1)).toBe(true);
+    expect(visibleLabels.every(label => (label.textContent ?? '').length >= categories[0].length - 5)).toBe(true);
+  });
+
   it('render() renders legend overlay when seriesCount > 1', () => {
     const scaffold = new ChartScaffold(
       createScaffoldConfig({
