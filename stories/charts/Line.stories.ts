@@ -6,6 +6,7 @@ import { sliceDataset } from '../helpers/sliceDataset';
 import timeSeriesData from '../fixtures/time-series.json';
 import longTimeSeriesData from '../fixtures/long-time-series.json';
 import multiSeriesData from '../fixtures/multi-series.json';
+import multiSourceSelectableData from '../fixtures/multi-source-selectable.json';
 import tableWideData from '../fixtures/table-wide.json';
 import withNullsData from '../fixtures/with-nulls.json';
 import negativeValuesData from '../fixtures/negative-values.json';
@@ -109,6 +110,30 @@ export const Default: StoryObj = {
     renderChart({
       dataset: timeSeriesData,
       config: buildConfig(args, { chartType: 'line' }),
+      width: args.width as string,
+      height: args.height as string | undefined,
+    }),
+};
+
+export const TitlelessBurgerMenu: StoryObj = {
+  render: (args) =>
+    renderChart({
+      dataset: timeSeriesData,
+      config: buildConfig(args, { chartType: 'line', title: '', autoTitle: false }),
+      width: args.width as string,
+      height: args.height as string | undefined,
+    }),
+};
+
+export const SelectableSources: StoryObj = {
+  render: (args) =>
+    renderChart({
+      dataset: multiSourceSelectableData as JsonStatDataset,
+      config: buildConfig(args, {
+        chartType: 'line',
+        layout: { rows: [], columns: ['vuosi'] },
+      }),
+      ...getSelectableStoryInputs(args),
       width: args.width as string,
       height: args.height as string | undefined,
     }),

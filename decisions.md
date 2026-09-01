@@ -475,3 +475,25 @@ The initial premise — that `.jsc-bar { fill: blue }` has no effect — was inc
 **Decision:** `ChartConfig.layout` with `{ rows, columns }` is the sole dimension-layout API for every chart type. Table transformation accepts only `layout`; the deprecated `tableLayout` alias is removed.
 
 **Consequences:** Consumers use one layout shape consistently across table and non-table charts. Passing `tableLayout` is no longer supported. ADR-020 remains the historical record of the original table-specific API and is superseded by this decision.
+
+### ADR-036: Hide singleton dimensions in table orientation
+
+**Status:** accepted
+**Date:** 2026-08-13
+
+**Context:** Selectable filtering can reduce a dimension named in `layout` to one active category. Rendering that dimension as a row or column adds a redundant header, and promoting an arbitrary dimension in an all-singleton dataset does not represent a meaningful table direction.
+
+**Decision:** `table-transform.ts` removes every size-1 dimension from visible rows and columns after rebuilding, regardless of whether it was named in `layout`. Singleton and otherwise unplaced dimensions remain in `hiddenDimensions`. An all-singleton dataset produces no visible dimensions and a one-cell values grid; hidden coordinates continue to use category index 0.
+
+**Consequences:** Table orientation depends on active rebuilt sizes, while dimension metadata remains available to headers, exports, and consumers of normalized `TableData`. Manual layout validation still rejects unknown, duplicate, and overlapping dimension codes.
+
+### ADR-037: Automatic uniform scatter point sizing
+
+**Status:** accepted
+**Date:** 2026-08-18
+
+**Context:** Scatter points previously used a fixed 5 px radius, but point size still needs to adapt to chart dimensions and point density.
+
+**Decision:** Every valid point in a scatter chart uses one automatically calculated radius. Plots with at most eight valid points use the responsive maximum radius so sparse observations remain visible and navigable. Larger plots use projected screen-space coordinates: global spacing comes from plot area and point count, while a bucketed nearest-neighbor search captures local clustering. The lower-quartile local spacing and global spacing are combined, scaled from 0.25 for small datasets toward 0.15 as point count reaches 100, and then clamped between a fixed 0.75% and 1.5% of the shorter plot dimension. A 1 px minimum fallback applies when the relative minimum would be subpixel. The calculation runs during every scaffold render, so resizing and data updates recalculate it. No public configuration or theme token is added.
+
+**Consequences:** Sparse plots receive larger points and dense or clustered plots receive smaller points without introducing a third visual data encoding. Invalid points do not affect density. Screen-space calculation keeps behavior independent of raw data units and naturally accounts for the available plot size, from mobile canvases to large displays. The radius policy is exported as a pure helper for focused tests.

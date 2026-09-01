@@ -85,6 +85,13 @@ const singleDimData: TableData = {
   hiddenDimensions: [{ code: 'Region', label: 'Region', value: 'Helsinki' }],
 };
 
+const scalarTableData: TableData = {
+  rowDimensions: [],
+  columnDimensions: [],
+  values: [[42]],
+  hiddenDimensions: [{ code: 'Measure', label: 'Measure', value: 'Value' }],
+};
+
 // 2 row dimensions: Region × Gender
 const tableData2RowDim: TableData = {
   rowDimensions: [
@@ -141,6 +148,14 @@ describe('createTableChart', () => {
     expect(table).not.toBeNull();
   });
 
+  it('renders a value header for scalar tables', () => {
+    createTableChart({ container, data: scalarTableData, config: defaultConfig });
+    const valueHeader = container.querySelector('thead th[scope="col"]');
+
+    expect(valueHeader?.textContent).toBe('Value');
+    expect(container.querySelectorAll('tbody td')).toHaveLength(1);
+  });
+
   it('wraps table in scrollable div', () => {
     createTableChart({ container, data: tableData2D, config: defaultConfig });
     const wrapper = container.querySelector('div.jsc-table-wrapper');
@@ -150,13 +165,27 @@ describe('createTableChart', () => {
     expect((scrollDiv as HTMLElement).style.overflowX).toBe('auto');
   });
 
-  it('reserves the burger menu row and horizontal clearance in the table heading', () => {
-    createTableChart({ container, data: tableData2D, config: defaultConfig });
+  it('reserves a taller burger menu row when the table has no heading content', () => {
+    createTableChart({ container, data: tableData2D, config: defaultConfig, burgerMenuVisible: true });
 
     const heading = container.querySelector('div.jsc-table-heading') as HTMLElement;
     expect(heading).not.toBeNull();
-    expect(heading.style.minHeight).toBe('2.5rem');
+    expect(heading.style.minHeight).toBe('3rem');
     expect(heading.style.paddingRight).toBe('3rem');
+  });
+
+  it('keeps the existing heading height when a title is present', () => {
+    createTableChart({
+      container,
+      data: tableData2D,
+      config: { ...defaultConfig, title: 'Table title' },
+      burgerMenuVisible: true,
+    });
+
+    const heading = container.querySelector('div.jsc-table-heading') as HTMLElement;
+    expect(heading.style.minHeight).toBe('2.5rem');
+    expect(heading.style.paddingLeft).toBe('20px');
+    expect(heading.style.marginBottom).toBe('8px');
   });
 
   it('correct number of body rows', () => {
@@ -377,6 +406,19 @@ describe('createTableChart', () => {
     instance.update(tableData2D);
     // tableData2D: 2 rows × 2 cols → 4 td total
     expect(container.querySelectorAll('tbody td').length).toBe(4);
+  });
+
+  it('update() preserves burger menu spacing from the chart config', () => {
+    const instance = createTableChart({
+      container,
+      data: tableData2D,
+      config: { ...defaultConfig, burgerMenuVisible: true },
+    });
+
+    instance.update(tableData2D);
+
+    const heading = container.querySelector('div.jsc-table-heading') as HTMLElement;
+    expect(heading.style.minHeight).toBe('3rem');
   });
 
   it('update() re-renders with new config', () => {

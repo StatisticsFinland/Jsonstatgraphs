@@ -7,6 +7,7 @@ export interface TableChartConfig {
   container: HTMLElement;
   data: TableData;
   config: ChartConfig;
+  burgerMenuVisible?: boolean;
 }
 
 export interface TableChartInstance {
@@ -106,7 +107,7 @@ function buildThead(table: HTMLTableElement, data: TableData, colDimSizes: numbe
   const thead = document.createElement('thead');
   if (data.columnDimensions.length > 0) {
     buildColumnDimRows(thead, data, colDimSizes, theme);
-  } else if (data.rowDimensions.length > 0) {
+  } else {
     buildFallbackThead(thead, data, theme, locale);
   }
   if (thead.rows.length > 0) {
@@ -147,7 +148,9 @@ function buildTbody(table: HTMLTableElement, data: TableData, rowDimSizes: numbe
       const td = document.createElement('td');
       td.className = 'jsc-table-cell';
       const val = rowValues[colIndex] ?? null;
-      td.textContent = val === null ? '\u2013' : val.toLocaleString(config.locale);
+      td.textContent = val === null
+        ? (data.missingValueDescriptions?.[rowIndex]?.[colIndex] ?? '\u2013')
+        : val.toLocaleString(config.locale);
       applyCellStyle(td, theme);
       tr.appendChild(td);
     }
@@ -161,7 +164,8 @@ function buildTbody(table: HTMLTableElement, data: TableData, rowDimSizes: numbe
 function renderTable(
   wrapper: HTMLDivElement,
   data: TableData,
-  config: ChartConfig
+  config: ChartConfig,
+  burgerMenuVisible = false,
 ): void {
   wrapper.innerHTML = '';
 
@@ -176,8 +180,11 @@ function renderTable(
   const headerEl = document.createElement('div');
   headerEl.className = 'jsc-table-heading';
   headerEl.style.boxSizing = 'border-box';
-  headerEl.style.minHeight = '2.5rem';
+  const hasHeaderContent = Boolean(config.title?.trim() || config.subtitle?.trim());
+  headerEl.style.minHeight = burgerMenuVisible && !hasHeaderContent ? '3rem' : '2.5rem';
+  headerEl.style.paddingLeft = '20px';
   headerEl.style.paddingRight = '3rem';
+  headerEl.style.marginBottom = '8px';
   headerEl.style.display = 'flex';
   headerEl.style.flexDirection = 'column';
   headerEl.style.justifyContent = 'center';
@@ -271,7 +278,7 @@ export function createTableChart(chartConfig: TableChartConfig): TableChartInsta
   container.setAttribute('role', 'region');
   container.setAttribute('aria-label', ariaLabel);
 
-  renderTable(wrapper, data, config);
+  renderTable(wrapper, data, config, config.burgerMenuVisible ?? chartConfig.burgerMenuVisible);
 
   return {
     update(newData: TableData, newConfig?: ChartConfig): void {
@@ -280,7 +287,7 @@ export function createTableChart(chartConfig: TableChartConfig): TableChartInsta
       const label = config.ariaLabel ?? config.title ?? getLocaleStrings(config.locale).tableCaption;
       container.setAttribute('role', 'region');
       container.setAttribute('aria-label', label);
-      renderTable(wrapper, data, config);
+      renderTable(wrapper, data, config, config.burgerMenuVisible ?? chartConfig.burgerMenuVisible);
     },
 
     destroy(): void {

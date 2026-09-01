@@ -5,6 +5,7 @@ import { themeArgTypes, themeArgs } from '../helpers/sharedArgs';
 import { sliceDataset } from '../helpers/sliceDataset';
 import { getSelectableStoryInputs } from '../helpers/selectables';
 import pyramidData from '../fixtures/pyramid.json';
+import densePyramidData from '../fixtures/pyramid-dense.json';
 import selectablePyramidData from '../fixtures/pyramid-selectable.json';
 
 const meta: Meta = {
@@ -48,6 +49,16 @@ export const FewAgeGroups: StoryObj = {
   render: (args) =>
     renderChart({
       dataset: sliceDataset(pyramidData, 'ika-vaalipaivana', 4),
+      config: buildConfig(args, { chartType: 'pyramid' }),
+      width: args.width as string,
+      height: args.height as string | undefined,
+    }),
+};
+
+export const DenseAgeGroups: StoryObj = {
+  render: (args) =>
+    renderChart({
+      dataset: densePyramidData,
       config: buildConfig(args, { chartType: 'pyramid' }),
       width: args.width as string,
       height: args.height as string | undefined,

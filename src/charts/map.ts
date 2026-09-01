@@ -7,6 +7,8 @@ import { createZones, applyMeasuredSizes } from '../layout/zones';
 import { computeLayout } from '../layout/layout-engine';
 import { renderSvgFooter } from './footer';
 import { Tooltip, TooltipData } from '../interaction/tooltip';
+import { BURGER_MENU_CLEARANCE } from './base';
+import { formatNumber } from '../locale/number';
 
 
 export interface MapChartConfig {
@@ -31,6 +33,7 @@ function renderMap(
   theme: ResolvedTheme,
   tooltip: Tooltip,
   touchState: { activeRegion: string | null },
+  locale?: string,
 ): void {
   const featureCollection = {
     type: 'FeatureCollection' as const,
@@ -60,12 +63,12 @@ function renderMap(
       if (value === null) {
         return '\u2013';
       } else if (data.decimals !== undefined) {
-        return value.toLocaleString(undefined, {
+        return formatNumber(value, locale, {
           minimumFractionDigits: data.decimals,
           maximumFractionDigits: data.decimals,
         });
       } else {
-        return value.toLocaleString();
+        return formatNumber(value, locale);
       }
     }
 
@@ -139,6 +142,7 @@ function renderMap(
 function renderScreenReaderTable(
   container: HTMLElement,
   data: MapChartData,
+  locale?: string,
 ): HTMLTableElement {
   const table = document.createElement('table');
   table.className = 'jsc-sr-only';
@@ -188,12 +192,12 @@ function renderScreenReaderTable(
       valueCell.textContent = '\u2013';
       valueCell.setAttribute('aria-label', 'No data');
     } else if (data.decimals !== undefined) {
-      valueCell.textContent = region.value.toLocaleString(undefined, {
+      valueCell.textContent = formatNumber(region.value, locale, {
         minimumFractionDigits: data.decimals,
         maximumFractionDigits: data.decimals,
       });
     } else {
-      valueCell.textContent = region.value.toLocaleString();
+      valueCell.textContent = formatNumber(region.value, locale);
     }
     row.appendChild(nameCell);
     row.appendChild(valueCell);
@@ -211,19 +215,21 @@ function renderHeader(
   theme: ResolvedTheme,
 ): void {
   const headerRect = layout.zones.get(ZoneType.Header);
-  if (!headerRect || (!config.title && !config.subtitle)) return;
+  if (!headerRect || config.showHeader === false || (!config.title && !config.subtitle)) return;
 
   const headerGroup = svg.append('g').attr('class', 'jsc-header').attr('aria-hidden', 'true');
 
   const CHAR_WIDTH = 8;
   const LINE_HEIGHT = 1.25;
   const PADDING = 20;
-  const maxWidth = headerRect.width - PADDING * 2;
+  const maxWidth = headerRect.width - PADDING * 2 - (
+    config.burgerMenuVisible ? BURGER_MENU_CLEARANCE : 0
+  );
 
   const titleFontSize = Number.parseFloat(theme.fontSizeTitle) || 16;
   const subtitleFontSize = Number.parseFloat(theme.fontSizeLabel) || 14;
   const titleLineHeight = titleFontSize * LINE_HEIGHT;
-  const centerX = headerRect.x + headerRect.width / 2;
+  const contentStartX = headerRect.x + PADDING;
 
   function wrapText(text: string, charWidth: number): string[] {
     const fullWidth = text.length * charWidth;
@@ -258,8 +264,8 @@ function renderHeader(
   if (titleLines.length > 0) {
     const titleEl = headerGroup.append('text')
       .attr('class', 'jsc-title')
-      .attr('x', centerX)
-      .attr('text-anchor', 'middle')
+      .attr('x', contentStartX)
+      .attr('text-anchor', 'start')
       .attr('font-size', theme.fontSizeTitle)
       .attr('font-family', theme.fontFamily)
       .attr('font-weight', theme.fontWeightBold)
@@ -267,7 +273,7 @@ function renderHeader(
 
     for (let i = 0; i < titleLines.length; i++) {
       const y = contentStartY + (i + 0.5) * titleLineHeight;
-      titleEl.append('tspan').attr('x', centerX).attr('y', y).text(titleLines[i]);
+      titleEl.append('tspan').attr('x', contentStartX).attr('y', y).text(titleLines[i]);
     }
   }
 
@@ -275,9 +281,9 @@ function renderHeader(
     const subtitleY = contentStartY + titleBlockHeight + gap + subtitleFontSize * 0.5 * LINE_HEIGHT;
     headerGroup.append('text')
       .attr('class', 'jsc-subtitle')
-      .attr('x', centerX)
+      .attr('x', contentStartX)
       .attr('y', subtitleY)
-      .attr('text-anchor', 'middle')
+      .attr('text-anchor', 'start')
       .attr('dominant-baseline', 'middle')
       .attr('font-size', theme.fontSizeLabel)
       .attr('font-family', theme.fontFamily)
@@ -293,6 +299,7 @@ function renderLegend(
   data: MapChartData,
   theme: ResolvedTheme,
   mapRightEdge?: number,
+  locale?: string,
 ): void {
   // Check if we should render in the right margin (vertical) or bottom (horizontal)
   const rightMarginRect = layout.zones.get(ZoneType.RightMargin);
@@ -313,7 +320,7 @@ function renderLegend(
     .attr('transform', `translate(${legendX},${targetRect.y})`);
 
   if (data.classification.method === 'linear') {
-    renderGradientLegend(legendGroup, targetRect, data, theme, useRightSide);
+    renderGradientLegend(legendGroup, targetRect, data, theme, useRightSide, locale);
     return;
   }
 
@@ -326,14 +333,14 @@ function renderLegend(
   const breaks = getClassificationBreaks(data);
   for (const brk of breaks) {
     const fmtMin = data.decimals !== undefined
-      ? brk.min.toLocaleString(undefined, { minimumFractionDigits: data.decimals, maximumFractionDigits: data.decimals })
-      : brk.min.toLocaleString();
+      ? formatNumber(brk.min, locale, { minimumFractionDigits: data.decimals, maximumFractionDigits: data.decimals })
+      : formatNumber(brk.min, locale);
     if (brk.openEnded) {
       items.push({ color: brk.color, label: `\u2265\u2009${fmtMin}` });
     } else {
       const fmtMax = data.decimals !== undefined
-        ? brk.max.toLocaleString(undefined, { minimumFractionDigits: data.decimals, maximumFractionDigits: data.decimals })
-        : brk.max.toLocaleString();
+        ? formatNumber(brk.max, locale, { minimumFractionDigits: data.decimals, maximumFractionDigits: data.decimals })
+        : formatNumber(brk.max, locale);
       items.push({ color: brk.color, label: `${fmtMin}\u2013${fmtMax}` });
     }
   }
@@ -415,17 +422,18 @@ function renderGradientLegend(
   data: MapChartData,
   theme: ResolvedTheme,
   useRightSide: boolean,
+  locale?: string,
 ): void {
   if (data.classification.method !== 'linear') return;
   const { scaleMin, scaleMax, colors } = data.classification;
   const fontSize = Number.parseFloat(theme.fontSizeTick) || 12;
 
   const fmtMin = data.decimals !== undefined
-    ? scaleMin.toLocaleString(undefined, { minimumFractionDigits: data.decimals, maximumFractionDigits: data.decimals })
-    : scaleMin.toLocaleString();
+    ? formatNumber(scaleMin, locale, { minimumFractionDigits: data.decimals, maximumFractionDigits: data.decimals })
+    : formatNumber(scaleMin, locale);
   const fmtMax = data.decimals !== undefined
-    ? scaleMax.toLocaleString(undefined, { minimumFractionDigits: data.decimals, maximumFractionDigits: data.decimals })
-    : scaleMax.toLocaleString();
+    ? formatNumber(scaleMax, locale, { minimumFractionDigits: data.decimals, maximumFractionDigits: data.decimals })
+    : formatNumber(scaleMax, locale);
 
   // Degenerate data: render a single solid swatch instead of a gradient
   if (scaleMin === scaleMax) {
@@ -669,17 +677,33 @@ function measureMapZoneSizes(
   const SUBTITLE_LINE_HEIGHT = subtitleFontSize * 1.25;
   const HEADER_PADDING = 12;
 
-  if (config.title) {
-    const titleMaxWidth = containerWidth - 40;
-    const titleWidth = config.title.length * CHAR_WIDTH;
-    const titleLineCount = titleMaxWidth > 0 ? Math.max(1, Math.ceil(titleWidth / titleMaxWidth)) : 1;
+  if (config.showHeader === false) {
+    measurements[ZoneType.Header] = config.burgerMenuVisible ? 48 : 0;
+  } else if (config.title) {
+    const titleMaxWidth = containerWidth - 40 - (
+      config.burgerMenuVisible ? BURGER_MENU_CLEARANCE : 0
+    );
+    const words = config.title.split(/\s+/);
+    let titleLineCount = 0;
+    let currentLine = '';
+    for (const word of words) {
+      const candidate = currentLine ? `${currentLine} ${word}` : word;
+      if (titleMaxWidth > 0 && candidate.length * CHAR_WIDTH > titleMaxWidth && currentLine) {
+        titleLineCount++;
+        currentLine = word;
+      } else {
+        currentLine = candidate;
+      }
+    }
+    if (currentLine) titleLineCount++;
+    titleLineCount = Math.max(1, titleLineCount);
     let headerHeight = titleLineCount * TITLE_LINE_HEIGHT + HEADER_PADDING;
     if (config.subtitle) headerHeight += SUBTITLE_LINE_HEIGHT;
     measurements[ZoneType.Header] = headerHeight;
   } else if (config.subtitle) {
     measurements[ZoneType.Header] = SUBTITLE_LINE_HEIGHT + HEADER_PADDING;
   } else {
-    measurements[ZoneType.Header] = 0;
+    measurements[ZoneType.Header] = config.burgerMenuVisible ? 48 : 0;
   }
 
   const showLegend = config.showLegend ?? true;
@@ -696,11 +720,11 @@ function measureMapZoneSizes(
     if (data.classification.method === 'linear') {
       const { scaleMin, scaleMax } = data.classification;
       const fmtMin = data.decimals !== undefined
-        ? scaleMin.toLocaleString(undefined, { minimumFractionDigits: data.decimals, maximumFractionDigits: data.decimals })
-        : scaleMin.toLocaleString();
+        ? formatNumber(scaleMin, config.locale, { minimumFractionDigits: data.decimals, maximumFractionDigits: data.decimals })
+        : formatNumber(scaleMin, config.locale);
       const fmtMax = data.decimals !== undefined
-        ? scaleMax.toLocaleString(undefined, { minimumFractionDigits: data.decimals, maximumFractionDigits: data.decimals })
-        : scaleMax.toLocaleString();
+        ? formatNumber(scaleMax, config.locale, { minimumFractionDigits: data.decimals, maximumFractionDigits: data.decimals })
+        : formatNumber(scaleMax, config.locale);
       maxLabelWidth = Math.max(fmtMin.length, fmtMax.length) * CHAR_WIDTH_ESTIMATE;
     }
     measurements[ZoneType.RightMargin] = SWATCH_SIZE + 4 + maxLabelWidth + LEGEND_PADDING;
@@ -717,11 +741,11 @@ function measureMapZoneSizes(
     let maxLabelWidth = 0;
     for (const brk of breaks) {
       const fmtMin = data.decimals !== undefined
-        ? brk.min.toLocaleString(undefined, { minimumFractionDigits: data.decimals, maximumFractionDigits: data.decimals })
-        : brk.min.toLocaleString();
+        ? formatNumber(brk.min, config.locale, { minimumFractionDigits: data.decimals, maximumFractionDigits: data.decimals })
+        : formatNumber(brk.min, config.locale);
       const fmtMax = data.decimals !== undefined
-        ? brk.max.toLocaleString(undefined, { minimumFractionDigits: data.decimals, maximumFractionDigits: data.decimals })
-        : brk.max.toLocaleString();
+        ? formatNumber(brk.max, config.locale, { minimumFractionDigits: data.decimals, maximumFractionDigits: data.decimals })
+        : formatNumber(brk.max, config.locale);
       const label = `${fmtMin}\u2013${fmtMax}`;
       const labelWidth = label.length * CHAR_WIDTH_ESTIMATE;
       if (labelWidth > maxLabelWidth) maxLabelWidth = labelWidth;
@@ -809,6 +833,8 @@ export function createMapChart(chartConfig: MapChartConfig): MapChartInstance {
       showLegend: config.showLegend ?? true,
       seriesCount: data.classification.method === 'linear' ? 1 : data.classification.breaks.length,
       hasFooterContent: (config.footerItems && config.footerItems.length > 0),
+      hasBurgerMenu: config.burgerMenuVisible,
+      hasHeaderContent: config.showHeader !== false && Boolean(config.title?.trim() || config.subtitle?.trim()),
     });
 
     const measurements = measureMapZoneSizes(config, data, theme, width, isPortrait);
@@ -872,10 +898,10 @@ export function createMapChart(chartConfig: MapChartConfig): MapChartInstance {
     touchState.activeRegion = null;
 
     renderHeader(svg, layout, config, theme);
-    renderMap(svg, data, mapContentRect, theme, tooltip, touchState);
+    renderMap(svg, data, mapContentRect, theme, tooltip, touchState, config.locale);
     if (config.showLegend !== false) {
       const mapRightEdge = mapContentRect.x + mapContentRect.width;
-      renderLegend(svg, layout, data, theme, mapRightEdge);
+      renderLegend(svg, layout, data, theme, mapRightEdge, config.locale);
     }
 
     if (footerRect && config.footerItems && config.footerItems.length > 0) {
@@ -895,7 +921,7 @@ export function createMapChart(chartConfig: MapChartConfig): MapChartInstance {
     svg.attr('role', 'img');
     svg.attr('aria-label', ariaLabel);
 
-    srTable = renderScreenReaderTable(container, data);
+    srTable = renderScreenReaderTable(container, data, config.locale);
   }
 
   render();

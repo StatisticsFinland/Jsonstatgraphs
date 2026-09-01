@@ -32,7 +32,7 @@ function resolveSeriesColors(style: CSSStyleDeclaration | null, config?: ThemeCo
   if (style) {
     const colors = [...DEFAULT_THEME.seriesColors];
     let anySet = false;
-    for (let i = 1; i <= 8; i++) {
+    for (let i = 1; i <= DEFAULT_THEME.seriesColors.length; i++) {
       const val = style.getPropertyValue(`--jsc-series-${i}`).trim();
       if (val !== '') {
         colors[i - 1] = val;

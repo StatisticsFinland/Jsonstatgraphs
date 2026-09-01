@@ -103,16 +103,3 @@ export const SortedBySum: StoryObj = {
       height: args.height as string | undefined,
     }),
 };
-
-// 'domestic' is the value code of the omitted market dimension — sorts descending by that
-// series (same result as SortedBySum here, but demonstrates reference-series-code sorting).
-export const SortedByReferenceSeries: StoryObj = {
-  args: { sorting: 'domestic' },
-  render: (args) =>
-    renderChart({
-      dataset: sortingDemoData,
-      config: buildConfig(args, sortingDemoConfig),
-      width: args.width as string,
-      height: args.height as string | undefined,
-    }),
-};

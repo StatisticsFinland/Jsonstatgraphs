@@ -27,7 +27,7 @@ function buildCodeIndexMap(id: string[]): Map<string, number> {
  * Validates a manual layout against the dataset.
  * Throws descriptive errors on unknown codes, overlapping codes, or un-placed
  * multi-value dimensions.
- * Returns the list of hidden dimension codes.
+ * Returns the list of dimension codes omitted from the visible layout.
  */
 function validateManualLayout(
   id: string[],
@@ -145,7 +145,7 @@ function buildValuesGrid(
   columns: string[],
   codeToIdx: Map<string, number>,
   strides: number[]
-): (number | null)[][] {
+): { values: (number | null)[][]; missingValueDescriptions: (string | null)[][] } {
   const { id, value } = dataset;
 
   const rowSizes = rows.map(code => dataset.size[codeToIdx.get(code) ?? 0]);
@@ -155,10 +155,13 @@ function buildValuesGrid(
   const numColCombos = colSizes.reduce((acc, s) => acc * s, 1);
 
   const grid: (number | null)[][] = [];
+  const missingValueDescriptions: (string | null)[][] = [];
+  const descriptions = dataset.extension?.missingValueDescriptions;
 
   for (let r = 0; r < numRowCombos; r++) {
     const rowCatIndices = decodeCombo(r, rowSizes);
     const row: (number | null)[] = [];
+    const missingRow: (string | null)[] = [];
 
     for (let c = 0; c < numColCombos; c++) {
       const colCatIndices = decodeCombo(c, colSizes);
@@ -179,12 +182,19 @@ function buildValuesGrid(
 
       const v = value[flatIdx];
       row.push(v === null || typeof v === 'string' ? null : v);
+      const statusCode = dataset.status?.[String(flatIdx)];
+      missingRow.push(
+        (v === null || typeof v === 'string') && statusCode
+          ? (descriptions?.[statusCode] ?? statusCode)
+          : null,
+      );
     }
 
     grid.push(row);
+    missingValueDescriptions.push(missingRow);
   }
 
-  return grid;
+  return { values: grid, missingValueDescriptions };
 }
 
 // ---------------------------------------------------------------------------
@@ -197,7 +207,7 @@ function buildValuesGrid(
  * **Manual path** (when `manualLayout` is provided):
  *  - Validates all codes exist in the dataset.
  *  - Validates no code appears in both rows and columns.
- *  - Any dimension not mentioned must have size 1 (hidden), otherwise throws.
+ *  - Any dimension not mentioned is hidden.
  *
  * **Auto path:**
  *  - Size-1 dimensions → hidden.
@@ -205,8 +215,8 @@ function buildValuesGrid(
  *  - Geo role dimensions → rows.
  *  - Remaining active dimensions sorted by size descending (tiebreak: earlier
  *    in `dataset.id` wins), then alternated: largest → rows, next → columns, …
- *  - If all dimensions are size 1, the last dimension in `dataset.id` is
- *    promoted to a single column so the table still has structure.
+ *  - All size-1 dimensions are hidden, including dimensions named in a manual
+ *    layout. An all-singleton dataset therefore has no visible dimensions.
  */
 export function computeTableOrientation(
   dataset: JsonStatDataset,
@@ -216,22 +226,15 @@ export function computeTableOrientation(
   const sizeMap = buildSizeMap(id, size);
 
   if (manualLayout) {
-    const hidden = validateManualLayout(id, sizeMap, manualLayout);
-    return { rows: manualLayout.rows, columns: manualLayout.columns, hidden };
+    validateManualLayout(id, sizeMap, manualLayout);
+    const mentioned = new Set([...manualLayout.rows, ...manualLayout.columns]);
+    const rows = manualLayout.rows.filter(code => (sizeMap.get(code) ?? 0) > 1);
+    const columns = manualLayout.columns.filter(code => (sizeMap.get(code) ?? 0) > 1);
+    const hidden = id.filter(code => (sizeMap.get(code) ?? 0) <= 1 || !mentioned.has(code));
+    return { rows, columns, hidden };
   }
 
   const hidden = id.filter((_, i) => size[i] === 1);
-  const hasActiveDims = id.some((_, i) => size[i] > 1);
-
-  // Edge case: all dims have size 1 → promote last dim to a single column.
-  if (!hasActiveDims) {
-    const lastCode = id.at(-1) ?? id[0];
-    return {
-      rows: [],
-      columns: [lastCode],
-      hidden: hidden.filter(c => c !== lastCode),
-    };
-  }
 
   const timeDims = new Set(dataset.role?.time ?? []);
   const geoDims = new Set(dataset.role?.geo ?? []);
@@ -288,7 +291,7 @@ export function transformTableData(
 
   const rowDimensions = rows.map(buildTableDimension);
   const columnDimensions = columns.map(buildTableDimension);
-  const values = buildValuesGrid(dataset, rows, columns, codeToIdx, strides);
+  const { values, missingValueDescriptions } = buildValuesGrid(dataset, rows, columns, codeToIdx, strides);
 
   const hiddenDimensions = hidden.map(code => {
     const codes = getOrderedCategoryCodes(code);
@@ -296,5 +299,5 @@ export function transformTableData(
     return { code, label: getDimLabel(code), value: getCatLabel(code, catCode) };
   });
 
-  return { rowDimensions, columnDimensions, values, hiddenDimensions };
+  return { rowDimensions, columnDimensions, values, missingValueDescriptions, hiddenDimensions };
 }

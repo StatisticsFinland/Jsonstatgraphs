@@ -43,7 +43,7 @@ export const themeArgTypes: ArgTypes = {
   // Visualization settings
   sorting: {
     control: 'text',
-    description: 'Category sort order or series code. Bar/pie charts only.',
+    description: 'Sorting keywords for supported horizontal/pie charts, or series codes for horizontal bar variants.',
     table: { category: 'Config' },
   },
   cutValueAxis: {
@@ -63,7 +63,7 @@ export const themeArgs = {
   colorTextSecondary: '#666666',
   colorBorder: '#cccccc',
   colorTick: '#767676',
-  seriesColors: ['#4e79a7', '#e15759', '#76b7b2', '#59a14f', '#edc949', '#af7aa1', '#ff9da7', '#9c755f'],
+  seriesColors: ['#1A56EC', '#F2644C', '#1B3160', '#9C8D87', '#26625D', '#7791E8', '#8C1131', '#878EAF', '#C73268', '#288C72'],
   mapColors: ['#c6dbef', '#9ecae1', '#6baed6', '#3182bd', '#08519c'],
   classificationMethod: 'jenks-nice',
   classCount: 5,

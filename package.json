@@ -1,6 +1,6 @@
 {
   "name": "@statisticsfinland/jsonstat-chart",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Render JSON-stat 2.0 datasets as interactive, accessible SVG charts",
   "type": "module",
   "main": "dist/index.js",

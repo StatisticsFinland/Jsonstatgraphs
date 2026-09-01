@@ -134,9 +134,9 @@ describe('computeTableOrientation', () => {
   });
 
   // -------------------------------------------------------------------------
-  // Test 5: All-size-1 edge case → last dim promoted to columns
+  // Test 5: All-size-1 edge case → all dimensions hidden
   // -------------------------------------------------------------------------
-  it('promotes the last dimension to columns when all dims have size 1', () => {
+  it('hides all dimensions when all dimensions have size 1', () => {
     const ds = makeDataset({
       id: ['A', 'B', 'C'],
       size: [1, 1, 1],
@@ -151,8 +151,8 @@ describe('computeTableOrientation', () => {
     const { rows, columns, hidden } = computeTableOrientation(ds);
 
     expect(rows).toEqual([]);
-    expect(columns).toEqual(['C']);
-    expect(hidden).toEqual(['A', 'B']);
+    expect(columns).toEqual([]);
+    expect(hidden).toEqual(['A', 'B', 'C']);
   });
 
   // -------------------------------------------------------------------------
@@ -214,6 +214,26 @@ describe('computeTableOrientation', () => {
     });
   });
 
+  it('hides singleton dimensions even when they are named in the layout', () => {
+    const ds = makeDataset({
+      id: ['Year', 'Region', 'Content'],
+      size: [2, 2, 1],
+      dimension: {
+        Year: { label: 'Year', category: { index: ['2023', '2024'], label: {} } },
+        Region: { label: 'Region', category: { index: ['N', 'S'], label: {} } },
+        Content: { label: 'Content', category: { index: ['C1'], label: {} } },
+      },
+      value: [1, 2, 3, 4],
+    });
+
+    const result = transformTableData(ds, { layout: { rows: ['Content', 'Year'], columns: ['Region'] } });
+
+    expect(result.rowDimensions.map(dimension => dimension.code)).toEqual(['Year']);
+    expect(result.columnDimensions.map(dimension => dimension.code)).toEqual(['Region']);
+    expect(result.hiddenDimensions.map(dimension => dimension.code)).toEqual(['Content']);
+    expect(result.values).toEqual([[1, 2], [3, 4]]);
+  });
+
   // -------------------------------------------------------------------------
   // Test 10: Tiebreaker — two dims with same size, earlier in id → rows
   // -------------------------------------------------------------------------
@@ -271,6 +291,53 @@ describe('computeTableOrientation', () => {
 // ===========================================================================
 
 describe('transformTableData', () => {
+  it('returns a scalar value grid when all dimensions are singleton', () => {
+    const ds = makeDataset({
+      id: ['A', 'B'],
+      size: [1, 1],
+      dimension: {
+        A: { category: { index: ['a'] } },
+        B: { category: { index: ['b'] } },
+      },
+      value: [42],
+    });
+
+    const result = transformTableData(ds);
+
+    expect(result.rowDimensions).toEqual([]);
+    expect(result.columnDimensions).toEqual([]);
+    expect(result.values).toEqual([[42]]);
+    expect(result.hiddenDimensions.map(dimension => dimension.code)).toEqual(['A', 'B']);
+  });
+
+  it('uses the observation status as the missing-value text when descriptions are absent', () => {
+    const ds = makeDataset({
+      id: ['A'],
+      size: [1],
+      dimension: { A: { category: { index: ['a'] } } },
+      value: [null],
+      status: { '0': 'confidential' },
+    });
+
+    expect(transformTableData(ds).missingValueDescriptions).toEqual([['confidential']]);
+  });
+
+  it('uses the observation status when its code has no mapped description', () => {
+    const ds = makeDataset({
+      id: ['A'],
+      size: [2],
+      dimension: { A: { category: { index: ['a', 'b'] } } },
+      value: [null, null],
+      status: { '0': 'mapped', '1': 'unmapped' },
+      extension: { missingValueDescriptions: { mapped: 'Not available' } },
+    });
+
+    expect(transformTableData(ds).missingValueDescriptions).toEqual([
+      ['Not available'],
+      ['unmapped'],
+    ]);
+  });
+
   it('uses dataset.id rather than dimension dictionary order for configured layouts', () => {
     const ds = makeDataset({
       id: ['Region', 'Year', 'Metric'],

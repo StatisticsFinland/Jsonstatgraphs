@@ -377,6 +377,8 @@ describe('update', () => {
     );
     expect(container.querySelector('tbody')?.textContent).toContain('100');
     expect(container.querySelector('tbody')?.textContent).not.toContain('80');
+    expect(Array.from(container.querySelectorAll('thead th')).map(cell => cell.textContent)).not.toContain('Helsinki');
+    expect(Array.from(container.querySelectorAll('thead th')).map(cell => cell.textContent)).toContain('2020');
 
     instance.update(multiDimDataset, undefined, { region: ['tre'] });
 
@@ -446,20 +448,25 @@ describe('destroy', () => {
 
 describe('sorting wiring (cfg.sorting)', () => {
   it.each([
-    ['verticalBar', false],
     ['horizontalBar', false],
-    ['groupedVerticalBar', false],
     ['groupedHorizontalBar', false],
-    ['stackedVerticalBar', false],
     ['stackedHorizontalBar', false],
-    ['percentVerticalBar', true],
     ['percentHorizontalBar', true],
     ['pie', false],
   ] as const)('threads cfg.sorting into %s with isPercent=%s', (chartType, isPercent) => {
     const spy = jest.spyOn(sortingModule, 'applySorting');
     createChart(container, validDataset, { chartType, sorting: 'sum', showBurgerMenu: false });
-    expect(spy).toHaveBeenCalledWith(expect.anything(), 'sum', isPercent);
+    expect(spy).toHaveBeenCalledWith(expect.anything(), 'sum', isPercent, chartType);
   });
+
+  it.each(['verticalBar', 'groupedVerticalBar', 'stackedVerticalBar', 'percentVerticalBar'] as const)(
+    'does not apply sorting for %s charts',
+    (chartType) => {
+      const spy = jest.spyOn(sortingModule, 'applySorting');
+      createChart(container, validDataset, { chartType, sorting: 'sum', showBurgerMenu: false });
+      expect(spy).not.toHaveBeenCalled();
+    },
+  );
 
   it.each(['line', 'pyramid', 'table', 'keyFigure'] as const)(
     'does not apply sorting for %s charts',
@@ -484,16 +491,6 @@ describe('sorting wiring (cfg.sorting)', () => {
     expect(spy).not.toHaveBeenCalled();
   });
 
-  it('reorders rendered bars per cfg.sorting (descending)', () => {
-    Object.defineProperty(container, 'clientWidth', { value: 600, configurable: true });
-    Object.defineProperty(container, 'clientHeight', { value: 400, configurable: true });
-    createChart(container, validDataset, { chartType: 'verticalBar', sorting: 'descending', showBurgerMenu: false });
-    const heights = Array.from(container.querySelectorAll<SVGRectElement>('.jsc-bar')).map(r => parseFloat(r.getAttribute('height') ?? '0'));
-    expect(heights).toHaveLength(3);
-    expect(heights[0]).toBeGreaterThan(heights[1]);
-    expect(heights[1]).toBeGreaterThan(heights[2]);
-  });
-
   it('renders bars in original dataset order without sorting', () => {
     Object.defineProperty(container, 'clientWidth', { value: 600, configurable: true });
     Object.defineProperty(container, 'clientHeight', { value: 400, configurable: true });
@@ -505,6 +502,16 @@ describe('sorting wiring (cfg.sorting)', () => {
 });
 
 describe('selectable non-categorical renderers', () => {
+  it('maps scatter series[1] to X and series[0] to Y', () => {
+    createChart(container, selectableScatterDataset, { chartType: 'scatterPlot' });
+
+    const points = Array.from(container.querySelectorAll<SVGCircleElement>('.jsc-scatter-point'));
+    const firstPoint = points[0];
+    expect(firstPoint).not.toBeNull();
+    expect(firstPoint?.getAttribute('aria-label')).toContain('Y: 10');
+    expect(firstPoint?.getAttribute('aria-label')).toContain('X: 1');
+  });
+
   it('filters scatter observations', () => {
     createChart(
       container,
@@ -937,6 +944,51 @@ describe('axis titles after update', () => {
 
     // Axis title should still be present after update
     expect(container.querySelector('.jsc-axis-title-y')).not.toBeNull();
+  });
+});
+
+describe('unit footer visibility', () => {
+  const datasetWithUnit: JsonStatDataset = {
+    id: ['ContVar', 'Year'],
+    size: [1, 3],
+    dimension: {
+      ContVar: {
+        label: 'Measure',
+        category: {
+          index: ['POP'],
+          label: { POP: 'Population' },
+          unit: { POP: { label: 'persons', decimals: 0 } },
+        },
+      },
+      Year: {
+        label: 'Year',
+        category: {
+          index: ['2020', '2021', '2022'],
+          label: { '2020': '2020', '2021': '2021', '2022': '2022' },
+        },
+      },
+    },
+    value: [100, 200, 300],
+    role: { metric: ['ContVar'], time: ['Year'] },
+  };
+
+  it('does not add the unit to the footer by default', () => {
+    Object.defineProperty(container, 'clientWidth', { value: 600, configurable: true });
+    Object.defineProperty(container, 'clientHeight', { value: 400, configurable: true });
+    createChart(container, datasetWithUnit, { chartType: 'line' });
+
+    expect(container.querySelector('.jsc-footer-unit')).toBeNull();
+    expect(container.querySelector('.jsc-axis-title-y')).not.toBeNull();
+  });
+
+  it('adds the unit to the footer when showUnit is enabled', () => {
+    Object.defineProperty(container, 'clientWidth', { value: 600, configurable: true });
+    Object.defineProperty(container, 'clientHeight', { value: 400, configurable: true });
+    createChart(container, datasetWithUnit, { chartType: 'line', showUnit: true });
+
+    const footerTexts = Array.from(container.querySelectorAll('.jsc-footer-text'))
+      .map(element => element.textContent);
+    expect(footerTexts).toContain('Unit: persons');
   });
 });
 

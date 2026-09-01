@@ -16,9 +16,21 @@ export interface SelectableConfig {
   multiSelectableDimensionCode?: string;
 }
 
+export interface JsonStatSourceExtension {
+  dimension?: Record<string, string>;
+  category?: Record<string, Record<string, string>>;
+}
+
+export interface JsonStatChartExtension {
+  sources?: JsonStatSourceExtension;
+}
+
 /** Known JSON-stat extension fields while preserving extension fields outside this library's scope. */
 export interface JsonStatDatasetExtension {
   selectableConfig?: SelectableConfig;
+  jsonstatChart?: JsonStatChartExtension;
+  /** Status code to human-readable missing-value description. */
+  missingValueDescriptions?: Record<string, string>;
   [key: string]: unknown;
 }
 
@@ -38,6 +50,8 @@ export interface JsonStatDataset {
   size: number[];
   dimension: Record<string, JsonStatDimension>;
   value: (number | null | string)[];
+  /** JSON-stat observation status codes keyed by flat observation index. */
+  status?: Record<string, string>;
   extension?: JsonStatDatasetExtension;
   role?: {
     time?: string[];
@@ -188,15 +202,20 @@ export interface ChartConfig {
    *  Return `null` if no geometry is available. */
   mapProvider?: MapProvider;
   showHeader?: boolean;
+  /** Add the dataset unit to the footer. Units are shown on the y-axis by default. */
+  showUnit?: boolean;
   showLegend?: boolean;
   autoTitle?: boolean;
   showBurgerMenu?: boolean;
+  /** Internal layout state set by the chart pipeline when the menu is rendered. */
+  burgerMenuVisible?: boolean;
   menuItemDefinitions?: BurgerMenuItemDefinition[];
   menuIconInheritColor?: boolean;
   /** Allow the line chart / scatter plot value axis to omit the zero baseline (default: always includes 0). No effect on other chart types. */
   cutValueAxis?: boolean;
-  /** Category sort order for bar and pie charts: `no_sorting` | `reversed` | `sum` | `ascending` | `descending`,
-   *  or a series/category code to sort by that reference series' values (percent-of-total for percent-stacked charts). */
+  /** Sorting for horizontal bar, grouped/stacked/percent horizontal bar, and pie charts:
+   *  `no_sorting` | `reversed` | `sum` | `ascending` | `descending`. Matching series codes are supported
+   *  for grouped, stacked, and percent horizontal bars; grouped horizontal bars prioritize that series. */
   sorting?: string;
 }
 
@@ -343,6 +362,8 @@ export interface TableData {
   columnDimensions: TableDimension[];
   /** 2D values array: values[rowIndex][colIndex]. Row index is the Cartesian product of row dimensions, col index is the Cartesian product of column dimensions. */
   values: (number | null)[][];
+  /** Missing-value descriptions parallel to `values`; null means use the fallback marker. */
+  missingValueDescriptions?: (string | null)[][];
   /** Dimensions with only 1 value that were hidden from the table structure. Useful for metadata display. */
   hiddenDimensions: { code: string; label: string; value: string }[];
 }

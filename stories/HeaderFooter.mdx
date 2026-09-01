@@ -52,6 +52,16 @@ Available footer item types: `'source'`, `'updated'`, `'unit'`, `'custom'`.
 
 <Canvas of={HeaderFooterStories.WithFooter} />
 
+Dataset units are shown on the y-axis by default. Set `showUnit: true` to also add the unit as an automatically generated footer item:
+
+```ts
+createChart(container, dataset, {
+  showUnit: true,
+});
+```
+
+<Canvas of={HeaderFooterStories.WithUnitFooter} />
+
 ---
 
 ## Source Link
@@ -86,5 +96,6 @@ Combining title, subtitle, legend, and footer:
 - `subtitle` — chart subtitle text
 - `autoTitle` — auto-generate title from dataset metadata when no `title` is provided (default: `true`)
 - `footerItems` — array of `{ label, value, type? }` items displayed below the chart
+- `showUnit` — add the dataset unit to the footer (default: `false`; units remain on the y-axis)
 - `sourceLink` — URL that makes the source footer item clickable
 - `showLegend` — show the legend for multi-series charts (default: `false`)

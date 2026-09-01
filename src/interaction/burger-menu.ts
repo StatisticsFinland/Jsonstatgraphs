@@ -1,4 +1,4 @@
-import { BurgerMenuItemDefinition, ChartType, JsonStatDataset, ResolvedTheme } from '../types';
+import { BurgerMenuItemDefinition, ChartType, JsonStatDataset, Layout, ResolvedTheme } from '../types';
 import { getLocaleStrings } from '../locale/strings';
 import { exportCsv } from './csvUtils';
 import { exportPng } from './pngUtils';
@@ -29,11 +29,11 @@ export interface BurgerMenuConfig {
   menuIconInheritColor?: boolean;
   tableToggle?: BurgerMenuTableToggleConfig;
   theme?: ResolvedTheme;
+  layout?: Layout;
 }
 
 let burgerMenuCounter = 0;
 let burgerMenuStyleRefCount = 0;
-const burgerMenuTableTopSpacing = '--jsc-burger-menu-table-top-spacing';
 
 function isLinkMenuItem(item: BurgerMenuItemDefinition): item is Extract<BurgerMenuItemDefinition, { url: string }> {
   return 'url' in item;
@@ -45,6 +45,7 @@ function createBuiltInItems(
   locale: string,
   chartType?: ChartType,
   dataset?: JsonStatDataset,
+  layout?: Layout,
   tableToggle?: BurgerMenuTableToggleConfig,
   accessibilityMode?: boolean,
   toggleAccessibilityMode?: () => void,
@@ -61,7 +62,7 @@ function createBuiltInItems(
       {
         text: strings.downloadCSV,
         activate: () => {
-          exportCsv(dataset, locale);
+          exportCsv(dataset, locale, { layout });
         },
       },
     );
@@ -134,7 +135,6 @@ export class BurgerMenu {
   constructor(config: BurgerMenuConfig) {
     this.container = config.container;
     this.theme = config.theme;
-    this.container.style.setProperty(burgerMenuTableTopSpacing, '2.5rem');
     this.menuId = `jsc-chart-menu-${++burgerMenuCounter}`;
     const theme = this.theme;
     this.previousContainerPosition = this.container.style.position;
@@ -299,6 +299,7 @@ export class BurgerMenu {
         resolvedLocale,
         config.chartType,
         config.dataset,
+        config.layout,
         config.tableToggle,
         config.accessibilityMode,
         config.toggleAccessibilityMode,
@@ -448,7 +449,6 @@ export class BurgerMenu {
 
   destroy(): void {
     document.removeEventListener('mousedown', this.onDocumentPointerDown);
-    this.container.style.removeProperty(burgerMenuTableTopSpacing);
     if (this.didSetContainerPosition) {
       if (this.previousContainerPosition) {
         this.container.style.position = this.previousContainerPosition;

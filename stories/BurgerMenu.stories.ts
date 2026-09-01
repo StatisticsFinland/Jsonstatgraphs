@@ -61,6 +61,19 @@ export const WithoutBurgerMenu: StoryObj = {
     }),
 };
 
+  export const TitlelessWithHeaderDisabled: StoryObj = {
+    render: () =>
+      renderChart({
+        dataset: timeSeriesData,
+        config: {
+          chartType: 'line',
+          showHeader: false,
+          autoTitle: false,
+        },
+        width: '800px',
+      }),
+  };
+
 export const DarkTheme: StoryObj = {
   render: () => {
     const wrapper = document.createElement('div');

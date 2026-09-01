@@ -1,4 +1,10 @@
-import { createScatterChart, computeValueRanges } from '../../src/charts/scatter';
+import {
+  createScatterChart,
+  computeScatterPointRadius,
+  computeValueRanges,
+  MAX_SCATTER_POINT_RADIUS_RATIO,
+  MIN_SCATTER_POINT_RADIUS_RATIO,
+} from '../../src/charts/scatter';
 import { ScatterChartData, ChartConfig } from '../../src/types';
 
 beforeAll(() => {
@@ -392,6 +398,22 @@ describe('createScatterChart', () => {
         .filter(n => !Number.isNaN(n));
     }
 
+    function getXAxisTickValues(): number[] {
+      return Array.from(container.querySelectorAll('.jsc-axis-x .tick text'))
+        .map(t => Number.parseFloat((t.textContent ?? '').replace(/\u2212/, '-')))
+        .filter(n => !Number.isNaN(n));
+    }
+
+    it('rendered X axis includes 0 when all x values are positive', () => {
+      createScatterChart({ container, data: scatterData, config: defaultConfig });
+      expect(getXAxisTickValues()).toContain(0);
+    });
+
+    it('rendered Y axis starts at 0 when all y values are positive', () => {
+      createScatterChart({ container, data: scatterData, config: defaultConfig });
+      expect(Math.min(...getYAxisTickValues())).toBe(0);
+    });
+
     it('rendered Y axis includes 0 by default, even with a narrow, far-from-zero data range', () => {
       createScatterChart({ container, data: narrowYRangeData, config: defaultConfig });
       const ticks = getYAxisTickValues();
@@ -403,6 +425,210 @@ describe('createScatterChart', () => {
       const ticks = getYAxisTickValues();
       expect(Math.min(...ticks)).toBeGreaterThan(0);
       expect(Math.min(...ticks)).toBeLessThanOrEqual(300);
+    });
+  });
+});
+
+describe('computeScatterPointRadius', () => {
+  it('uses a plot-relative maximum radius for zero or one point', () => {
+    expect(computeScatterPointRadius([], 600, 400)).toBe(400 * MAX_SCATTER_POINT_RADIUS_RATIO);
+    expect(computeScatterPointRadius([{ x: 0, y: 0 }], 600, 400)).toBe(400 * MAX_SCATTER_POINT_RADIUS_RATIO);
+  });
+
+  it('clamps sparse points to the plot-relative maximum radius', () => {
+    const radius = computeScatterPointRadius([
+      { x: 0, y: 0 },
+      { x: 100, y: 0 },
+      { x: 0, y: 100 },
+      { x: 100, y: 100 },
+    ], 100, 100);
+    expect(radius).toBeGreaterThanOrEqual(1);
+    expect(radius).toBeLessThanOrEqual(100 * MAX_SCATTER_POINT_RADIUS_RATIO);
+  });
+
+  it('scales the radius with the plot dimensions', () => {
+    const points = [
+      { x: 0, y: 0 },
+      { x: 20, y: 0 },
+      { x: 0, y: 20 },
+      { x: 20, y: 20 },
+    ];
+    const radius = computeScatterPointRadius(points, 100, 100);
+    const scaledRadius = computeScatterPointRadius(
+      points.map(point => ({ x: point.x * 2, y: point.y * 2 })),
+      200,
+      200,
+    );
+
+    expect(radius).toBeGreaterThanOrEqual(1);
+    expect(scaledRadius).toBeGreaterThan(radius);
+  });
+
+  it('gives sparse plots more visual weight than dense plots with the same spacing', () => {
+    const sparseRadius = computeScatterPointRadius([
+      { x: 0, y: 0 },
+      { x: 100, y: 0 },
+      { x: 0, y: 100 },
+      { x: 100, y: 100 },
+    ], 400, 400);
+    const denseRadius = computeScatterPointRadius(
+      Array.from({ length: 100 }, (_, index) => ({
+        x: (index % 10) * 4,
+        y: Math.floor(index / 10) * 4,
+      })),
+      400,
+      400,
+    );
+
+    expect(sparseRadius).toBeGreaterThan(denseRadius);
+  });
+
+  it('uses a relative minimum for dense points', () => {
+    const radius = computeScatterPointRadius(
+      Array.from({ length: 12 }, () => ({ x: 1, y: 1 })),
+      400,
+      400,
+    );
+    expect(radius).toBe(400 * MIN_SCATTER_POINT_RADIUS_RATIO);
+  });
+
+  it('returns an intermediate radius when points are moderately close', () => {
+    const radius = computeScatterPointRadius(
+      Array.from({ length: 12 }, (_, index) => ({
+        x: (index % 4) * 20,
+        y: Math.floor(index / 4) * 20,
+      })),
+      400,
+      400,
+    );
+    expect(radius).toBeGreaterThanOrEqual(400 * MIN_SCATTER_POINT_RADIUS_RATIO);
+    expect(radius).toBeLessThan(400 * MAX_SCATTER_POINT_RADIUS_RATIO);
+  });
+
+  it('clamps dense points to the minimum radius', () => {
+    const points = Array.from({ length: 100 }, (_, index) => ({
+      x: index % 10,
+      y: Math.floor(index / 10),
+    }));
+    expect(computeScatterPointRadius(points, 400, 400)).toBe(400 * MIN_SCATTER_POINT_RADIUS_RATIO);
+  });
+
+  it('biases very large point counts toward the fixed minimum radius', () => {
+    const points = Array.from({ length: 999 }, (_, index) => ({
+      x: index % 37,
+      y: Math.floor(index / 37),
+    }));
+    const radius = computeScatterPointRadius(points, 1600, 900);
+
+    const coincidentRadius = computeScatterPointRadius(
+      Array.from({ length: 999 }, () => ({ x: 50, y: 50 })),
+      900,
+      900,
+    );
+    expect(radius).toBe(coincidentRadius);
+    expect(radius).toBe(900 * MIN_SCATTER_POINT_RADIUS_RATIO);
+  });
+
+  it('shrinks equally sized clusters more than equally sized spread points', () => {
+    const spreadRadius = computeScatterPointRadius(
+      Array.from({ length: 12 }, (_, index) => ({
+        x: (index % 4) * 100,
+        y: Math.floor(index / 4) * 100,
+      })),
+      400,
+      400,
+    );
+    const clusterRadius = computeScatterPointRadius(
+      Array.from({ length: 12 }, (_, index) => ({
+        x: 40 + (index % 4) * 5,
+        y: 40 + Math.floor(index / 4) * 5,
+      })),
+      400,
+      400,
+    );
+
+    expect(clusterRadius).toBeLessThan(spreadRadius);
+  });
+
+  it('uses the minimum radius for coincident points', () => {
+    const points = Array.from({ length: 12 }, () => ({ x: 50, y: 50 }));
+    expect(computeScatterPointRadius(points, 400, 400)).toBe(400 * MIN_SCATTER_POINT_RADIUS_RATIO);
+  });
+
+  it('reduces radius when the same points occupy a smaller plot', () => {
+    const points = [
+      { x: 0, y: 0 },
+      { x: 100, y: 0 },
+      { x: 0, y: 100 },
+      { x: 100, y: 100 },
+    ];
+    expect(computeScatterPointRadius(points, 100, 100)).toBeGreaterThan(
+      computeScatterPointRadius(points, 20, 20),
+    );
+  });
+
+  it('renders one identical radius for every valid point', () => {
+    createScatterChart({ container, data: scatterData, config: defaultConfig });
+    const radii = Array.from(container.querySelectorAll('.jsc-scatter-point'))
+      .map(circle => circle.getAttribute('r'));
+
+    expect(new Set(radii).size).toBe(1);
+    expect(Number(radii[0])).toBeGreaterThanOrEqual(1);
+    expect(Number(radii[0])).toBeLessThanOrEqual(400 * MAX_SCATTER_POINT_RADIUS_RATIO);
+  });
+
+  it('does not let null-valued observations affect the radius', () => {
+    const validData: ScatterChartData = {
+      ...scatterData,
+      points: scatterData.points.filter(point => point.x !== null && point.y !== null),
+    };
+    const withNulls = createScatterChart({ container, data: scatterData, config: defaultConfig });
+    const radiusWithNulls = container.querySelector('.jsc-scatter-point')?.getAttribute('r');
+    withNulls.destroy();
+
+    createScatterChart({ container, data: validData, config: defaultConfig });
+    const radiusWithoutNulls = container.querySelector('.jsc-scatter-point')?.getAttribute('r');
+
+    expect(radiusWithNulls).toBe(radiusWithoutNulls);
+  });
+
+  it('recomputes the radius when update changes point density', () => {
+    const instance = createScatterChart({ container, data: scatterData, config: defaultConfig });
+    const initialRadius = Number(container.querySelector('.jsc-scatter-point')?.getAttribute('r'));
+    const denseData: ScatterChartData = {
+      points: Array.from({ length: 100 }, (_, index) => ({
+        x: index % 10,
+        y: Math.floor(index / 10),
+        label: `Point ${index}`,
+        code: `point-${index}`,
+      })),
+      xLabel: 'X',
+      yLabel: 'Y',
+    };
+
+    instance.update(denseData);
+
+    const updatedRadius = Number(container.querySelector('.jsc-scatter-point')?.getAttribute('r'));
+    expect(updatedRadius).toBeLessThan(initialRadius);
+  });
+});
+
+describe('computeValueRanges performance', () => {
+  it('handles the maximum supported scatter point count without spreading values into function arguments', () => {
+    const data: ScatterChartData = {
+      points: Array.from({ length: 999 }, (_, index) => ({
+        x: index,
+        y: 999 - index,
+        label: `Point ${index}`,
+        code: `point-${index}`,
+      })),
+      xLabel: 'X',
+      yLabel: 'Y',
+    };
+
+    expect(computeValueRanges(data)).toEqual({
+      xRange: [0, 998],
+      yRange: [0, 999],
     });
   });
 });

@@ -150,21 +150,22 @@ export function createLineChart(chartConfig: LineChartConfig): LineChartInstance
           .attr('tabindex', '0');
       } else {
         seriesGroup
-          .selectAll<SVGCircleElement, LinePoint>('circle')
+          .selectAll<SVGCircleElement, LinePoint>('circle.jsc-line-hit-area')
           .data(nonNullPoints)
           .join('circle')
-          .attr('class', 'jsc-marker')
+          .attr('class', 'jsc-line-hit-area')
           .attr('cx', d => xScale(d.categoryCode)!)
           .attr('cy', d => yScale(d.value as number)!)
-          .attr('r', '4')
-          .attr('fill', color)
-          .attr('stroke', theme.colorSurface)
-          .attr('stroke-width', '2')
+          .attr('r', '8')
+          .attr('fill', 'transparent')
+          .attr('stroke', 'none')
           .attr('tabindex', '0');
       }
 
       // Collect elements for bindInteractions
-      const markers = seriesGroup.selectAll<SVGElement, LinePoint>('.jsc-marker').nodes();
+      const markers = seriesGroup
+        .selectAll<SVGElement, LinePoint>(config.accessibilityMode ? '.jsc-marker' : '.jsc-line-hit-area')
+        .nodes();
       for (let pi = 0; pi < nonNullPoints.length; pi++) {
         const point = nonNullPoints[pi];
         const markerEl = markers[pi];

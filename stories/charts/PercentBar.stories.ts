@@ -80,16 +80,15 @@ export const HorizontalManySeries: StoryObj = {
     }),
 };
 
-// Shares `sortingDemoData` — 5 product-group categories (A-E) with "domestic"/"export" series:
-//   domestic: A=10, B=50, C=30, D=40, E=20   export: A=15, B=5, C=45, D=25, E=30
-// Percent-of-category-total for 'export' (of domestic+export): A=60%, B≈09.1%, C=60%, D≈38.5%, E=60%.
-// Descending sort ties (A, C, E all 60%) preserve original relative order (stable sort) -> A, C, E, D, B
-export const SortedByReferenceSeries: StoryObj = {
+export const HorizontalSortedByReferenceSeries: StoryObj = {
   args: { sorting: 'export' },
   render: (args) =>
     renderChart({
       dataset: sortingDemoData,
-      config: buildConfig(args, { chartType: 'percentVerticalBar', layout: { rows: ['markkina'], columns: ['tuoteryhma'] } }),
+      config: buildConfig(args, {
+        chartType: 'percentHorizontalBar',
+        layout: { rows: ['markkina'], columns: ['tuoteryhma'] },
+      }),
       width: args.width as string,
       height: args.height as string | undefined,
     }),

@@ -16,19 +16,103 @@ export interface ScatterChartInstance {
   destroy(): void;
 }
 
-export function computeValueRanges(data: ScatterChartData, cutValueAxis?: boolean): { xRange: [number, number]; yRange: [number, number] } {
-  const validPoints = data.points.filter(p => p.x !== null && p.y !== null);
-  if (validPoints.length === 0) {
-    return { xRange: [0, 1], yRange: [0, 1] };
+export const MIN_SCATTER_POINT_RADIUS_RATIO = 0.0075;
+export const MAX_SCATTER_POINT_RADIUS_RATIO = 0.015;
+
+export interface ScatterPointPosition {
+  x: number;
+  y: number;
+}
+
+/**
+ * Computes one visual radius for a scatter plot from its screen-space density.
+ * The local search is bucketed so charts near the supported 999-point limit do
+ * not need to compare every point with every other point.
+ */
+export function computeScatterPointRadius(
+  points: ScatterPointPosition[],
+  plotWidth: number,
+  plotHeight: number,
+): number {
+  if (plotWidth <= 0 || plotHeight <= 0) {
+    return 1;
   }
 
-  const xValues = validPoints.map(p => p.x as number);
-  const yValues = validPoints.map(p => p.y as number);
+  const plotSize = Math.min(plotWidth, plotHeight);
+  const baseMinimumRadius = Math.max(1, plotSize * MIN_SCATTER_POINT_RADIUS_RATIO);
+  const maximumRadius = Math.max(baseMinimumRadius, plotSize * MAX_SCATTER_POINT_RADIUS_RATIO);
+  if (points.length <= 8) return maximumRadius;
 
-  const xRawMin = Math.min(...xValues);
-  const xRawMax = Math.max(...xValues);
-  const yRawMin = Math.min(...yValues);
-  const yRawMax = Math.max(...yValues);
+  const globalSpacing = Math.sqrt((plotWidth * plotHeight) / points.length);
+  const buckets = new Map<string, ScatterPointPosition[]>();
+
+  const getCellKey = (point: ScatterPointPosition): [number, number] => [
+    Math.floor(point.x / globalSpacing),
+    Math.floor(point.y / globalSpacing),
+  ];
+
+  for (const point of points) {
+    const [cellX, cellY] = getCellKey(point);
+    const key = `${cellX}:${cellY}`;
+    const bucket = buckets.get(key);
+    if (bucket) {
+      bucket.push(point);
+    } else {
+      buckets.set(key, [point]);
+    }
+  }
+
+  const nearestDistances = points.map((point) => {
+    const [cellX, cellY] = getCellKey(point);
+    let nearestDistance = globalSpacing;
+
+    for (let offsetX = -1; offsetX <= 1; offsetX++) {
+      for (let offsetY = -1; offsetY <= 1; offsetY++) {
+        const bucket = buckets.get(`${cellX + offsetX}:${cellY + offsetY}`);
+        if (!bucket) continue;
+
+        for (const candidate of bucket) {
+          if (candidate === point) continue;
+          const distanceX = candidate.x - point.x;
+          const distanceY = candidate.y - point.y;
+          const distance = Math.sqrt(distanceX * distanceX + distanceY * distanceY);
+          nearestDistance = Math.min(nearestDistance, distance);
+        }
+      }
+    }
+
+    return nearestDistance;
+  }).sort((a, b) => a - b);
+
+  const lowerQuartile = nearestDistances[Math.floor(0.25 * (points.length - 1))];
+  const usableSpacing = Math.min(globalSpacing, lowerQuartile);
+  const densityWeight = 0.25 - 0.1 * Math.min(1, points.length / 100);
+  return Math.max(
+    baseMinimumRadius,
+    Math.min(maximumRadius, usableSpacing * 0.2 * densityWeight),
+  );
+}
+
+export function computeValueRanges(data: ScatterChartData, cutValueAxis?: boolean): { xRange: [number, number]; yRange: [number, number] } {
+  let validPointCount = 0;
+  let xRawMin = Infinity;
+  let xRawMax = -Infinity;
+  let yRawMin = Infinity;
+  let yRawMax = -Infinity;
+
+  for (const point of data.points) {
+    if (point.x === null || point.y === null) continue;
+
+    validPointCount++;
+    xRawMin = Math.min(xRawMin, point.x);
+    xRawMax = Math.max(xRawMax, point.x);
+    yRawMin = Math.min(yRawMin, point.y);
+    yRawMax = Math.max(yRawMax, point.y);
+  }
+
+  if (validPointCount === 0) {
+    return { xRange: [0, 1], yRange: [0, 1] };
+  }
 
   // Default: always include 0 on the Y axis so it isn't misleadingly cut
   const yRange: [number, number] = cutValueAxis
@@ -79,17 +163,27 @@ export function createScatterChart(chartConfig: ScatterChartConfig): ScatterChar
     const validPoints = data.points.filter(p => p.x !== null && p.y !== null);
     const elements: DataElementInfo[] = [];
     const color = getSeriesColor(theme, 0);
+    const projectedPoints = validPoints.map(point => ({
+      x: xScale(point.x as number),
+      y: yScale(point.y as number),
+    }));
+    const pointRadius = computeScatterPointRadius(
+      projectedPoints,
+      ctx.plotArea.width,
+      ctx.plotArea.height,
+    );
 
     const listGroup = plotAreaGroup.append('g')
       .attr('role', 'list')
       .attr('aria-label', `${data.yLabel} vs ${data.xLabel}`);
 
     validPoints.forEach((point, i) => {
+      const projectedPoint = projectedPoints[i];
       const circle = listGroup.append('circle')
         .attr('class', 'jsc-scatter-point')
-        .attr('cx', xScale(point.x as number))
-        .attr('cy', yScale(point.y as number))
-        .attr('r', 5)
+        .attr('cx', projectedPoint.x)
+        .attr('cy', projectedPoint.y)
+        .attr('r', pointRadius)
         .attr('fill', color)
         .attr('stroke', theme.colorBorder)
         .attr('stroke-width', 1)

@@ -66,6 +66,7 @@ const chart = createChart(container, dataset, {
   title: 'Custom Title',       // Override auto-generated title
   height: 400,                 // Container height in pixels
   showHeader: true,            // Show auto-generated header (default: true)
+  showUnit: false,             // Also show the dataset unit in the footer (default: false)
   showLegend: true,            // Show legend for multi-series charts
   autoTitle: true,             // Auto-generate title from metadata (default: true)
   layout: {                    // Project the JSON-stat cube into chart series and categories
@@ -98,11 +99,12 @@ const chart = createChart(container, dataset, {
 | Option | Type | Description |
 |---|---|---|
 | `chartType` | `ChartType` | Override the auto-selected chart type |
-| `locale` | `string` | Locale for formatting numbers and dates (`en`, `fi`, `sv`) |
+| `locale` | `string` | BCP 47 locale used for UI strings and numeric values in axes, labels, tooltips, maps, tables, screen-reader output, and CSV exports |
 | `title` | `string` | Override the auto-generated title |
 | `subtitle` | `string` | Subtitle displayed below the title |
 | `height` | `number` | Container height in pixels |
 | `showHeader` | `boolean` | Show auto-generated header (default: `true`) |
+| `showUnit` | `boolean` | Add the dataset unit to the footer (default: `false`; units remain on the y-axis) |
 | `showLegend` | `boolean` | Show legend for multi-series charts (default: `true`) |
 | `autoTitle` | `boolean` | Auto-generate title from metadata (default: `true`) |
 | `accessibilityMode` | `boolean` | Enable accessibility visuals (pattern fills or marker shapes) for supported chart types |
@@ -115,7 +117,7 @@ const chart = createChart(container, dataset, {
 | `layout` | `Layout` | Dimension projection with `rows` (series) and `columns` (categories/X axis) |
 | `defaultSelectableSelections` | `SelectableSelections` | Fallback category selections keyed by dimension code |
 | `multiSelectableDimensionCode` | `string` | Dimension whose multiple selected categories are rendered as separate series |
-| `sorting` | `string` | Category sort order for bar and pie charts: `no_sorting`, `reversed`, `sum`, `ascending`, `descending`, or any other string treated as a series/category code to sort by that reference series' values (percent-of-total for percent-stacked charts). No effect on other chart types. |
+| `sorting` | `string` | Supported by horizontal bar, grouped/stacked/percent horizontal bar, and pie charts. Keywords are `no_sorting`, `reversed`, `sum`, `ascending`, and `descending`; matching series codes are supported only by grouped/stacked/percent horizontal bars. A matching series is moved to the first series position before category sorting, which determines its stack position, legend order, and palette assignment. |
 | `cutValueAxis` | `boolean` | Allow the line chart / scatter plot value axis to omit the zero baseline (default: axis always includes 0). No effect on other chart types. |
 | `theme` | `ThemeConfig` | Theme customization options (see Theming section) |
 
@@ -152,6 +154,10 @@ chart.update(dataset, undefined, {
 
 `layout.rows` forms chart series and `layout.columns` forms categories on the X axis. During dataset rebuilding, these dimensions are ordered first and omitted dimensions remain in their original relative order. Categorical charts use the first active category of an omitted dimension. A configured `multiSelectableDimensionCode` with multiple active categories is projected as series when it is not explicitly assigned to either direction.
 
+For tables, transformation hides every dimension with one active category after selectable filtering, even when that dimension appears in `layout`. Such dimensions remain available in `hiddenDimensions` metadata, and an all-singleton table uses a single value cell without promoting a dimension into a visible row or column.
+
+Table and CSV output use the active `layout` and selectable selections. Row and column dimensions therefore match the currently rendered view rather than reverting to the source dataset's automatic orientation.
+
 When layout or selectable settings are provided, the library internally rebuilds a compact N-dimensional dataset containing only active categories and values once per render. The prepared dataset keeps every source dimension and is then passed to the chart transformer, which only projects it into the dimensionality required by that visualization. Datasets without layout or selectable settings follow the original transformation path unchanged.
 
 JSON-stat coordinate order is defined by `dataset.id`: each entry corresponds to the same position in `dataset.size`, and together they define the flattened `dataset.value` order. The property order of the `dataset.dimension` dictionary is not significant.
@@ -181,6 +187,75 @@ Resolution precedence is:
 An explicitly empty selection uses a non-empty default when available; otherwise it is rejected. Unknown dimensions, unknown category codes, duplicate layout dimensions, and dimensions assigned to both rows and columns are also rejected at the data-source boundary. When a chart type is explicitly chosen, the library trusts that choice after structural dataset validation; automatic chart selection continues to choose only applicable chart types.
 
 Selectable filtering is supported by categorical charts, tables, maps, scatter plots, pyramids, and key figures. During automatic chart selection, the scatter metric/content dimension and pyramid split dimension cannot be selectable because those dimensions define the renderer's required structure. Selected categories are reflected in automatic titles, map geometry requests, and chart-type switches.
+
+## Missing Values
+
+JSON-stat observation statuses are keyed by flat observation index. Optional `extension.missingValueDescriptions` entries map status codes to display text:
+
+```typescript
+const dataset: JsonStatDataset = {
+  // ...dimensions and metadata...
+  value: [42, null, null],
+  status: { '1': 'confidential', '2': 'notAvailable' },
+  extension: {
+    missingValueDescriptions: {
+      confidential: 'Confidential',
+    },
+  },
+};
+```
+
+For a missing value, tables and CSV exports display the mapped description when one exists. Otherwise they display the raw status string (`notAvailable` above). A missing value without a status uses an en dash in tables and an empty CSV cell. Status metadata is preserved and re-indexed when selectable filtering or layout permutation rebuilds the dataset.
+
+## Source Metadata
+
+Source information can be supplied at three levels. The standard JSON-stat `source` field remains the dataset-wide fallback. More specific source mappings are stored in the package extension namespace `extension.jsonstatChart.sources`.
+
+```typescript
+const dataset: JsonStatDataset = {
+  // ...standard JSON-stat fields...
+  source: 'Statistics Finland',
+  role: {
+    metric: ['measure'],
+  },
+  dimension: {
+    measure: {
+      category: {
+        index: { population: 0, employment: 1 },
+      },
+    },
+  },
+  extension: {
+    jsonstatChart: {
+      sources: {
+        // Applies to every active category in this dimension.
+        dimension: {
+          measure: 'Statistics Finland, population and employment database',
+        },
+        // Overrides the dimension source for one category.
+        category: {
+          measure: {
+            employment: 'Statistics Finland, employment statistics',
+          },
+        },
+      },
+    },
+  },
+};
+```
+
+The resolution order for each active category is:
+
+1. `extension.jsonstatChart.sources.category[dimensionCode][categoryCode]`
+2. `extension.jsonstatChart.sources.dimension[dimensionCode]`
+3. `dataset.source`
+
+For example, the `population` category above uses the dimension-level source, while `employment` uses its category-level source. If no extension metadata is provided, a normal string-valued `dataset.source` works unchanged.
+
+Sources are resolved from active metric dimensions after selectable filters are applied. This means changing selections through `createChart()` or `chart.update()` can change the displayed source. Sources are resolved in metric-dimension and category order, duplicate strings are removed while keeping their first occurrence, and the resulting list is used by chart/table footers and CSV exports. Explicit `footerItems` containing a source item still take precedence over automatic source generation.
+
+Do not add `source` properties directly to JSON-stat dimensions or categories. Use the extension namespace so the standard JSON-stat structure remains valid.
+
 ## Burger Menu
 
 Charts render a top-right burger menu button (`☰`) that opens a keyboard-accessible dropdown shell.
@@ -203,10 +278,11 @@ Built-in export items are shown only when export is actionable:
 
 CSV export behavior:
 
-- **Download table (csv)** now exports current dataset data as CSV.
+- **Download table (csv)** exports the active table view, including the current layout and selectable selections.
 - CSV includes UTF-8 BOM for spreadsheet compatibility.
 - Delimiter is locale-aware: `;` for `fi`/`sv`, otherwise `,`.
 - Numeric values are locale-formatted without grouping.
+- Missing observations use their mapped missing-value description or raw JSON-stat status string.
 - Download filename format: `<datasetLabel|export>_YYYYMMDD_HHMMSS.csv` (sanitized).
 
 SVG export behavior:
@@ -270,7 +346,7 @@ Every scalar `ThemeConfig` property has a corresponding CSS custom property name
 }
 ```
 
-Series colors use `--jsc-series-1` through `--jsc-series-8`:
+Series colors use `--jsc-series-1` through `--jsc-series-10`:
 
 ```css
 .my-chart-container {
@@ -279,6 +355,8 @@ Series colors use `--jsc-series-1` through `--jsc-series-8`:
   --jsc-series-3: #2a9d8f;
 }
 ```
+
+The default series palette, in order, is `#1A56EC`, `#F2644C`, `#1B3160`, `#9C8D87`, `#26625D`, `#7791E8`, `#8C1131`, `#878EAF`, `#C73268`, and `#288C72`. Colors repeat only after all ten slots are used.
 
 #### Typography
 
@@ -487,6 +565,7 @@ const results = getChartTypesForDataset(dataset, { mapAvailable: true });
 - Keyboard navigation: arrow keys, Home/End, Escape
 - Interactive legend with `aria-pressed` toggle
 - Tooltips with `aria-live="polite"`
+- Line charts use transparent focus and hover targets for every non-null point when visible accessibility markers are disabled.
 
 ## Development
 

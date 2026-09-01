@@ -48,6 +48,23 @@ export const Regions: StoryObj = {
   }),
 };
 
+export const TitleHiddenWhenHeaderDisabled: StoryObj = {
+  render: () => renderChart({
+    dataset: maakuntaData,
+    config: {
+      chartType: 'map',
+      title: 'This title should not be rendered',
+      showHeader: false,
+      mapProvider: instantProvider(maakuntaGeo),
+      map: {
+        geoIdProperty: 'maakunta',
+        geoCodeMapper: (code: string) => code.replace(/^MK/, ''),
+      },
+    },
+    width: '600px',
+  }),
+};
+
 export const SelectableYear: StoryObj = {
   render: (args) => renderChart({
     dataset: selectableMaakuntaData,

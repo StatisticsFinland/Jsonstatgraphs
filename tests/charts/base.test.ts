@@ -73,6 +73,30 @@ describe('ChartScaffold', () => {
     expect(document.querySelector('.jsc-footer')?.getAttribute('aria-hidden')).toBeNull();
   });
 
+  it('reserves nested-config burger clearance without rendering a disabled header', () => {
+    const scaffold = new ChartScaffold(createScaffoldConfig({
+      config: { title: 'Hidden Title', showHeader: false, burgerMenuVisible: true },
+    }));
+    const context = scaffold.render();
+
+    expect(document.querySelector('.jsc-header')).toBeNull();
+    expect(context.plotArea.y).toBe(48);
+  });
+
+  it('wraps the header title before the burger menu', () => {
+    const scaffold = new ChartScaffold(createScaffoldConfig({
+      container: createContainer(240),
+      config: {
+        title: 'A very long chart heading',
+        showHeader: true,
+        burgerMenuVisible: true,
+      },
+    }));
+    scaffold.render();
+
+    expect(document.querySelectorAll('.jsc-title tspan')).toHaveLength(2);
+  });
+
   it('render() uses custom tick positions from getTickPositions', () => {
     const scaffold = new ChartScaffold(createScaffoldConfig({ valueRange: [0, 1000] }));
     const context = scaffold.render();
@@ -97,6 +121,39 @@ describe('ChartScaffold', () => {
     scaffold.render();
     const tspans = document.querySelectorAll('.jsc-axis-x .tick text tspan');
     expect(tspans.length).toBeGreaterThan(0);
+  });
+
+  it('shortens and culls dense horizontal category labels', () => {
+    const categories = Array.from({ length: 30 }, (_, index) => `Category ${index} with an exceptionally long industry label that cannot fit`);
+    const scaffold = new ChartScaffold(createScaffoldConfig({
+      chartType: 'horizontalBar',
+      categories,
+      categoryLabels: categories,
+    }));
+    scaffold.render();
+
+    const labels = Array.from(document.querySelectorAll('.jsc-axis-y .tick text'));
+    const visibleLabels = labels.filter(label => (label as SVGTextElement).style.display !== 'none');
+    expect(visibleLabels.length).toBeLessThan(categories.length);
+    expect(visibleLabels.every(label => label.querySelectorAll('tspan').length === 1)).toBe(true);
+    expect(visibleLabels.every(label => (label.textContent ?? '').length < categories[0].length)).toBe(true);
+  });
+
+  it('keeps wrapped horizontal labels when category bands have room', () => {
+    const categories = ['First category with a long descriptive label', 'Second category with a long descriptive label'];
+    const scaffold = new ChartScaffold(createScaffoldConfig({
+      container: createContainer(800, 600),
+      chartType: 'horizontalBar',
+      categories,
+      categoryLabels: categories,
+    }));
+    scaffold.render();
+
+    const visibleLabels = Array.from(document.querySelectorAll('.jsc-axis-y .tick text'))
+      .filter(label => (label as SVGTextElement).style.display !== 'none');
+    expect(visibleLabels).toHaveLength(2);
+    expect(visibleLabels.some(label => label.querySelectorAll('tspan').length > 1)).toBe(true);
+    expect(visibleLabels.every(label => (label.textContent ?? '').length >= categories[0].length - 5)).toBe(true);
   });
 
   it('render() renders legend overlay when seriesCount > 1', () => {
@@ -243,6 +300,21 @@ describe('ChartScaffold', () => {
       expect(path.getAttribute('stroke')).toBe('#767676');
     });
   });
+
+  it.each(['verticalBar', 'horizontalBar'] as const)(
+    '%s axis domain paths are straight lines without outer end caps',
+    (chartType) => {
+      const scaffold = new ChartScaffold(createScaffoldConfig({ chartType }));
+      scaffold.render();
+
+      const yDomain = document.querySelector('.jsc-axis-y .domain')?.getAttribute('d') ?? '';
+      const xDomain = document.querySelector('.jsc-axis-x .domain')?.getAttribute('d') ?? '';
+      expect(yDomain).toContain('V');
+      expect(yDomain).not.toContain('H');
+      expect(xDomain).toContain('H');
+      expect(xDomain).not.toContain('V');
+    },
+  );
 
   it('grid lines use colorBorder (#aaaaaa), not colorTick (#555555)', () => {
     const scaffold = new ChartScaffold(

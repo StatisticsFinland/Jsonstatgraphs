@@ -90,6 +90,13 @@ describe('BurgerMenu assertion tests', () => {
     expect(list.style.display).toBe('none');
   });
 
+  it('keeps the existing top position', () => {
+    menu = new BurgerMenu({ container, locale: 'en' });
+
+    const root = container.querySelector('.jsc-burger-menu') as HTMLElement;
+    expect(root.style.top).toBe('0px');
+  });
+
   it('opens and closes menu from button click and toggles icon/expanded state', () => {
     menu = new BurgerMenu({ container, locale: 'en' });
 

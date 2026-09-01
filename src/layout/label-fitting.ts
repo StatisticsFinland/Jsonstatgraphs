@@ -26,6 +26,14 @@ function truncateLine(text: string, slotWidth: number, charWidth: number): { tex
   return { text: text.slice(0, maxChars) + ellipsis, truncated: true };
 }
 
+export function truncateLabel(
+  text: string,
+  slotWidth: number,
+  estimateCharWidth: number = DEFAULT_CHAR_WIDTH,
+): { text: string; truncated: boolean } {
+  return truncateLine(text, slotWidth, estimateCharWidth);
+}
+
 function wrapLabel(label: string, slotWidth: number, charWidth: number): { lines: string[]; truncated: boolean } {
   const words = label.split(' ');
   const lines: string[] = [];
