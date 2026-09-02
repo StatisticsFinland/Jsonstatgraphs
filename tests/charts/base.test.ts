@@ -110,6 +110,20 @@ describe('ChartScaffold', () => {
     expect(gridLines.length).toBe(expectedTicks.length);
   });
 
+  it('localizes numeric Y-axis labels', () => {
+    const scaffold = new ChartScaffold(createScaffoldConfig({
+      config: { locale: 'fi-FI' },
+      valueRange: [0, 50000],
+    }));
+    scaffold.render();
+
+    const labels = Array.from(document.querySelectorAll('.jsc-axis-y .tick text'))
+      .map((label) => label.textContent);
+    const expected = new Intl.NumberFormat('fi-FI').format(50000);
+    expect(labels).toContain(expected);
+    expect(labels).not.toContain('50,000');
+  });
+
   it('render() applies fitted labels to band axis', () => {
     const longCategories = [
       'Very Long Category Name One',

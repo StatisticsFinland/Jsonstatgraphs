@@ -466,6 +466,7 @@ export class ChartScaffold {
         yAxisGroup
           .call(axisLeft(yScale as ScaleLinear<number, number>)
             .tickValues(tickValues)
+            .tickFormat(d => formatNumber(Number(d), this.config.locale))
             .tickSizeOuter(0) as never)
           .call(styleAxis);
       }
