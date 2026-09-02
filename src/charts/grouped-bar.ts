@@ -93,7 +93,9 @@ export function createGroupedBarChart(chartConfig: GroupedBarChartConfig): Group
 
     const { svg, theme } = ctx;
     const plotAreaGroup = svg.select<SVGGElement>('.jsc-plot-area');
+    const interactionGroup = plotAreaGroup.append('g');
     const elements: DataElementInfo[] = [];
+    const categoryIndexByCode = new Map(data.categories.map((code, index) => [code, index]));
 
     if (config.accessibilityMode) {
       const defs = ensureDefs(svg);
@@ -121,7 +123,7 @@ export function createGroupedBarChart(chartConfig: GroupedBarChartConfig): Group
         const series = data.series[si];
         const color = getSeriesColor(theme, si);
 
-        const seriesGroup = plotAreaGroup
+        const seriesGroup = interactionGroup
           .append('g')
           .attr('class', `jsc-series jsc-series-${si}`) as unknown as import('d3-selection').Selection<SVGGElement, unknown, null, undefined>;
 
@@ -157,6 +159,9 @@ export function createGroupedBarChart(chartConfig: GroupedBarChartConfig): Group
             seriesIndex: si,
             pointIndex: pi,
             pointKey: point.categoryCode,
+            navigationGroupIndex: categoryIndexByCode.get(point.categoryCode),
+            navigationPointIndex: si,
+            navigationPointKey: `${point.categoryCode}:${series.code}`,
             category: point.label,
             seriesName: series.name,
             value: point.value,
@@ -179,7 +184,7 @@ export function createGroupedBarChart(chartConfig: GroupedBarChartConfig): Group
         const series = data.series[si];
         const color = getSeriesColor(theme, si);
 
-        const seriesGroup = plotAreaGroup
+        const seriesGroup = interactionGroup
           .append('g')
           .attr('class', `jsc-series jsc-series-${si}`) as unknown as import('d3-selection').Selection<SVGGElement, unknown, null, undefined>;
 
@@ -215,6 +220,9 @@ export function createGroupedBarChart(chartConfig: GroupedBarChartConfig): Group
             seriesIndex: si,
             pointIndex: pi,
             pointKey: point.categoryCode,
+            navigationGroupIndex: categoryIndexByCode.get(point.categoryCode),
+            navigationPointIndex: si,
+            navigationPointKey: `${point.categoryCode}:${series.code}`,
             category: point.label,
             seriesName: series.name,
             value: point.value,
@@ -251,7 +259,7 @@ export function createGroupedBarChart(chartConfig: GroupedBarChartConfig): Group
   });
 
   const ariaLabel = config.ariaLabel ?? (config.title ?? 'Grouped bar chart');
-  applyChartAriaAttributes(container, ariaLabel);
+  applyChartAriaAttributes(container, ariaLabel, resolvedChartType, config.locale);
 
   scaffold.render();
 
@@ -263,7 +271,7 @@ export function createGroupedBarChart(chartConfig: GroupedBarChartConfig): Group
         config = newConfig;
       }
       const updatedAriaLabel = config.ariaLabel ?? (config.title ?? 'Grouped bar chart');
-      applyChartAriaAttributes(container, updatedAriaLabel);
+      applyChartAriaAttributes(container, updatedAriaLabel, resolvedChartType, config.locale);
       scaffold.update({
         mode: 'categorical' as const,
         container,
@@ -288,6 +296,7 @@ export function createGroupedBarChart(chartConfig: GroupedBarChartConfig): Group
       scaffold.destroy();
       container.removeAttribute('role');
       container.removeAttribute('aria-label');
+      container.removeAttribute('aria-roledescription');
     },
   };
 }

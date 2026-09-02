@@ -71,12 +71,25 @@ describe('createScatterChart', () => {
     createScatterChart({ container, data: scatterData, config: defaultConfig });
     expect(container.getAttribute('role')).toBe('region');
     expect(container.getAttribute('aria-label')).toBeTruthy();
+    expect(container.getAttribute('aria-roledescription')).toBe('Scatter plot');
   });
 
   it('uses ariaLabel from config when provided', () => {
     const config: ChartConfig = { ariaLabel: 'Custom chart label' };
     createScatterChart({ container, data: scatterData, config });
     expect(container.getAttribute('aria-label')).toBe('Custom chart label');
+  });
+
+  it('includes axis units in data point names', () => {
+    createScatterChart({
+      container,
+      data: { ...scatterData, xUnit: 'euros', yUnit: 'years' },
+      config: defaultConfig,
+    });
+
+    const label = container.querySelector('.jsc-scatter-point')?.getAttribute('aria-label');
+    expect(label).toContain('euros');
+    expect(label).toContain('years');
   });
 
   it('destroy() removes SVG and disconnects ResizeObserver', () => {
@@ -124,17 +137,17 @@ describe('createScatterChart', () => {
     expect(listGroup!.getAttribute('aria-label')).toBeTruthy();
   });
 
-  it('keeps screen-reader arrow navigation inside the data point list', () => {
+  it('keeps screen-reader arrow navigation inside the data point list without an application role', () => {
     createScatterChart({
       container,
       data: scatterData,
       config: { ...defaultConfig, title: 'City prosperity and health' },
     });
-    const application = container.querySelector('[role="application"]');
+    const list = container.querySelector('[role="list"]');
     const circles = container.querySelectorAll<SVGCircleElement>('.jsc-scatter-point');
 
-    expect(application?.getAttribute('aria-label')).toBe('City prosperity and health');
-    expect(application?.querySelector('[role="list"]')).not.toBeNull();
+    expect(container.querySelector('[role="application"]')).toBeNull();
+    expect(list).not.toBeNull();
     expect(circles).toHaveLength(3);
 
     circles[0].focus();
@@ -233,8 +246,7 @@ describe('createScatterChart', () => {
 
     instance.update(scatterData, { title: 'Updated title' });
 
-    expect(container.querySelector('[role="application"]')?.getAttribute('aria-label'))
-      .toBe('Updated title');
+    expect(container.getAttribute('aria-label')).toBe('Updated title');
   });
 
   it('renders subtitle when config.subtitle is provided', () => {

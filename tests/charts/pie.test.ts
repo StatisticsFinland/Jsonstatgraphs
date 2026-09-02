@@ -124,6 +124,24 @@ describe('createPieChart', () => {
     }
   });
 
+  it('moves focus between slices inside the series list', () => {
+    createPieChart({ container, data: pieData, config: defaultConfig });
+    const list = container.querySelector('[role="list"]');
+    const slices = container.querySelectorAll<SVGPathElement>('.jsc-slice');
+
+    expect(container.querySelector('[role="application"]')).toBeNull();
+    expect(list?.contains(slices[0])).toBe(true);
+
+    slices[0].focus();
+    slices[0].dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'ArrowRight',
+      bubbles: true,
+      cancelable: true,
+    }));
+
+    expect(document.activeElement).toBe(slices[1]);
+  });
+
   it('slices use theme.colorSurface for stroke', () => {
     createPieChart({ container, data: pieData, config: defaultConfig });
     const slices = container.querySelectorAll<SVGPathElement>('.jsc-slice');

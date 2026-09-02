@@ -151,6 +151,62 @@ describe('createGroupedBarChart', () => {
     expect(rects).toHaveLength(6);
   });
 
+  it('navigates between series within a horizontal category group', () => {
+    createGroupedBarChart({
+      container,
+      data: twoSeriesData,
+      config: defaultConfig,
+      chartType: 'groupedHorizontalBar',
+    });
+    const firstSeriesCat1 = container.querySelector<SVGRectElement>('.jsc-series-0 .jsc-bar');
+    const secondSeriesCat1 = container.querySelector<SVGRectElement>('.jsc-series-1 .jsc-bar');
+
+    firstSeriesCat1?.focus();
+    firstSeriesCat1?.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'ArrowDown',
+      bubbles: true,
+      cancelable: true,
+    }));
+
+    expect(document.activeElement).toBe(secondSeriesCat1);
+  });
+
+  it('navigates between series within a vertical category group', () => {
+    createGroupedBarChart({ container, data: twoSeriesData, config: defaultConfig });
+    const firstSeriesCat1 = container.querySelector<SVGRectElement>('.jsc-series-0 .jsc-bar');
+    const secondSeriesCat1 = container.querySelector<SVGRectElement>('.jsc-series-1 .jsc-bar');
+
+    firstSeriesCat1?.focus();
+    firstSeriesCat1?.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'ArrowRight',
+      bubbles: true,
+      cancelable: true,
+    }));
+
+    expect(document.activeElement).toBe(secondSeriesCat1);
+  });
+
+  it('keeps the category identity when a group has a missing series value', () => {
+    createGroupedBarChart({
+      container,
+      data: dataWithNull,
+      config: defaultConfig,
+      chartType: 'groupedHorizontalBar',
+    });
+    const seriesACat1 = container.querySelector<SVGRectElement>('.jsc-series-0 .jsc-bar');
+    const seriesBCat1 = container.querySelector<SVGRectElement>('.jsc-series-1 .jsc-bar');
+
+    seriesACat1?.focus();
+    seriesACat1?.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'ArrowDown',
+      bubbles: true,
+      cancelable: true,
+    }));
+
+    expect(document.activeElement).toBe(seriesBCat1);
+    expect(document.activeElement?.getAttribute('aria-label')).toContain('Cat1');
+  });
+
   it('uses series order for top-to-bottom order in horizontal groups and legend', () => {
     const prioritizedData: ChartData = {
       ...twoSeriesData,
@@ -181,6 +237,7 @@ describe('createGroupedBarChart', () => {
   it('ARIA: container has role="region"', () => {
     createGroupedBarChart({ container, data: twoSeriesData, config: defaultConfig });
     expect(container.getAttribute('role')).toBe('region');
+    expect(container.querySelector('[role="application"]')).toBeNull();
   });
 
   it('ARIA: rects have role="listitem" and aria-label', () => {

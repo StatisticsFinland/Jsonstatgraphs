@@ -41,6 +41,7 @@ describe('ChartScaffold', () => {
     scaffold.render();
     const svg = document.querySelector('svg.jsc-chart');
     expect(svg?.getAttribute('aria-hidden')).toBeNull();
+    expect(svg?.getAttribute('role')).toBe('none');
   });
 
   it('decorative SVG groups have aria-hidden="true"', () => {

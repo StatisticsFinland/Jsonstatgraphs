@@ -300,6 +300,7 @@ export interface PyramidChartData {
   categoryLabels: string[];
   splitDimensionLabel?: string;
   categoryDimensionLabel?: string;
+  yLabel?: string;
 }
 
 // Table chart data (N-dimensional pivot table)

@@ -1246,6 +1246,7 @@ describe('mapProvider', () => {
     const provider = jest.fn().mockResolvedValue(mockGeoJson);
     const instance = createChart(container, geoDataset, {
       chartType: 'map',
+      locale: 'fi',
       mapProvider: provider,
       map: { geoIdProperty: 'natcode', geoCodeMapper: code => code.replace(/^MK/, '') },
     });
@@ -1253,7 +1254,7 @@ describe('mapProvider', () => {
     await Promise.resolve();
     await Promise.resolve();
 
-    expect(container.querySelector('[role="status"]')?.textContent).toBe('Chart loaded');
+    expect(container.querySelector('[role="status"]')?.textContent).toBe('Kuvio ladattu');
     expect(jest.getTimerCount()).toBeGreaterThan(0);
 
     instance.destroy();

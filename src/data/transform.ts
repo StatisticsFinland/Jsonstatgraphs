@@ -452,5 +452,6 @@ export function transformPyramidData(
     categoryLabels,
     splitDimensionLabel: splitDim.label,
     categoryDimensionLabel: catDim.label,
+    yLabel: deriveStandardYLabel(dataset, categoryDimension, splitDimension),
   };
 }

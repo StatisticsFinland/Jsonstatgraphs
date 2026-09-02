@@ -100,6 +100,52 @@ describe('createStackedBarChart', () => {
     expect(rects).toHaveLength(5);
   });
 
+  it('navigates between segments within a horizontal stack', () => {
+    createStackedBarChart({
+      container,
+      data: twoSeriesData,
+      config: defaultConfig,
+      chartType: 'stackedHorizontalBar',
+    });
+    const firstSegment = container.querySelector<SVGRectElement>('.jsc-series-0 .jsc-bar');
+    const secondSegment = container.querySelector<SVGRectElement>('.jsc-series-1 .jsc-bar');
+
+    firstSegment?.focus();
+    firstSegment?.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'ArrowRight',
+      bubbles: true,
+      cancelable: true,
+    }));
+
+    expect(document.activeElement).toBe(secondSegment);
+  });
+
+  it('navigates vertical stack segments in visual top-to-bottom order', () => {
+    createStackedBarChart({
+      container,
+      data: twoSeriesData,
+      config: defaultConfig,
+      chartType: 'stackedVerticalBar',
+    });
+    const lowerSegment = container.querySelector<SVGRectElement>('.jsc-series-0 .jsc-bar');
+    const upperSegment = container.querySelector<SVGRectElement>('.jsc-series-1 .jsc-bar');
+
+    upperSegment?.focus();
+    upperSegment?.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'ArrowDown',
+      bubbles: true,
+      cancelable: true,
+    }));
+    expect(document.activeElement).toBe(lowerSegment);
+
+    lowerSegment?.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'ArrowUp',
+      bubbles: true,
+      cancelable: true,
+    }));
+    expect(document.activeElement).toBe(upperSegment);
+  });
+
   it('percent vertical: draws rects and uses 100 as value range upper bound', () => {
     createStackedBarChart({
       container,
@@ -182,22 +228,30 @@ describe('createStackedBarChart', () => {
     }).not.toThrow();
 
     const agricultureRects = container.querySelectorAll('.jsc-series-0 .jsc-bar');
+    const industryRects = container.querySelectorAll('.jsc-series-1 .jsc-bar');
     expect(agricultureRects).toHaveLength(2);
 
-    // Arrow-key navigation across the gap must not throw or dereference a hole.
-    (agricultureRects[0] as SVGElement).focus();
+    // The missing segment is skipped while navigation stays in the 2020 stack.
+    (industryRects[0] as SVGElement).focus();
     expect(() => {
-      agricultureRects[0].dispatchEvent(
-        new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }),
+      industryRects[0].dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }),
       );
     }).not.toThrow();
-    expect(document.activeElement).toBe(agricultureRects[1]);
+    expect(document.activeElement?.getAttribute('aria-label')).toBe('2020, Agriculture: 10');
+
+    (industryRects[2] as SVGElement).focus();
+    industryRects[2].dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }),
+    );
+    expect(document.activeElement?.getAttribute('aria-label')).toBe('2022, Agriculture: 30');
   });
 
 
   it('ARIA: container has role="region"', () => {
     createStackedBarChart({ container, data: stackedData, config: defaultConfig });
     expect(container.getAttribute('role')).toBe('region');
+    expect(container.querySelector('[role="application"]')).toBeNull();
   });
 
   it('ARIA: rects have role="listitem" and aria-label', () => {

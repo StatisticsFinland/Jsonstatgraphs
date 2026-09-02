@@ -1,11 +1,16 @@
 import { getLocaleStrings } from '../locale/strings';
+import type { ChartType } from '../types';
 
 export function applyChartAriaAttributes(
   container: HTMLElement,
-  ariaLabel: string
+  ariaLabel: string,
+  chartType: ChartType,
+  locale?: string,
 ): void {
+  const strings = getLocaleStrings(locale);
   container.setAttribute('role', 'region');
   container.setAttribute('aria-label', ariaLabel);
+  container.setAttribute('aria-roledescription', strings.chartTypes[chartType]);
 }
 
 export function applySeriesGroupAttributes(
@@ -28,5 +33,5 @@ export function applyDataPointAttributes(
   const strings = getLocaleStrings(locale);
   element.setAttribute('role', 'listitem');
   element.setAttribute('aria-roledescription', strings.dataPoint);
-  element.setAttribute('aria-label', `${label}: ${value}`);
+  element.setAttribute('aria-label', `${label}, ${value}`);
 }

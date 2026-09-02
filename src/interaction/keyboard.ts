@@ -6,7 +6,7 @@ export interface FocusableElement {
   pointKey?: string;
 }
 
-export type PointNavigationAxis = 'horizontal' | 'vertical';
+export type PointNavigationAxis = 'horizontal' | 'vertical' | 'both';
 
 interface StoredFocusState {
   seriesIndex: number;
@@ -195,6 +195,10 @@ export class KeyboardNavigator {
   private navigate(key: string): { s: number; p: number } | null {
     if (this.elements.length === 0) return null;
 
+    if (this.pointAxis === 'both') {
+      if (key === 'ArrowRight' || key === 'ArrowDown') return this.navigatePoint(1);
+      if (key === 'ArrowLeft' || key === 'ArrowUp') return this.navigatePoint(-1);
+    }
     if (key === this.nextPointKey) return this.navigatePoint(1);
     if (key === this.previousPointKey) return this.navigatePoint(-1);
     if (key === this.previousSeriesKey) return this.navigateSeries(-1);

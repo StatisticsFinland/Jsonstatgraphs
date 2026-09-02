@@ -19,6 +19,19 @@ const mapData: MapChartData = {
   hasNoData: false,
   geoDimensionLabel: 'Region',
   valueDimensionLabel: 'Population',
+  unit: 'persons',
+};
+
+const multiRegionMapData: MapChartData = {
+  regions: [
+    { feature: regionFeature, value: 10, label: 'Region A', code: 'a', classIndex: 0, color: '#123456' },
+    { feature: regionFeature, value: 20, label: 'Region B', code: 'b', classIndex: 0, color: '#654321' },
+  ],
+  classification: { method: 'linear', scaleMin: 0, scaleMax: 20, colors: ['#123456'] },
+  noDataColor: '#cccccc',
+  hasNoData: false,
+  geoDimensionLabel: 'Region',
+  valueDimensionLabel: 'Population',
 };
 
 const defaultConfig: ChartConfig = {};
@@ -38,6 +51,7 @@ describe('createMapChart accessible name', () => {
   it('uses config.title as the accessible name when no ariaLabel is provided', () => {
     createMapChart({ container, data: mapData, config: { ...defaultConfig, title: 'Population by region' } });
     expect(container.getAttribute('aria-label')).toBe('Population by region');
+    expect(container.getAttribute('aria-roledescription')).toBe('Map');
   });
 
   it('prefers config.ariaLabel over config.title', () => {
@@ -56,5 +70,66 @@ describe('createMapChart accessible name', () => {
     expect(ariaLabel).toContain('Region');
     expect(ariaLabel).toContain('muuttujana');
     expect(ariaLabel).toContain('aluetta');
+  });
+});
+
+describe('createMapChart keyboard accessibility', () => {
+  it('does not hide the map svg from assistive technology', () => {
+    createMapChart({ container, data: mapData, config: defaultConfig });
+    const svg = container.querySelector('svg.jsc-chart');
+    expect(svg?.getAttribute('aria-hidden')).toBeNull();
+    expect(svg?.getAttribute('role')).toBe('none');
+  });
+
+  it('groups regions under a role="list" element', () => {
+    createMapChart({ container, data: mapData, config: defaultConfig });
+    const mapGroup = container.querySelector('.jsc-map-regions');
+    expect(mapGroup?.parentElement?.getAttribute('role')).toBeNull();
+    expect(mapGroup?.getAttribute('role')).toBe('list');
+  });
+
+  it('gives each region role="listitem" and an aria-label with name and value', () => {
+    createMapChart({ container, data: mapData, config: defaultConfig });
+    const region = container.querySelector('.jsc-map-region');
+    expect(region?.getAttribute('role')).toBe('listitem');
+    expect(region?.getAttribute('aria-label')).toBe('Region: Region A, 10 persons');
+  });
+
+  it('uses roving tabindex — only the first region is initially tabbable', () => {
+    createMapChart({ container, data: multiRegionMapData, config: defaultConfig });
+    const regions = container.querySelectorAll('.jsc-map-region');
+    expect(regions).toHaveLength(2);
+    expect(regions[0].getAttribute('tabindex')).toBe('0');
+    expect(regions[1].getAttribute('tabindex')).toBe('-1');
+  });
+
+  it('moves focus to the next region with an arrow on either axis', () => {
+    createMapChart({ container, data: multiRegionMapData, config: defaultConfig });
+    const regions = container.querySelectorAll<SVGElement>('.jsc-map-region');
+    regions[0].focus();
+    expect(document.activeElement).toBe(regions[0]);
+
+    regions[0].dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'ArrowDown',
+      bubbles: true,
+      cancelable: true,
+    }));
+
+    expect(document.activeElement).toBe(regions[1]);
+    expect(regions[1].getAttribute('tabindex')).toBe('0');
+    expect(regions[0].getAttribute('tabindex')).toBe('-1');
+  });
+
+  it('shows the tooltip when a region receives keyboard focus, and hides it on blur', () => {
+    createMapChart({ container, data: mapData, config: defaultConfig });
+    const region = container.querySelector<SVGElement>('.jsc-map-region')!;
+
+    region.focus();
+    const tooltip = container.querySelector('[role="tooltip"]');
+    expect(tooltip?.querySelector('strong')?.textContent).toBe('10 persons');
+    expect(tooltip?.textContent).toBe('Region: Region A10 persons');
+
+    region.blur();
+    expect(container.querySelector('[role="tooltip"]')?.getAttribute('aria-hidden')).toBe('true');
   });
 });

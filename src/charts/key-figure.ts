@@ -4,6 +4,8 @@ import { resolveTheme } from '../theme/theme';
 import { applyChartAriaAttributes } from '../a11y/aria';
 import { getLocaleStrings } from '../locale/strings';
 
+let keyFigureIdCounter = 0;
+
 export interface KeyFigureChartConfig {
   container: HTMLElement;
   value: number | null;
@@ -17,7 +19,8 @@ function renderKeyFigure(
   value: number | null,
   unit: string,
   decimals: number | undefined,
-  config: ChartConfig
+  config: ChartConfig,
+  titleId: string,
 ): void {
   wrapper.innerHTML = '';
 
@@ -45,6 +48,8 @@ function renderKeyFigure(
   if (title !== '') {
     const titleEl = document.createElement('div');
     titleEl.className = 'jsc-key-figure-title';
+    titleEl.id = titleId;
+    titleEl.setAttribute('aria-hidden', 'true');
     titleEl.textContent = title;
     titleEl.style.fontSize = theme.fontSizeLabel;
     titleEl.style.fontWeight = String(theme.fontWeightNormal);
@@ -103,6 +108,16 @@ function renderKeyFigure(
   wrapper.appendChild(container);
 }
 
+function applyKeyFigureAria(container: HTMLElement, config: ChartConfig, titleId: string): void {
+  applyChartAriaAttributes(container, config.ariaLabel ?? config.title ?? 'Key figure', 'keyFigure', config.locale);
+  if (!config.ariaLabel && config.title) {
+    container.removeAttribute('aria-label');
+    container.setAttribute('aria-labelledby', titleId);
+  } else {
+    container.removeAttribute('aria-labelledby');
+  }
+}
+
 export function createKeyFigureChart(chartConfig: KeyFigureChartConfig): {
   update(value: number | null, unit: string, decimals: number | undefined, config: ChartConfig): void;
   destroy(): void;
@@ -116,10 +131,10 @@ export function createKeyFigureChart(chartConfig: KeyFigureChartConfig): {
   const wrapper = document.createElement('div');
   wrapper.className = 'jsc-key-figure-wrapper';
   container.appendChild(wrapper);
+  const titleId = `jsc-key-figure-${++keyFigureIdCounter}-title`;
 
-  applyChartAriaAttributes(container, config.ariaLabel ?? config.title ?? 'Key figure');
-
-  renderKeyFigure(wrapper, value, unit, decimals, config);
+  renderKeyFigure(wrapper, value, unit, decimals, config, titleId);
+  applyKeyFigureAria(container, config, titleId);
 
   return {
     update(newValue: number | null, newUnit: string, newDecimals: number | undefined, newConfig: ChartConfig): void {
@@ -127,14 +142,16 @@ export function createKeyFigureChart(chartConfig: KeyFigureChartConfig): {
       unit = newUnit;
       decimals = newDecimals;
       config = newConfig;
-      applyChartAriaAttributes(container, config.ariaLabel ?? config.title ?? 'Key figure');
-      renderKeyFigure(wrapper, value, unit, decimals, config);
+      renderKeyFigure(wrapper, value, unit, decimals, config, titleId);
+      applyKeyFigureAria(container, config, titleId);
     },
 
     destroy(): void {
       wrapper.remove();
       container.removeAttribute('role');
       container.removeAttribute('aria-label');
+      container.removeAttribute('aria-labelledby');
+      container.removeAttribute('aria-roledescription');
     },
   };
 }

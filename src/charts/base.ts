@@ -148,6 +148,7 @@ export class ChartScaffold {
     this.svg = select(svgEl) as Selection<SVGSVGElement, unknown, null, undefined>;
     this.svg
       .attr('class', 'jsc-chart')
+      .attr('role', 'none')
       .attr('width', '100%')
       .attr('height', '100%');
 

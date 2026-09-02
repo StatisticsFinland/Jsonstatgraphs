@@ -103,6 +103,19 @@ describe('createPyramidChart', () => {
     expect(allBars).toHaveLength(5);
   });
 
+  it('uses up and down arrows to move focus in the visual vertical direction', () => {
+    createPyramidChart({ container, data: pyramidData, config: defaultConfig });
+    const bars = Array.from(container.querySelectorAll<SVGRectElement>('.jsc-bar-left'));
+    const middleBar = bars[1];
+
+    middleBar.focus();
+    middleBar.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    expect(document.activeElement).toBe(bars[0]);
+
+    bars[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
+    expect(document.activeElement).toBe(middleBar);
+  });
+
   it('ARIA: container has role="region"', () => {
     createPyramidChart({ container, data: pyramidData, config: defaultConfig });
     expect(container.getAttribute('role')).toBe('region');

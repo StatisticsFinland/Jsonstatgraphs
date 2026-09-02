@@ -510,3 +510,14 @@ The initial premise — that `.jsc-bar { fill: blue }` has no effect — was inc
 Maps remain nonfocusable because geographic regions have no meaningful linear keyboard order. The map region provides a localized summary; a host application must provide a visible table when users need access to all region values.
 
 **Consequences:** This decision supersedes ADR-029 and the screen-reader-table consequence in ADR-007. Consumers no longer encounter duplicate figure/image announcements or an implicit table after a chart. Applications embedding maps must deliberately provide an alternate data view. Accessibility acceptance is tested primarily with NVDA in Chromium and Firefox, with automated coverage for semantics, localization, focus ownership, boundaries, and redraw restoration.
+
+### ADR-039: Map regions become keyboard-focusable via shared bindInteractions
+
+**Status:** accepted (supersedes the map-exclusion clause of ADR-038, and ADR-029)
+**Date:** 2026-09-01
+
+**Context:** ADR-038 and ADR-029 kept map regions nonfocusable, and the map's root `<svg>` was also marked `aria-hidden="true"`. Together this meant screen reader users had no way to reach any per-region data — not even the localized chart summary reached individual values. The stated rationale (no natural geographic navigation order) does not justify withholding keyboard access entirely.
+
+**Decision:** Map regions now use the same `bindInteractions()` / `KeyboardNavigator` infrastructure as bar, pie, and scatter datapoints: each region `<path>` gets a roving `tabindex`, arrow-key navigation, a `role="listitem"` with localized `aria-label`, and a focus-triggered tooltip, grouped under a `role="list"` region group inside a named `role="application"` interaction boundary. The application boundary lets screen readers pass arrow keys to the registered datapoints instead of continuing browse-mode navigation. Because maps have no directional sequence, Right/Down move forward and Left/Up move backward through `data.regions` array order. The root map `<svg>` is no longer `aria-hidden`.
+
+**Consequences:** Keyboard and screen reader users can now Tab into the map and arrow through every region, reading its name and value, matching the level of access already available for other chart types. Applications that need a host-owned alternate table (per ADR-038) may still provide one; this is unaffected. Automated coverage in `tests/charts/map.test.ts` verifies tabindex rove-ing, list/listitem semantics, aria-labels, and focus-triggered tooltips.

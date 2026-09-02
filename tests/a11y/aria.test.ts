@@ -17,13 +17,24 @@ describe('applyChartAriaAttributes', () => {
   });
 
   it('sets role to region', () => {
-    applyChartAriaAttributes(container, 'My Chart');
+    applyChartAriaAttributes(container, 'My Chart', 'line');
     expect(container.getAttribute('role')).toBe('region');
   });
 
   it('sets aria-label', () => {
-    applyChartAriaAttributes(container, 'Population by Region');
+    applyChartAriaAttributes(container, 'Population by Region', 'verticalBar');
     expect(container.getAttribute('aria-label')).toBe('Population by Region');
+  });
+
+  it('sets a localized chart type description', () => {
+    applyChartAriaAttributes(container, 'Population', 'scatterPlot');
+    expect(container.getAttribute('aria-roledescription')).toBe('Scatter plot');
+
+    applyChartAriaAttributes(container, 'Väestö', 'pyramid', 'fi');
+    expect(container.getAttribute('aria-roledescription')).toBe('Pyramidikaavio');
+
+    applyChartAriaAttributes(container, 'Befolkning', 'table', 'sv');
+    expect(container.getAttribute('aria-roledescription')).toBe('Datatabell');
   });
 });
 
@@ -85,7 +96,7 @@ describe('applyDataPointAttributes', () => {
 
   it('sets aria-label with label and value', () => {
     applyDataPointAttributes(rect, 'Q1', '1000');
-    expect(rect.getAttribute('aria-label')).toBe('Q1: 1000');
+    expect(rect.getAttribute('aria-label')).toBe('Q1, 1000');
   });
 
   it('handles special characters in aria-label safely', () => {
@@ -93,7 +104,7 @@ describe('applyDataPointAttributes', () => {
     const specialValue = 'val>0';
     applyDataPointAttributes(rect, specialLabel, specialValue);
     // setAttribute stores the raw string; the browser escapes on serialization
-    expect(rect.getAttribute('aria-label')).toBe(`${specialLabel}: ${specialValue}`);
+    expect(rect.getAttribute('aria-label')).toBe(`${specialLabel}, ${specialValue}`);
   });
 
   it('works with both SVG and HTML elements', () => {
@@ -101,10 +112,10 @@ describe('applyDataPointAttributes', () => {
     document.body.appendChild(div);
 
     applyDataPointAttributes(rect, 'SVG', '42');
-    expect(rect.getAttribute('aria-label')).toBe('SVG: 42');
+    expect(rect.getAttribute('aria-label')).toBe('SVG, 42');
 
     applyDataPointAttributes(div, 'HTML', '99');
-    expect(div.getAttribute('aria-label')).toBe('HTML: 99');
+    expect(div.getAttribute('aria-label')).toBe('HTML, 99');
 
     div.remove();
   });

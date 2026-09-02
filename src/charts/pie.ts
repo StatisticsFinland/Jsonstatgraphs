@@ -103,6 +103,7 @@ export function createPieChart(chartConfig: PieChartConfig): PieChartInstance {
     lastTheme = theme;
 
     const plotAreaGroup = svg.select<SVGGElement>('.jsc-plot-area');
+    const interactionGroup = plotAreaGroup.append('g');
     const nonNullPoints = getNonNullPoints();
     const visibleIndices = nonNullPoints.map((_, i) => i).filter(i => !hiddenSlices.has(i));
     const visiblePoints = visibleIndices.map(i => nonNullPoints[i]);
@@ -136,7 +137,7 @@ export function createPieChart(chartConfig: PieChartConfig): PieChartInstance {
     }
 
     // Create a series group for ARIA
-    const seriesGroup = plotAreaGroup
+    const seriesGroup = interactionGroup
       .append('g')
       .attr('class', 'jsc-series jsc-series-0');
 
@@ -252,7 +253,7 @@ export function createPieChart(chartConfig: PieChartConfig): PieChartInstance {
   });
 
   const ariaLabel = config.ariaLabel ?? (config.title ?? 'Pie chart');
-  applyChartAriaAttributes(container, ariaLabel);
+  applyChartAriaAttributes(container, ariaLabel, 'pie', config.locale);
 
   scaffold.render();
 
@@ -264,7 +265,7 @@ export function createPieChart(chartConfig: PieChartConfig): PieChartInstance {
         config = newConfig;
       }
       const updatedAriaLabel = config.ariaLabel ?? (config.title ?? 'Pie chart');
-      applyChartAriaAttributes(container, updatedAriaLabel);
+      applyChartAriaAttributes(container, updatedAriaLabel, 'pie', config.locale);
       scaffold.update(buildScaffoldConfig());
     },
 
@@ -276,6 +277,7 @@ export function createPieChart(chartConfig: PieChartConfig): PieChartInstance {
       scaffold.destroy();
       container.removeAttribute('role');
       container.removeAttribute('aria-label');
+      container.removeAttribute('aria-roledescription');
     },
   };
 }

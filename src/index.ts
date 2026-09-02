@@ -249,7 +249,6 @@ function renderLoadingIndicator(container: HTMLElement, theme: ResolvedTheme, ar
   const wrapper = document.createElement('div');
   wrapper.className = 'jsc-loading';
   wrapper.setAttribute('role', 'status');
-  wrapper.setAttribute('aria-label', ariaLabel);
   wrapper.setAttribute('aria-live', 'polite');
   wrapper.setAttribute('aria-atomic', 'true');
   wrapper.style.display = 'flex';
@@ -693,9 +692,9 @@ export function createChart(
     }
   }
 
-  function announceChartLoaded(): void {
+  function announceChartLoaded(locale: string): void {
     clearPendingAnnouncement();
-    const announcement = createSrOnlyElement('div', 'Chart loaded');
+    const announcement = createSrOnlyElement('div', getLocaleStrings(locale).chartLoaded);
     announcement.setAttribute('role', 'status');
     announcement.setAttribute('aria-live', 'polite');
     container.appendChild(announcement);
@@ -860,7 +859,7 @@ export function createChart(
           try {
             container.innerHTML = '';
             finishRebuild(ds, effectiveCfg, dataProps, dimMeta, resolvedLocale, theme, mapAvailable);
-            announceChartLoaded();
+            announceChartLoaded(resolvedLocale);
           } catch (err) {
             console.warn('[JsonStatChart]', err);
             renderError(container, err instanceof Error ? err.message : 'An unexpected error occurred', theme);
@@ -881,7 +880,7 @@ export function createChart(
           try {
             container.innerHTML = '';
             finishRebuild(ds, catchCfg, dataProps, dimMeta, resolvedLocale, theme, false);
-            announceChartLoaded();
+            announceChartLoaded(resolvedLocale);
           } catch (finishErr) {
             console.warn('[JsonStatChart]', finishErr);
             renderError(container, finishErr instanceof Error ? finishErr.message : 'An unexpected error occurred', theme);

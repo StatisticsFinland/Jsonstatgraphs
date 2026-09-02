@@ -87,11 +87,32 @@ describe('createBarChart', () => {
     });
     const rects = container.querySelectorAll('.jsc-bar');
     expect(rects).toHaveLength(3);
+    expect(container.getAttribute('aria-roledescription')).toBe('Horizontal bar chart');
+  });
+
+  it('keeps vertical bar navigation inside the series list', () => {
+    createBarChart({ container, data: singleSeriesData, config: defaultConfig });
+    const list = container.querySelector('[role="list"]');
+    const rects = container.querySelectorAll<SVGRectElement>('.jsc-bar');
+
+    expect(container.querySelector('[role="application"]')).toBeNull();
+    expect(list?.contains(rects[0])).toBe(true);
+
+    rects[0].focus();
+    rects[0].dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'ArrowRight',
+      bubbles: true,
+      cancelable: true,
+    }));
+
+    expect(document.activeElement).toBe(rects[1]);
+    expect(document.activeElement?.getAttribute('aria-label')).toBe('2021, Population: 150');
   });
 
   it('ARIA: container has role="region"', () => {
     createBarChart({ container, data: singleSeriesData, config: defaultConfig });
     expect(container.getAttribute('role')).toBe('region');
+    expect(container.getAttribute('aria-roledescription')).toBe('Vertical bar chart');
   });
 
   it('ARIA: rects have role="listitem" and aria-label', () => {

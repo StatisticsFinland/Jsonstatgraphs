@@ -214,7 +214,7 @@ export function createLineChart(chartConfig: LineChartConfig): LineChartInstance
 
   // Apply chart-level ARIA
   const ariaLabel = config.ariaLabel ?? (config.title ?? 'Line chart');
-  applyChartAriaAttributes(container, ariaLabel);
+  applyChartAriaAttributes(container, ariaLabel, 'line', config.locale);
 
   // Trigger initial render
   scaffold.render();
@@ -226,7 +226,7 @@ export function createLineChart(chartConfig: LineChartConfig): LineChartInstance
         config = newConfig;
       }
       const updatedAriaLabel = config.ariaLabel ?? (config.title ?? 'Line chart');
-      applyChartAriaAttributes(container, updatedAriaLabel);
+      applyChartAriaAttributes(container, updatedAriaLabel, 'line', config.locale);
       const updatedValueRange = computeValueRange(data, config.cutValueAxis);
       scaffold.update({
         mode: 'categorical' as const,
@@ -252,6 +252,7 @@ export function createLineChart(chartConfig: LineChartConfig): LineChartInstance
       scaffold.destroy();
       container.removeAttribute('role');
       container.removeAttribute('aria-label');
+      container.removeAttribute('aria-roledescription');
     },
   };
 }

@@ -167,6 +167,99 @@ describe('buildTooltipData via bindInteractions focus event', () => {
     interactions.destroy();
   });
 
+  it('includes the value-axis label in the standalone point name', () => {
+    const el = makeElement();
+    container.appendChild(el);
+    const chartData: ChartData = {
+      yLabel: 'persons',
+      series: [{ name: 'Population', code: 'population', points: [] }],
+      categories: ['2024'],
+      categoryLabels: ['2024'],
+    };
+    const elements: DataElementInfo[] = [{
+      element: el,
+      seriesIndex: 0,
+      pointIndex: 0,
+      category: '2024',
+      seriesName: 'Population',
+      value: 10,
+      formattedValue: '10',
+    }];
+
+    const interactions = bindInteractions({
+      container,
+      elements,
+      theme: resolveTheme(container),
+      chartData,
+    });
+
+    expect(el.getAttribute('aria-label')).toBe('2024, Population: 10 persons');
+    interactions.destroy();
+  });
+
+  it('announces category before series and the unit-qualified value', () => {
+    const el = makeElement();
+    container.appendChild(el);
+    const chartData: ChartData = {
+      xLabel: 'Year',
+      yLabel: 'persons',
+      series: [{ name: 'Population', code: 'population', points: [] }],
+      categories: ['2024'],
+      categoryLabels: ['2024'],
+    };
+
+    const interactions = bindInteractions({
+      container,
+      elements: [{
+        element: el,
+        seriesIndex: 0,
+        pointIndex: 0,
+        category: '2024',
+        seriesName: 'Population',
+        value: 10,
+        formattedValue: '10',
+      }],
+      theme: resolveTheme(container),
+      chartData,
+    });
+
+    expect(el.getAttribute('aria-label')).toBe('Year: 2024, Population: 10 persons');
+    interactions.destroy();
+  });
+
+  it('adds the value-axis unit to the tooltip value', () => {
+    const el = makeElement();
+    container.appendChild(el);
+    const chartData: ChartData = {
+      yLabel: 'persons',
+      series: [{ name: 'Population', code: 'population', points: [] }],
+      categories: ['2024'],
+      categoryLabels: ['2024'],
+    };
+
+    const interactions = bindInteractions({
+      container,
+      elements: [{
+        element: el,
+        seriesIndex: 0,
+        pointIndex: 0,
+        category: '2024',
+        seriesName: 'Population',
+        value: 10,
+        formattedValue: '10',
+      }],
+      theme: resolveTheme(container),
+      chartData,
+    });
+
+    el.dispatchEvent(new FocusEvent('focus', { bubbles: true }));
+
+    const tooltip = container.querySelector('.jsc-tooltip');
+    expect(tooltip?.textContent).toContain('10 persons');
+
+    interactions.destroy();
+  });
+
   it('shows xLabel dimension line when present (single series)', () => {
     const el = makeElement();
     container.appendChild(el);

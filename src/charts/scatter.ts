@@ -174,9 +174,7 @@ export function createScatterChart(chartConfig: ScatterChartConfig): ScatterChar
     );
 
     const chartAriaLabel = config.ariaLabel ?? config.title ?? `${data.yLabel} vs ${data.xLabel}`;
-    const interactionGroup = plotAreaGroup.append('g')
-      .attr('role', 'application')
-      .attr('aria-label', chartAriaLabel);
+    const interactionGroup = plotAreaGroup.append('g');
 
     const listGroup = interactionGroup.append('g')
       .attr('role', 'list')
@@ -197,11 +195,13 @@ export function createScatterChart(chartConfig: ScatterChartConfig): ScatterChar
 
       const xFormatted = (point.x as number).toLocaleString(locale);
       const yFormatted = (point.y as number).toLocaleString(locale);
-      const formattedValue = `${data.xLabel}: ${xFormatted}, ${data.yLabel}: ${yFormatted}`;
+      const xValue = data.xUnit ? `${xFormatted} ${data.xUnit}` : xFormatted;
+      const yValue = data.yUnit ? `${yFormatted} ${data.yUnit}` : yFormatted;
+      const formattedValue = `${data.xLabel}: ${xValue}, ${data.yLabel}: ${yValue}`;
 
       const dimensionLabels: { label: string; value: string }[] = [
-        { label: data.xLabel, value: xFormatted },
-        { label: data.yLabel, value: yFormatted },
+        { label: data.xLabel, value: xValue },
+        { label: data.yLabel, value: yValue },
       ];
       if (data.observationLabel) {
         dimensionLabels.push({ label: data.observationLabel, value: point.label });
@@ -225,7 +225,7 @@ export function createScatterChart(chartConfig: ScatterChartConfig): ScatterChar
     });
 
     // ARIA
-    applyChartAriaAttributes(container, chartAriaLabel);
+    applyChartAriaAttributes(container, chartAriaLabel, 'scatterPlot', config.locale);
 
     // Bind interactions
     if (elements.length > 0) {
@@ -278,6 +278,7 @@ export function createScatterChart(chartConfig: ScatterChartConfig): ScatterChar
       scaffold.destroy();
       container.removeAttribute('role');
       container.removeAttribute('aria-label');
+      container.removeAttribute('aria-roledescription');
     },
   };
 }

@@ -83,6 +83,22 @@ describe('KeyboardNavigator', () => {
     removeElements(elements);
   });
 
+  it('moves between unordered points with arrows on either axis', () => {
+    navigator = new KeyboardNavigator(container, 'both');
+    const elements = createMockElements(1, 3);
+    navigator.setElements(elements);
+    navigator.attach();
+
+    container.append(...elements[0].map(item => item.element));
+    dispatchKey(elements[0][0].element, 'ArrowDown');
+    expect(document.activeElement).toBe(elements[0][1].element);
+
+    dispatchKey(elements[0][1].element, 'ArrowUp');
+    expect(document.activeElement).toBe(elements[0][0].element);
+
+    removeElements(elements);
+  });
+
   it('ArrowLeft moves to previous point', () => {
     navigator = new KeyboardNavigator(container);
     const elements = createMockElements(1, 3);

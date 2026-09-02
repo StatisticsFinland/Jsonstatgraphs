@@ -9,6 +9,9 @@ export interface DataElementInfo {
   pointIndex: number;
   /** Stable identity (e.g. category code) used to keep focus on the same datapoint across redraws, even if its positional index shifts. */
   pointKey?: string;
+  navigationGroupIndex?: number;
+  navigationPointIndex?: number;
+  navigationPointKey?: string;
   category: string;
   seriesName: string;
   value: number | null;
@@ -80,13 +83,16 @@ function renderFocusIndicator(container: HTMLElement, element: SVGElement): void
 function buildTooltipData(
   info: { category: string; seriesName: string; value: number | null; formattedValue: string; dimensionLabels?: { label: string; value: string }[]; hideValueLine?: boolean },
   chartData?: ChartData,
+  formattedMeasurement?: string,
 ): TooltipData {
+  const formattedValue = formattedMeasurement ?? formatTooltipValue(info, chartData);
+
   if (info.dimensionLabels && info.dimensionLabels.length > 0) {
     return {
       category: info.category,
       series: info.seriesName,
       value: info.value,
-      formattedValue: info.formattedValue,
+      formattedValue,
       dimensionLabels: info.dimensionLabels,
       hideValueLine: info.hideValueLine,
     };
@@ -102,9 +108,19 @@ function buildTooltipData(
     category: info.category,
     series: info.seriesName,
     value: info.value,
-    formattedValue: info.formattedValue,
+    formattedValue,
     dimensionLabels: dimensionLabels.length > 0 ? dimensionLabels : undefined,
   };
+}
+
+function formatTooltipValue(
+  info: { value: number | null; formattedValue: string },
+  chartData?: ChartData,
+): string {
+  return chartData?.yLabel && info.value !== null
+    && !info.formattedValue.includes(chartData.yLabel)
+    ? `${info.formattedValue} ${chartData.yLabel}`
+    : info.formattedValue;
 }
 
 export function bindInteractions(config: BindInteractionsConfig): BoundInteractions {
@@ -123,9 +139,14 @@ export function bindInteractions(config: BindInteractionsConfig): BoundInteracti
 
   for (const info of elements) {
     const { element, seriesName, category, value, formattedValue } = info;
+    const formattedMeasurement = formatTooltipValue(info, chartData);
 
     // ARIA attributes
-    applyDataPointAttributes(element, `${seriesName}: ${category}`, formattedValue, locale);
+    const categoryName = chartData?.xLabel
+      ? `${chartData.xLabel}: ${category}`
+      : category;
+    const announcedValue = `${seriesName}: ${formattedMeasurement}`;
+    applyDataPointAttributes(element, categoryName, announcedValue, locale);
     if (info.ariaLabel) {
       element.setAttribute('aria-label', info.ariaLabel);
     }
@@ -135,6 +156,7 @@ export function bindInteractions(config: BindInteractionsConfig): BoundInteracti
     const tooltipData = buildTooltipData(
       { category, seriesName, value, formattedValue, dimensionLabels, hideValueLine },
       chartData,
+      formattedMeasurement,
     );
 
     const showAt = (x: number, y: number) => tooltip.show(tooltipData, x, y);
@@ -198,7 +220,10 @@ export function bindInteractions(config: BindInteractionsConfig): BoundInteracti
   // segments) never leave sparse array holes for the navigator to dereference.
   const bySeriesIndex = new Map<number, FocusableElement[]>();
   for (const info of elements) {
-    const { element, seriesIndex, pointIndex, pointKey } = info;
+    const seriesIndex = info.navigationGroupIndex ?? info.seriesIndex;
+    const pointIndex = info.navigationPointIndex ?? info.pointIndex;
+    const pointKey = info.navigationPointKey ?? info.pointKey;
+    const { element } = info;
     const series = bySeriesIndex.get(seriesIndex) ?? [];
     series.push({ element, seriesIndex, pointIndex, pointKey });
     bySeriesIndex.set(seriesIndex, series);
