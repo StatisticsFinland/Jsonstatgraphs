@@ -566,7 +566,7 @@ const results = getChartTypesForDataset(dataset, { mapAvailable: true });
 - Arrow navigation stops at chart boundaries. Home/End move within the current point sequence, and Tab/Shift+Tab leave the chart normally.
 - The library does not generate hidden data tables. Applications that require an alternate data presentation must provide a visible table or use the chart menu's explicit table view.
 - Interactive legend with `aria-pressed` toggle
-- Tooltips with `aria-live="polite"`
+- Tooltips are not `aria-live` regions to avoid duplicate screen-reader announcements
 - Line charts use transparent focus and hover targets for every non-null point when visible accessibility markers are disabled.
 
 ## Development
