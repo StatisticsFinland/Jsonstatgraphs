@@ -43,7 +43,7 @@ function appendCornerHeader(
   columnDimensionCount: number,
   theme: ResolvedTheme,
 ): void {
-  const cornerHeader = document.createElement('th');
+  const cornerHeader = document.createElement('td');
   if (rowDimensionCount > 1) {
     cornerHeader.colSpan = rowDimensionCount;
   }
@@ -131,7 +131,7 @@ function buildFallbackThead(
 ): string[][] {
   const tr = document.createElement('tr');
   if (data.rowDimensions.length > 0) {
-    const cornerTh = document.createElement('th');
+    const cornerTh = document.createElement('td');
     if (data.rowDimensions.length > 1) {
       cornerTh.setAttribute('colspan', String(data.rowDimensions.length));
     }

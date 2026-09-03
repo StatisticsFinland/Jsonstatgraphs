@@ -208,8 +208,8 @@ describe('createTableChart', () => {
     createTableChart({ container, data: tableData2D, config: defaultConfig });
     const theadRows = container.querySelectorAll('thead tr');
     expect(theadRows).toHaveLength(1);
-    // corner (Region label) + 2020 + 2021
-    expect(theadRows[0].querySelectorAll('th')).toHaveLength(3);
+    expect(theadRows[0].querySelectorAll(':scope > td')).toHaveLength(1);
+    expect(theadRows[0].querySelectorAll('th')).toHaveLength(2);
   });
 
   it('multi-level column headers with colspan', () => {
@@ -219,9 +219,10 @@ describe('createTableChart', () => {
 
     // First row: corner (rowspan=2) + 2020 (colspan=2) + 2021 (colspan=2)
     const firstRowThs = theadRows[0].querySelectorAll('th');
-    expect(firstRowThs).toHaveLength(3);
+    expect(theadRows[0].querySelectorAll(':scope > td')).toHaveLength(1);
+    expect(firstRowThs).toHaveLength(2);
+    expect(firstRowThs[0].getAttribute('colspan')).toBe('2');
     expect(firstRowThs[1].getAttribute('colspan')).toBe('2');
-    expect(firstRowThs[2].getAttribute('colspan')).toBe('2');
 
     // Second row: 4 Indicator headers (Population, Area, Population, Area)
     const secondRowThs = theadRows[1].querySelectorAll('th');
@@ -338,8 +339,11 @@ describe('createTableChart', () => {
   it('uses the title as the native table caption', () => {
     const config: ChartConfig = { title: 'Pop' };
     createTableChart({ container, data: tableData2D, config });
-    const caption = container.querySelector('caption');
+    const table = container.querySelector('table');
+    const caption = table?.querySelector('caption');
     expect(caption!.textContent).toBe('Pop');
+    expect(table?.getAttribute('aria-label')).toBeNull();
+    expect(table?.getAttribute('aria-labelledby')).toBeNull();
   });
 
   // --- ARIA ---
@@ -447,17 +451,19 @@ describe('createTableChart', () => {
   it('corner cell has correct rowspan for multi-level column dimensions', () => {
     createTableChart({ container, data: tableData3D, config: defaultConfig });
     const firstTheadRow = container.querySelector('thead tr');
-    const cornerTh = firstTheadRow!.querySelector('th');
-    expect(cornerTh!.getAttribute('rowspan')).toBe('2');
-    expect(cornerTh!.textContent).toBe('');
+    const cornerCell = firstTheadRow!.querySelector(':scope > :first-child');
+    expect(cornerCell?.tagName).toBe('TD');
+    expect(cornerCell!.getAttribute('rowspan')).toBe('2');
+    expect(cornerCell!.textContent).toBe('');
   });
 
   it('corner cell has correct colspan for multiple row dimensions', () => {
     createTableChart({ container, data: tableData2RowDim, config: defaultConfig });
     const firstTheadRow = container.querySelector('thead tr');
-    const cornerTh = firstTheadRow!.querySelector('th');
-    expect(cornerTh!.getAttribute('colspan')).toBe('2');
-    expect(cornerTh!.textContent).toBe('');
+    const cornerCell = firstTheadRow!.querySelector(':scope > :first-child');
+    expect(cornerCell?.tagName).toBe('TD');
+    expect(cornerCell!.getAttribute('colspan')).toBe('2');
+    expect(cornerCell!.textContent).toBe('');
   });
 
   // --- Fallback column header ---
@@ -492,15 +498,20 @@ describe('createTableChart', () => {
     const firstTheadRow = container.querySelector('thead tr');
     const ths = firstTheadRow!.querySelectorAll('th');
     const cells = container.querySelectorAll('tbody tr:first-child td');
-    const firstYearId = ths[1].id;
-    const secondYearId = ths[2].id;
+    const firstYearId = ths[0].id;
+    const secondYearId = ths[1].id;
 
-    expect(ths[1].getAttribute('scope')).toBeNull();
+    expect(ths[0].getAttribute('scope')).toBeNull();
     expect(firstYearId).not.toBe('');
     expect(cells[0].getAttribute('headers')?.split(' ')).toContain(firstYearId);
     expect(cells[1].getAttribute('headers')?.split(' ')).toContain(firstYearId);
     expect(cells[2].getAttribute('headers')?.split(' ')).toContain(secondYearId);
     expect(cells[3].getAttribute('headers')?.split(' ')).toContain(secondYearId);
+    cells.forEach((cell) => {
+      cell.getAttribute('headers')?.split(' ').forEach((headerId) => {
+        expect(container.querySelector(`#${headerId}`)?.tagName).toBe('TH');
+      });
+    });
   });
 
   it('single-category column headers keep scope="col"', () => {
