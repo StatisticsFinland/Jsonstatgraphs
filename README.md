@@ -515,6 +515,41 @@ Creates a chart instance.
 - `getChartTypesForDataset(dataset, options?)` — Get all chart types with validity and rejection reasons
 - `selectChartTypeForDataset(dataset, options?)` — Get the auto-selected chart type
 
+### Programmatic exports
+
+CSV, SVG, and PNG downloads are also available as named exports, so a consuming
+project can provide its own buttons or other controls without rendering the
+burger menu:
+
+```typescript
+import {
+  createChart,
+  exportCsv,
+  exportPng,
+  exportSvg,
+} from '@statisticsfinland/jsonstat-chart';
+
+const chart = createChart(container, dataset, {
+  chartType: 'line',
+  locale: 'en',
+  showBurgerMenu: false,
+});
+
+// CSV uses the dataset and optional table layout directly.
+exportCsv(dataset, 'en', { layout: { rows: ['region'], columns: ['year'] } });
+
+// SVG and PNG export the chart currently rendered in `container`.
+exportSvg(container, dataset, chart.getChartType());
+await exportPng(container, dataset, chart.getChartType());
+```
+
+`exportCsv` returns `void`, `exportSvg` returns `true` when a supported chart
+was downloaded (otherwise `false`), and `exportPng` returns a `Promise<boolean>`
+with the same success semantics. SVG and PNG return `false` for `table` and
+`keyFigure`, and require an SVG-rendered chart to be present in the container.
+Pass the same active layout and prepared dataset used for the rendered chart
+when the export should reflect selectable or pivoted data.
+
 ### Chart Type Evaluation
 
 Query which chart types are valid for a dataset **without creating a chart**. Useful for building chart-type picker UIs:

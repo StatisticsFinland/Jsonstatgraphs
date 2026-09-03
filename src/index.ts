@@ -97,6 +97,9 @@ export type { ChartSelectorOptions, DataProperties } from './data/chart-selector
 export { resolveTheme } from './theme/theme';
 export { transformMapData } from './data/map-transform';
 export { resolveDatasetSource } from './data/source';
+export { exportCsv } from './interaction/csvUtils';
+export { exportPng } from './interaction/pngUtils';
+export { exportSvg } from './interaction/svgUtils';
 
 // --- Internal helpers ---
 

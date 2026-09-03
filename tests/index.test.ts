@@ -1,4 +1,4 @@
-import { createChart as createChartInstance } from '../src/index';
+import { createChart as createChartInstance, exportCsv, exportPng, exportSvg } from '../src/index';
 import {
   ChartConfig,
   ChartInstance,
@@ -8,6 +8,27 @@ import {
 } from '../src/types';
 import * as rebuildDatasetModule from '../src/data/rebuild-dataset';
 import * as sortingModule from '../src/data/sorting';
+
+describe('public export API', () => {
+  it('exports CSV, SVG, and PNG download functions from the package entrypoint', () => {
+    expect(exportCsv).toEqual(expect.any(Function));
+    expect(exportSvg).toEqual(expect.any(Function));
+    expect(exportPng).toEqual(expect.any(Function));
+  });
+});
+
+beforeAll(() => {
+  (globalThis as any).ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
+  (window as any).matchMedia = jest.fn().mockReturnValue({ matches: false });
+  if (typeof requestAnimationFrame === 'undefined') {
+    (globalThis as any).requestAnimationFrame = (cb: () => void) => setTimeout(cb, 0);
+    (globalThis as any).cancelAnimationFrame = (id: number) => clearTimeout(id);
+  }
+});
 
 // --- Test datasets ---
 
@@ -748,10 +769,11 @@ describe('auto header building', () => {
       dimension: {
         category: {
           label: 'Category',
-          category: {
-            index: ['a', 'b', 'c'],
-            label: { a: 'Alpha', b: 'Beta', c: 'Gamma' },
-          },
+          category:
+            {
+              index: ['a', 'b', 'c'],
+              label: { a: 'Alpha', b: 'Beta', c: 'Gamma' },
+            },
         },
       },
       value: [10, 20, 30],
