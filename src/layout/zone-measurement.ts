@@ -25,7 +25,6 @@ const HORIZONTAL_LABEL_WIDTH_RATIO = 0.4;
 const ESTIMATED_AXIS_HEIGHT_RATIO = 0.6;
 const RIGHT_MARGIN_CAP = 40;
 const AXIS_TICK_MARGIN = 16;
-const HORIZONTAL_NUMERIC_AXIS_HEIGHT = 24;
 const X_AXIS_TICK_SIZE = 8;
 const X_AXIS_TICK_LABEL_GAP = 4;
 
@@ -209,9 +208,11 @@ export function measureCategoricalRightMargin(
   );
   if (ticks.length === 0) return 0;
   const lastTick = ticks.at(-1)!;
-  return Math.min(
-    Math.ceil(formatNumber(lastTick, context.config.locale).length * AXIS_CHAR_WIDTH / 2),
-    RIGHT_MARGIN_CAP,
+  const lastTickLabel = formatNumber(lastTick, context.config.locale);
+  const measureText = context.xAxisTextMetrics?.measureText
+    ?? ((text: string) => text.length * AXIS_CHAR_WIDTH);
+  return Math.ceil(
+    measureText(lastTickLabel) / 2,
   );
 }
 
@@ -222,7 +223,11 @@ export function measureCategoricalXAxisLabels(
   yAxisWidth: number,
   rightMargin: number,
 ): number {
-  if (options.isHorizontal) return HORIZONTAL_NUMERIC_AXIS_HEIGHT;
+  if (options.isHorizontal) {
+    const tickFontSize = Number.parseFloat(context.theme.fontSizeTick) || 12;
+    const lineHeight = context.xAxisTextMetrics?.lineHeight ?? tickFontSize * 1.2;
+    return Math.ceil(lineHeight + X_AXIS_TICK_SIZE + X_AXIS_TICK_LABEL_GAP);
+  }
 
   const isLine = options.chartType === 'line';
   const slotDivisor = isLine
@@ -246,14 +251,18 @@ export function measureCategoricalXAxisLabels(
 }
 
 export function measureCategoricalAxisTitles(
+  context: ZoneMeasurementContext,
   options: CategoricalMeasurementOptions,
 ): { yAxisTitle: number; xAxisTitle: number } {
   const yAxisTitle = options.isHorizontal && HORIZONTAL_BAR_CHART_TYPES.has(options.chartType)
     ? undefined
     : (options.isHorizontal ? options.xLabel : options.yLabel);
   const xAxisTitle = options.isHorizontal ? options.yLabel : options.xLabel;
+  const axisTitleHeight = Math.ceil(
+    (Number.parseFloat(context.theme.fontSizeLabel) || 14) * 1.5,
+  );
   return {
-    yAxisTitle: yAxisTitle ? 25 : 0,
-    xAxisTitle: xAxisTitle ? 25 : 0,
+    yAxisTitle: yAxisTitle ? axisTitleHeight : 0,
+    xAxisTitle: xAxisTitle ? axisTitleHeight : 0,
   };
 }

@@ -199,7 +199,7 @@ export class ChartScaffold {
         fontFamily: this.theme.fontFamily,
         fontSize: this.theme.fontSizeTick,
         fallbackCharWidth: AXIS_LABEL_CHAR_WIDTH,
-        fallbackLineHeight: 16,
+        fallbackLineHeight: (Number.parseFloat(this.theme.fontSizeTick) || 12) * 1.2,
       });
       const result = [
         Math.round(measurement.measureText(sample) * 100) / 100,
@@ -215,8 +215,23 @@ export class ChartScaffold {
     if (this.textMetricTimer !== null) clearTimeout(this.textMetricTimer);
     this.textMetricTimer = setTimeout(() => {
       this.textMetricTimer = null;
+      const previousTheme = this.theme;
+      this.theme = resolveTheme(this.container, this.config.theme);
+      const textThemeKeys: Array<keyof ResolvedTheme> = [
+        'fontFamily',
+        'fontSizeTitle',
+        'fontSizeLabel',
+        'fontSizeTick',
+        'fontWeightNormal',
+        'fontWeightBold',
+      ];
+      const textThemeChanged = textThemeKeys.some(
+        key => this.theme[key] !== previousTheme[key],
+      );
       const nextFingerprint = this.captureTextMetricFingerprint();
-      if (this.textMetricFingerprint !== null && nextFingerprint !== this.textMetricFingerprint) {
+      if (textThemeChanged || (
+        this.textMetricFingerprint !== null && nextFingerprint !== this.textMetricFingerprint
+      )) {
         this.render();
       } else {
         this.textMetricFingerprint = nextFingerprint;
@@ -328,6 +343,7 @@ export class ChartScaffold {
         .attr('class', 'jsc-title')
         .attr('x', contentStartX)
         .attr('text-anchor', 'start')
+        .attr('dominant-baseline', 'middle')
         .attr('font-size', this.theme.fontSizeTitle)
         .attr('font-family', this.theme.fontFamily)
         .attr('font-weight', this.theme.fontWeightBold)
@@ -808,7 +824,8 @@ export class ChartScaffold {
     containerHeight: number
   ): Partial<Record<ZoneType, number>> {
     const cfg = this.scaffoldConfig as NumericScaffoldConfig;
-    const CHAR_WIDTH = 8;
+    const tickFontSize = Number.parseFloat(this.theme.fontSizeTick) || 12;
+    const CHAR_WIDTH = Math.max(8, tickFontSize * 0.5);
     const measurements: Partial<Record<ZoneType, number>> = {};
 
     // Header zone — same logic as categorical
@@ -830,7 +847,7 @@ export class ChartScaffold {
     measurements[ZoneType.YAxisLabels] = maxYTickLen * CHAR_WIDTH + 16;
 
     // X-axis labels — single line of numeric ticks
-    measurements[ZoneType.XAxisLabels] = 24;
+    measurements[ZoneType.XAxisLabels] = Math.ceil(tickFontSize * 1.2 + 12);
 
     // Right margin — from last X tick label
     const yAxisWidth = measurements[ZoneType.YAxisLabels] ?? 60;
@@ -838,14 +855,17 @@ export class ChartScaffold {
     const xTicks = getTickPositions(xPadded[0], xPadded[1], estimatedPlotWidth, undefined, this.theme.fontSizeTick, true);
     if (xTicks.length > 0) {
       const lastTickStr = formatNumber(xTicks.at(-1)!, this.config.locale);
-      measurements[ZoneType.RightMargin] = Math.min(Math.ceil(lastTickStr.length * CHAR_WIDTH / 2), 40);
+      measurements[ZoneType.RightMargin] = Math.ceil(lastTickStr.length * CHAR_WIDTH / 2);
     } else {
       measurements[ZoneType.RightMargin] = 0;
     }
 
     // Axis title zones
-    measurements[ZoneType.YAxisTitle] = cfg.yLabel ? 25 : 0;
-    measurements[ZoneType.XAxisTitle] = cfg.xLabel ? 25 : 0;
+    const axisTitleHeight = Math.ceil(
+      (Number.parseFloat(this.theme.fontSizeLabel) || 14) * 1.5,
+    );
+    measurements[ZoneType.YAxisTitle] = cfg.yLabel ? axisTitleHeight : 0;
+    measurements[ZoneType.XAxisTitle] = cfg.xLabel ? axisTitleHeight : 0;
 
     // Legend zone — scatter can have multiple series
     const legendHeight = this.measureLegendZone(containerWidth);
@@ -887,14 +907,14 @@ export class ChartScaffold {
       fontFamily: this.theme.fontFamily,
       fontSize: this.theme.fontSizeTick,
       fallbackCharWidth: AXIS_LABEL_CHAR_WIDTH,
-      fallbackLineHeight: 16,
+      fallbackLineHeight: (Number.parseFloat(this.theme.fontSizeTick) || 12) * 1.2,
     });
     const yAxisMeasurement = createSvgTextMeasurement(this.svg, {
       parentClass: 'jsc-axis-y',
       fontFamily: this.theme.fontFamily,
       fontSize: this.theme.fontSizeTick,
       fallbackCharWidth: AXIS_LABEL_CHAR_WIDTH,
-      fallbackLineHeight: 16,
+      fallbackLineHeight: (Number.parseFloat(this.theme.fontSizeTick) || 12) * 1.2,
     });
     const measurementContext = createZoneMeasurementContext(this.svg, this.config, this.theme, {
       xAxis: xAxisMeasurement,
@@ -948,7 +968,7 @@ export class ChartScaffold {
     );
 
     // Axis title zones
-    const axisTitles = measureCategoricalAxisTitles(measurementOptions);
+    const axisTitles = measureCategoricalAxisTitles(measurementContext, measurementOptions);
     measurements[ZoneType.YAxisTitle] = axisTitles.yAxisTitle;
     measurements[ZoneType.XAxisTitle] = axisTitles.xAxisTitle;
 
@@ -1130,7 +1150,7 @@ export class ChartScaffold {
       fontFamily: this.theme.fontFamily,
       fontSize: this.theme.fontSizeTick,
       fallbackCharWidth: AXIS_LABEL_CHAR_WIDTH,
-      fallbackLineHeight: 16,
+      fallbackLineHeight: (Number.parseFloat(this.theme.fontSizeTick) || 12) * 1.2,
     });
     let fittedLabels: LabelFitResult;
     if (isHorizontal) {

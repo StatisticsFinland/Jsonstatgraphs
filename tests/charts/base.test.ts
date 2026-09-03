@@ -47,6 +47,32 @@ describe('ChartScaffold', () => {
       style.remove();
       jest.useRealTimers();
     });
+
+    it('rerenders resolved rem text sizes when the root font size changes', async () => {
+      jest.useFakeTimers();
+      document.documentElement.style.fontSize = '16px';
+      const container = createContainer(500, 400);
+      const scaffold = new ChartScaffold(createScaffoldConfig({
+        container,
+        config: { title: 'Scalable title', showHeader: true },
+      }));
+      const renderSpy = jest.fn();
+      scaffold.onRender(renderSpy);
+      scaffold.render();
+
+      expect(document.querySelector('.jsc-title')?.getAttribute('font-size')).toBe('16px');
+
+      document.documentElement.style.fontSize = '32px';
+      await Promise.resolve();
+      jest.advanceTimersByTime(50);
+
+      expect(renderSpy).toHaveBeenCalledTimes(2);
+      expect(document.querySelector('.jsc-title')?.getAttribute('font-size')).toBe('32px');
+
+      scaffold.destroy();
+      document.documentElement.style.fontSize = '';
+      jest.useRealTimers();
+    });
   });
 
   afterEach(() => {
@@ -110,6 +136,7 @@ describe('ChartScaffold', () => {
     scaffold.render();
 
     expect(document.querySelectorAll('.jsc-title tspan')).toHaveLength(2);
+    expect(document.querySelector('.jsc-title')?.getAttribute('dominant-baseline')).toBe('middle');
   });
 
   it('render() uses custom tick positions from getTickPositions', () => {
@@ -562,9 +589,22 @@ describe('ChartScaffold', () => {
 
     const rightMargin = context.layout.zones.get(ZoneType.RightMargin);
     expect(rightMargin).toBeDefined();
-    // Old code used String(6000000).length = 7 → Math.min(Math.ceil(7*8/2), 40) = 28.
-    // Fixed code uses D3 formatter → "6,000,000" (9 chars) → Math.min(Math.ceil(9*8/2), 40) = 36.
+    // Old code used String(6000000).length = 7, while the measured formatted label is wider.
     expect(rightMargin!.width).toBeGreaterThanOrEqual(36);
+  });
+
+  it('scales horizontal axis zones with enlarged text', () => {
+    const scaffold = new ChartScaffold(createScaffoldConfig({
+      chartType: 'horizontalBar',
+      yLabel: 'Euros',
+      config: {
+        theme: { fontSizeTick: '24px', fontSizeLabel: '28px' },
+      },
+    }));
+    const context = scaffold.render();
+
+    expect(context.layout.zones.get(ZoneType.XAxisLabels)?.height).toBeGreaterThanOrEqual(40);
+    expect(context.layout.zones.get(ZoneType.XAxisTitle)?.height).toBeGreaterThanOrEqual(42);
   });
 
   it('decimal/small range: plotArea.x is non-zero (sanity)', () => {
