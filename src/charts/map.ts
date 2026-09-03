@@ -6,9 +6,12 @@ import { resolveTheme } from '../theme/theme';
 import { createZones, applyMeasuredSizes } from '../layout/zones';
 import { computeLayout } from '../layout/layout-engine';
 import { renderSvgFooter } from './footer';
-import { Tooltip, TooltipData } from '../interaction/tooltip';
+import { bindInteractions, DataElementInfo, BoundInteractions } from './bindInteractions';
+import { applyChartAriaAttributes, applySeriesGroupAttributes } from '../a11y/aria';
+import { captureChartFocusBeforeRedraw } from '../interaction/keyboard';
 import { BURGER_MENU_CLEARANCE } from './base';
 import { formatNumber } from '../locale/number';
+import { getLocaleStrings } from '../locale/strings';
 
 
 export interface MapChartConfig {
@@ -31,10 +34,8 @@ function renderMap(
   data: MapChartData,
   plotArea: ZoneRect,
   theme: ResolvedTheme,
-  tooltip: Tooltip,
-  touchState: { activeRegion: string | null },
   locale?: string,
-): void {
+): DataElementInfo[] {
   const featureCollection = {
     type: 'FeatureCollection' as const,
     features: data.regions.map(r => r.feature),
@@ -46,166 +47,60 @@ function renderMap(
 
   const pathGenerator = geoPath(projection);
 
-  const mapGroup = svg.append('g')
+  const interactionGroup = svg.append('g');
+
+  const mapGroup = interactionGroup.append('g')
     .attr('class', 'jsc-map-regions')
     .attr('transform', `translate(${plotArea.x},${plotArea.y})`);
+  applySeriesGroupAttributes(mapGroup.node() as SVGGElement, data.geoDimensionLabel, 0, locale);
 
-  for (const region of data.regions) {
+  function formatValue(value: number | null): string {
+    if (value === null) {
+      return '\u2013';
+    } else if (data.decimals !== undefined) {
+      return formatNumber(value, locale, {
+        minimumFractionDigits: data.decimals,
+        maximumFractionDigits: data.decimals,
+      });
+    } else {
+      return formatNumber(value, locale);
+    }
+  }
+
+  const elements: DataElementInfo[] = [];
+
+  data.regions.forEach((region, index) => {
     const path = mapGroup.append('path')
       .attr('class', region.classIndex >= 0 ? 'jsc-map-region' : 'jsc-map-region jsc-map-no-data')
       .attr('d', pathGenerator(region.feature as GeoPermissibleObjects) ?? '')
       .attr('fill', region.color)
       .attr('stroke', theme.colorBackground)
       .attr('stroke-width', 0.5)
-      .attr('data-code', region.code);
+      .attr('data-code', region.code)
+      .attr('tabindex', '0');
 
-    function formatValue(value: number | null): string {
-      if (value === null) {
-        return '\u2013';
-      } else if (data.decimals !== undefined) {
-        return formatNumber(value, locale, {
-          minimumFractionDigits: data.decimals,
-          maximumFractionDigits: data.decimals,
-        });
-      } else {
-        return formatNumber(value, locale);
-      }
-    }
+    const formattedValue = formatValue(region.value);
+    const formattedMeasurement = data.unit
+      ? `${formattedValue} ${data.unit}`
+      : formattedValue;
 
-    function buildTooltipData(): TooltipData {
-      const formattedValue = formatValue(region.value);
-      return {
-        category: region.label,
-        series: data.geoDimensionLabel,
-        value: region.value,
-        formattedValue,
-        dimensionLabels: [
-          { label: data.geoDimensionLabel, value: region.label },
-          ...(data.unit
-            ? [{ label: data.valueDimensionLabel, value: `${formattedValue} ${data.unit}` }]
-            : [{ label: data.valueDimensionLabel, value: formattedValue }]),
-        ],
-        hideValueLine: true,
-      };
-    }
-
-    path
-      .attr('aria-label', `${region.label}: ${formatValue(region.value)}`);
-
-    path.on('mouseenter', function (event: MouseEvent) {
-      const container = (svg.node() as SVGSVGElement).closest('.jsc-map-container');
-      if (!container) return;
-      const rect = container.getBoundingClientRect();
-      tooltip.show(buildTooltipData(), event.clientX - rect.left, event.clientY - rect.top);
+    elements.push({
+      element: path.node() as SVGElement,
+      seriesIndex: 0,
+      pointIndex: index,
+      pointKey: region.code,
+      category: region.label,
+      seriesName: data.valueDimensionLabel,
+      value: region.value,
+      formattedValue: formattedMeasurement,
+      ariaLabel: `${data.geoDimensionLabel}: ${region.label}, ${formattedMeasurement}`,
+      dimensionLabels: [
+        { label: data.geoDimensionLabel, value: region.label },
+      ],
     });
-
-    path.on('mousemove', function (event: MouseEvent) {
-      const container = (svg.node() as SVGSVGElement).closest('.jsc-map-container');
-      if (!container) return;
-      const rect = container.getBoundingClientRect();
-      tooltip.show(buildTooltipData(), event.clientX - rect.left, event.clientY - rect.top);
-    });
-
-    path.on('mouseleave', function () {
-      tooltip.hide();
-    });
-
-    path.on('touchstart', function (event: TouchEvent) {
-      event.preventDefault();
-      const code = region.code;
-      if (touchState.activeRegion === code) {
-        tooltip.hide();
-        touchState.activeRegion = null;
-        return;
-      }
-      touchState.activeRegion = code;
-      const container = (svg.node() as SVGSVGElement).closest('.jsc-map-container');
-      if (!container) return;
-      const touch = event.touches[0];
-      if (!touch) return;
-      const rect = container.getBoundingClientRect();
-      tooltip.show(buildTooltipData(), touch.clientX - rect.left, touch.clientY - rect.top);
-    });
-
-
-  }
-
-  svg.on('touchstart.dismiss', function (event: TouchEvent) {
-    const target = event.target as Element;
-    if (!target.classList.contains('jsc-map-region')) {
-      tooltip.hide();
-      touchState.activeRegion = null;
-    }
   });
-}
 
-function renderScreenReaderTable(
-  container: HTMLElement,
-  data: MapChartData,
-  locale?: string,
-): HTMLTableElement {
-  const table = document.createElement('table');
-  table.className = 'jsc-sr-only';
-  table.setAttribute('role', 'table');
-
-  table.style.position = 'absolute';
-  table.style.width = '1px';
-  table.style.height = '1px';
-  table.style.padding = '0';
-  table.style.margin = '-1px';
-  table.style.overflow = 'hidden';
-  table.style.clipPath = 'inset(50%)';
-  table.style.whiteSpace = 'nowrap';
-  table.style.border = '0';
-
-  const caption = document.createElement('caption');
-  let captionText = `Data table: ${data.valueDimensionLabel} by ${data.geoDimensionLabel}`;
-  if (data.classification.method === 'linear') {
-    captionText += ' (continuous scale)';
-  } else {
-    captionText += ` (${data.classification.breaks.length} classes)`;
-  }
-  caption.textContent = captionText;
-  table.appendChild(caption);
-
-  const thead = document.createElement('thead');
-  const headerRow = document.createElement('tr');
-  const th1 = document.createElement('th');
-  th1.textContent = data.geoDimensionLabel;
-  th1.setAttribute('scope', 'col');
-  const th2 = document.createElement('th');
-  th2.textContent = data.valueDimensionLabel;
-  th2.setAttribute('scope', 'col');
-  headerRow.appendChild(th1);
-  headerRow.appendChild(th2);
-  thead.appendChild(headerRow);
-  table.appendChild(thead);
-
-  const tbody = document.createElement('tbody');
-  for (const region of data.regions) {
-    const row = document.createElement('tr');
-    const nameCell = document.createElement('th');
-    nameCell.textContent = region.label;
-    nameCell.setAttribute('scope', 'row');
-    const valueCell = document.createElement('td');
-    if (region.value === null) {
-      valueCell.textContent = '\u2013';
-      valueCell.setAttribute('aria-label', 'No data');
-    } else if (data.decimals !== undefined) {
-      valueCell.textContent = formatNumber(region.value, locale, {
-        minimumFractionDigits: data.decimals,
-        maximumFractionDigits: data.decimals,
-      });
-    } else {
-      valueCell.textContent = formatNumber(region.value, locale);
-    }
-    row.appendChild(nameCell);
-    row.appendChild(valueCell);
-    tbody.appendChild(row);
-  }
-  table.appendChild(tbody);
-  container.appendChild(table);
-  return table;
+  return elements;
 }
 
 function renderHeader(
@@ -301,6 +196,7 @@ function renderLegend(
   mapRightEdge?: number,
   locale?: string,
 ): void {
+  const strings = getLocaleStrings(locale);
   // Check if we should render in the right margin (vertical) or bottom (horizontal)
   const rightMarginRect = layout.zones.get(ZoneType.RightMargin);
   const legendRect = layout.zones.get(ZoneType.Legend);
@@ -346,7 +242,7 @@ function renderLegend(
   }
 
   if (data.hasNoData) {
-    items.push({ color: data.noDataColor, label: 'No data' });
+    items.push({ color: data.noDataColor, label: strings.noData });
   }
 
   if (useRightSide) {
@@ -425,6 +321,7 @@ function renderGradientLegend(
   locale?: string,
 ): void {
   if (data.classification.method !== 'linear') return;
+  const strings = getLocaleStrings(locale);
   const { scaleMin, scaleMax, colors } = data.classification;
   const fontSize = Number.parseFloat(theme.fontSizeTick) || 12;
 
@@ -546,7 +443,7 @@ function renderGradientLegend(
         .attr('font-size', theme.fontSizeTick)
         .attr('font-family', theme.fontFamily)
         .attr('fill', theme.colorTextSecondary)
-        .text('No data');
+        .text(strings.noData);
     }
   } else {
     gradient.attr('x1', '0').attr('y1', '0').attr('x2', '1').attr('y2', '0');
@@ -615,7 +512,7 @@ function renderGradientLegend(
         .attr('font-size', theme.fontSizeTick)
         .attr('font-family', theme.fontFamily)
         .attr('fill', theme.colorTextSecondary)
-        .text('No data');
+        .text(strings.noData);
     }
   }
 }
@@ -780,21 +677,16 @@ function measureMapZoneSizes(
   return measurements;
 }
 
-let mapInstanceCounter = 0;
-
 export function createMapChart(chartConfig: MapChartConfig): MapChartInstance {
   const { container } = chartConfig;
-  const instanceId = ++mapInstanceCounter;
   let data = chartConfig.data;
   let config = chartConfig.config;
 
-  let tooltip: Tooltip | null = null;
-  let srTable: HTMLTableElement | null = null;
+  let boundInteractions: BoundInteractions | null = null;
   let resizeObserver: ResizeObserver | null = null;
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
   let cachedAspectRatio: number | null = null;
   const originalOverflow = container.style.overflow;
-  const touchState = { activeRegion: null as string | null };
 
   const containerPosition = getComputedStyle(container).position;
   if (containerPosition === 'static') {
@@ -806,20 +698,12 @@ export function createMapChart(chartConfig: MapChartConfig): MapChartInstance {
   const svgEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   container.appendChild(svgEl);
   const svg = select(svgEl) as Selection<SVGSVGElement, unknown, null, undefined>;
-  svg.attr('class', 'jsc-chart').attr('width', '100%').attr('height', '100%');
+  svg.attr('class', 'jsc-chart').attr('role', 'none').attr('width', '100%').attr('height', '100%');
 
   function render(): void {
     const theme = resolveTheme(container, config.theme);
 
-    if (tooltip) {
-      tooltip.destroy();
-      tooltip = null;
-    }
-
-    if (srTable) {
-      srTable.remove();
-      srTable = null;
-    }
+    captureChartFocusBeforeRedraw(container);
 
     const width = container.clientWidth;
     const height = container.clientHeight;
@@ -842,18 +726,14 @@ export function createMapChart(chartConfig: MapChartConfig): MapChartInstance {
     const layout = computeLayout(width, height, measuredZones);
 
     const regionCount = data.regions.filter(r => r.classIndex >= 0).length;
-    const ariaLabel = config.ariaLabel ??
-      `Choropleth map showing ${data.valueDimensionLabel} by ${data.geoDimensionLabel}, ${regionCount} regions`;
-    const titleId = `jsc-map-title-${instanceId}`;
-
-    container.setAttribute('role', 'figure');
-    container.setAttribute('aria-label', ariaLabel);
+    const strings = getLocaleStrings(config.locale);
+    const ariaLabel = config.ariaLabel
+      ?? config.title
+      ?? `${data.valueDimensionLabel} ${strings.titleVariable} ${data.geoDimensionLabel} (${regionCount} ${strings.regions})`;
+    applyChartAriaAttributes(container, ariaLabel, 'map', config.locale);
 
     svg.attr('viewBox', `0 0 ${width} ${height}`);
     svg.selectAll('*').remove();
-
-    svg.append('title').attr('id', titleId).text(ariaLabel);
-    svg.attr('aria-labelledby', titleId);
 
     const plotArea = layout.zones.get(ZoneType.PlotArea) ?? {
       x: 0, y: 0, width: Math.max(0, width), height: Math.max(0, height),
@@ -894,11 +774,25 @@ export function createMapChart(chartConfig: MapChartConfig): MapChartInstance {
       }
     }
 
-    tooltip = new Tooltip(container, theme);
-    touchState.activeRegion = null;
-
     renderHeader(svg, layout, config, theme);
-    renderMap(svg, data, mapContentRect, theme, tooltip, touchState, config.locale);
+    const elements = renderMap(
+      svg,
+      data,
+      mapContentRect,
+      theme,
+      config.locale,
+    );
+
+    boundInteractions?.destroy();
+    boundInteractions = bindInteractions({
+      container,
+      elements,
+      theme,
+      locale: config.locale,
+      ariaLabel,
+      pointAxis: 'both',
+    });
+
     if (config.showLegend !== false) {
       const mapRightEdge = mapContentRect.x + mapContentRect.width;
       renderLegend(svg, layout, data, theme, mapRightEdge, config.locale);
@@ -918,10 +812,6 @@ export function createMapChart(chartConfig: MapChartConfig): MapChartInstance {
       });
     }
 
-    svg.attr('role', 'img');
-    svg.attr('aria-label', ariaLabel);
-
-    srTable = renderScreenReaderTable(container, data, config.locale);
   }
 
   render();
@@ -951,19 +841,14 @@ export function createMapChart(chartConfig: MapChartConfig): MapChartInstance {
         clearTimeout(debounceTimer);
         debounceTimer = null;
       }
-      if (tooltip) {
-        tooltip.destroy();
-        tooltip = null;
-      }
-      if (srTable) {
-        srTable.remove();
-        srTable = null;
-      }
+      boundInteractions?.destroy();
+      boundInteractions = null;
       svg.node()?.remove();
       container.style.overflow = originalOverflow;
       container.classList.remove('jsc-map-container');
       container.removeAttribute('role');
       container.removeAttribute('aria-label');
+      container.removeAttribute('aria-roledescription');
     },
   };
 }

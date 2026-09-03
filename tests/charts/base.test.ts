@@ -2,17 +2,6 @@ import { ChartScaffold, ChartScaffoldConfig, CategoricalScaffoldConfig } from '.
 import { getTickPositions } from '../../src/layout/tick-positions';
 import { ZoneType } from '../../src/types';
 
-// Mock ResizeObserver (not available in jsdom)
-class MockResizeObserver {
-  observe() {}
-  unobserve() {}
-  disconnect() {}
-}
-(globalThis as any).ResizeObserver = MockResizeObserver;
-
-// Mock matchMedia (not available in jsdom)
-(window as any).matchMedia = jest.fn().mockReturnValue({ matches: false });
-
 function createContainer(width = 800, height = 400): HTMLDivElement {
   const div = document.createElement('div');
   document.body.appendChild(div);
@@ -52,6 +41,7 @@ describe('ChartScaffold', () => {
     scaffold.render();
     const svg = document.querySelector('svg.jsc-chart');
     expect(svg?.getAttribute('aria-hidden')).toBeNull();
+    expect(svg?.getAttribute('role')).toBe('none');
   });
 
   it('decorative SVG groups have aria-hidden="true"', () => {
@@ -107,7 +97,7 @@ describe('ChartScaffold', () => {
     const expectedTicks = rawTicks.length >= 2 ? rawTicks : [0, paddedMax];
     const gridLines = document.querySelectorAll('.jsc-grid line');
     expect(gridLines.length).toBeGreaterThan(0);
-    expect(gridLines.length).toBe(expectedTicks.length);
+    expect(gridLines).toHaveLength(expectedTicks.length);
   });
 
   it('localizes numeric Y-axis labels', () => {
@@ -251,7 +241,7 @@ describe('ChartScaffold', () => {
     scaffold.render();
     scaffold.render();
     const legends = cfg.container.querySelectorAll('.jsc-legend');
-    expect(legends.length).toBe(1);
+    expect(legends).toHaveLength(1);
   });
 
   it('render() renders footer items', () => {

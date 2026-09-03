@@ -188,11 +188,11 @@ describe('Tooltip', () => {
     c2.remove();
   });
 
-  it('tooltip element has aria-live="polite"', () => {
+  it('tooltip element is not a live region', () => {
     container = createContainer();
     new Tooltip(container, mockTheme);
     const el = container.querySelector('.jsc-tooltip') as HTMLDivElement;
-    expect(el.getAttribute('aria-live')).toBe('polite');
+    expect(el.getAttribute('aria-live')).toBeNull();
   });
 
   it('getId() returns the tooltip element id', () => {

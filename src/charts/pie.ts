@@ -6,6 +6,7 @@ import { applyChartAriaAttributes, applySeriesGroupAttributes } from '../a11y/ar
 import { getSeriesColor } from '../theme/palette';
 import { ensureDefs, getPatternFillUrl, injectPatternDefs } from '../a11y/patterns';
 import { formatNumber } from '../locale/number';
+import { captureChartFocusBeforeRedraw } from '../interaction/keyboard';
 
 export interface PieChartConfig {
   container: HTMLElement;
@@ -67,6 +68,7 @@ export function createPieChart(chartConfig: PieChartConfig): PieChartInstance {
       theme: lastTheme!,
       locale: config.locale,
       chartData: visibleData,
+      pointAxis: 'horizontal',
       ariaLabel: config.ariaLabel,
       caption: config.title ?? config.ariaLabel,
     });
@@ -93,6 +95,7 @@ export function createPieChart(chartConfig: PieChartConfig): PieChartInstance {
   const scaffold = new ChartScaffold(buildScaffoldConfig());
 
   function drawSlices(ctx: ScaffoldRenderContext): void {
+    captureChartFocusBeforeRedraw(container);
     ctx.svg.select('.jsc-plot-area').selectAll('*').remove();
     ctx.svg.select('.jsc-pie-callouts').remove();
 
@@ -100,6 +103,7 @@ export function createPieChart(chartConfig: PieChartConfig): PieChartInstance {
     lastTheme = theme;
 
     const plotAreaGroup = svg.select<SVGGElement>('.jsc-plot-area');
+    const interactionGroup = plotAreaGroup.append('g');
     const nonNullPoints = getNonNullPoints();
     const visibleIndices = nonNullPoints.map((_, i) => i).filter(i => !hiddenSlices.has(i));
     const visiblePoints = visibleIndices.map(i => nonNullPoints[i]);
@@ -133,13 +137,13 @@ export function createPieChart(chartConfig: PieChartConfig): PieChartInstance {
     }
 
     // Create a series group for ARIA
-    const seriesGroup = plotAreaGroup
+    const seriesGroup = interactionGroup
       .append('g')
       .attr('class', 'jsc-series jsc-series-0');
 
     const seriesGroupEl = seriesGroup.node() as SVGGElement;
     const seriesName = data.series.length > 0 ? data.series[0].name : 'Pie';
-    applySeriesGroupAttributes(seriesGroupEl, seriesName, 0);
+    applySeriesGroupAttributes(seriesGroupEl, seriesName, 0, config.locale);
 
     const sliceNodes = seriesGroup
       .selectAll<SVGPathElement, PieArcDatum<DataPoint>>('.jsc-slice')
@@ -164,6 +168,7 @@ export function createPieChart(chartConfig: PieChartConfig): PieChartInstance {
         element: this,
         seriesIndex: 0,
         pointIndex: i,
+        pointKey: point.categoryCode,
         category: point.label,
         seriesName,
         value: point.value,
@@ -248,7 +253,7 @@ export function createPieChart(chartConfig: PieChartConfig): PieChartInstance {
   });
 
   const ariaLabel = config.ariaLabel ?? (config.title ?? 'Pie chart');
-  applyChartAriaAttributes(container, ariaLabel);
+  applyChartAriaAttributes(container, ariaLabel, 'pie', config.locale);
 
   scaffold.render();
 
@@ -260,7 +265,7 @@ export function createPieChart(chartConfig: PieChartConfig): PieChartInstance {
         config = newConfig;
       }
       const updatedAriaLabel = config.ariaLabel ?? (config.title ?? 'Pie chart');
-      applyChartAriaAttributes(container, updatedAriaLabel);
+      applyChartAriaAttributes(container, updatedAriaLabel, 'pie', config.locale);
       scaffold.update(buildScaffoldConfig());
     },
 
@@ -272,6 +277,7 @@ export function createPieChart(chartConfig: PieChartConfig): PieChartInstance {
       scaffold.destroy();
       container.removeAttribute('role');
       container.removeAttribute('aria-label');
+      container.removeAttribute('aria-roledescription');
     },
   };
 }

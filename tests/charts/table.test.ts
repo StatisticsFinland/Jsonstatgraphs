@@ -191,14 +191,14 @@ describe('createTableChart', () => {
   it('correct number of body rows', () => {
     createTableChart({ container, data: tableData2D, config: defaultConfig });
     const rows = container.querySelectorAll('tbody tr');
-    expect(rows.length).toBe(2);
+    expect(rows).toHaveLength(2);
   });
 
   it('correct number of body columns', () => {
     createTableChart({ container, data: tableData2D, config: defaultConfig });
     const rows = container.querySelectorAll('tbody tr');
     rows.forEach((row) => {
-      expect(row.querySelectorAll('td').length).toBe(2);
+      expect(row.querySelectorAll('td')).toHaveLength(2);
     });
   });
 
@@ -207,25 +207,25 @@ describe('createTableChart', () => {
   it('single column dimension renders one header row', () => {
     createTableChart({ container, data: tableData2D, config: defaultConfig });
     const theadRows = container.querySelectorAll('thead tr');
-    expect(theadRows.length).toBe(1);
+    expect(theadRows).toHaveLength(1);
     // corner (Region label) + 2020 + 2021
-    expect(theadRows[0].querySelectorAll('th').length).toBe(3);
+    expect(theadRows[0].querySelectorAll('th')).toHaveLength(3);
   });
 
   it('multi-level column headers with colspan', () => {
     createTableChart({ container, data: tableData3D, config: defaultConfig });
     const theadRows = container.querySelectorAll('thead tr');
-    expect(theadRows.length).toBe(2);
+    expect(theadRows).toHaveLength(2);
 
     // First row: corner (rowspan=2) + 2020 (colspan=2) + 2021 (colspan=2)
     const firstRowThs = theadRows[0].querySelectorAll('th');
-    expect(firstRowThs.length).toBe(3);
+    expect(firstRowThs).toHaveLength(3);
     expect(firstRowThs[1].getAttribute('colspan')).toBe('2');
     expect(firstRowThs[2].getAttribute('colspan')).toBe('2');
 
     // Second row: 4 Indicator headers (Population, Area, Population, Area)
     const secondRowThs = theadRows[1].querySelectorAll('th');
-    expect(secondRowThs.length).toBe(4);
+    expect(secondRowThs).toHaveLength(4);
   });
 
   // --- Row headers ---
@@ -240,23 +240,23 @@ describe('createTableChart', () => {
   it('multi-level row headers with rowspan', () => {
     createTableChart({ container, data: tableData2RowDim, config: defaultConfig });
     const bodyRows = container.querySelectorAll('tbody tr');
-    expect(bodyRows.length).toBe(4);
+    expect(bodyRows).toHaveLength(4);
 
     // Row 0: Helsinki (rowspan=2) + Male
     const row0Ths = bodyRows[0].querySelectorAll('th');
-    expect(row0Ths.length).toBe(2);
+    expect(row0Ths).toHaveLength(2);
     expect(row0Ths[0].textContent).toBe('Helsinki');
     expect(row0Ths[0].getAttribute('rowspan')).toBe('2');
     expect(row0Ths[1].textContent).toBe('Male');
 
     // Row 1: only Female (Helsinki spans from row 0)
     const row1Ths = bodyRows[1].querySelectorAll('th');
-    expect(row1Ths.length).toBe(1);
+    expect(row1Ths).toHaveLength(1);
     expect(row1Ths[0].textContent).toBe('Female');
 
     // Row 2: Tampere (rowspan=2) + Male
     const row2Ths = bodyRows[2].querySelectorAll('th');
-    expect(row2Ths.length).toBe(2);
+    expect(row2Ths).toHaveLength(2);
     expect(row2Ths[0].textContent).toBe('Tampere');
     expect(row2Ths[0].getAttribute('rowspan')).toBe('2');
   });
@@ -326,7 +326,7 @@ describe('createTableChart', () => {
     expect(caption!.style.clipPath).toBe('inset(50%)');
   });
 
-  it('uses title as caption text', () => {
+  it('uses the title as the native table caption', () => {
     const config: ChartConfig = { title: 'Pop' };
     createTableChart({ container, data: tableData2D, config });
     const caption = container.querySelector('caption');
@@ -335,21 +335,25 @@ describe('createTableChart', () => {
 
   // --- ARIA ---
 
-  it('applies role="region" to container', () => {
+  it('uses native table semantics without a redundant outer region', () => {
     createTableChart({ container, data: tableData2D, config: defaultConfig });
-    expect(container.getAttribute('role')).toBe('region');
+    expect(container.getAttribute('role')).toBeNull();
+    expect(container.querySelector('table')).not.toBeNull();
   });
 
-  it('applies aria-label to container', () => {
+  it('uses ariaLabel as the native table caption', () => {
     const config: ChartConfig = { ariaLabel: 'Population data' };
     createTableChart({ container, data: tableData2D, config });
-    expect(container.getAttribute('aria-label')).toBe('Population data');
+    expect(container.getAttribute('aria-label')).toBeNull();
+    expect(container.querySelector('caption')?.textContent).toBe('Population data');
   });
 
-  it('uses title as fallback aria-label', () => {
+  it('hides the visual title copy from assistive technology', () => {
     const config: ChartConfig = { title: 'City populations' };
     createTableChart({ container, data: tableData2D, config });
-    expect(container.getAttribute('aria-label')).toBe('City populations');
+    const title = container.querySelector('.jsc-table-title');
+    expect(title?.getAttribute('aria-hidden')).toBe('true');
+    expect(container.querySelector('caption')?.textContent).toBe('City populations');
   });
 
   // --- Footer alignment ---
@@ -401,11 +405,11 @@ describe('createTableChart', () => {
   it('update() re-renders with new data', () => {
     const instance = createTableChart({ container, data: singleDimData, config: defaultConfig });
     // singleDimData: no row dims, 2 col categories → tbody has 1 row with 2 td
-    expect(container.querySelectorAll('tbody td').length).toBe(2);
+    expect(container.querySelectorAll('tbody td')).toHaveLength(2);
 
     instance.update(tableData2D);
     // tableData2D: 2 rows × 2 cols → 4 td total
-    expect(container.querySelectorAll('tbody td').length).toBe(4);
+    expect(container.querySelectorAll('tbody td')).toHaveLength(4);
   });
 
   it('update() preserves burger menu spacing from the chart config', () => {
@@ -472,15 +476,22 @@ describe('createTableChart', () => {
     expect(dataTh.textContent).toBe('Value');
   });
 
-  // --- Scope attributes for spanning headers ---
+  // --- Header relationships for spanning headers ---
 
-  it('multi-level column headers use scope="colgroup" when colspan > 1', () => {
+  it('multi-level column headers are explicitly associated with covered cells', () => {
     createTableChart({ container, data: tableData3D, config: defaultConfig });
     const firstTheadRow = container.querySelector('thead tr');
     const ths = firstTheadRow!.querySelectorAll('th');
-    // ths[1] and ths[2] are Year 2020 and 2021, each with colspan=2
-    expect(ths[1].getAttribute('scope')).toBe('colgroup');
-    expect(ths[2].getAttribute('scope')).toBe('colgroup');
+    const cells = container.querySelectorAll('tbody tr:first-child td');
+    const firstYearId = ths[1].id;
+    const secondYearId = ths[2].id;
+
+    expect(ths[1].getAttribute('scope')).toBeNull();
+    expect(firstYearId).not.toBe('');
+    expect(cells[0].getAttribute('headers')?.split(' ')).toContain(firstYearId);
+    expect(cells[1].getAttribute('headers')?.split(' ')).toContain(firstYearId);
+    expect(cells[2].getAttribute('headers')?.split(' ')).toContain(secondYearId);
+    expect(cells[3].getAttribute('headers')?.split(' ')).toContain(secondYearId);
   });
 
   it('single-category column headers keep scope="col"', () => {
@@ -493,7 +504,7 @@ describe('createTableChart', () => {
     });
   });
 
-  it('multi-level row headers use scope="rowgroup" when rowspan > 1', () => {
+  it('multi-level row headers are explicitly associated with covered cells', () => {
     const multiRowDimData: TableData = {
       rowDimensions: [
         {
@@ -526,13 +537,21 @@ describe('createTableChart', () => {
     createTableChart({ container, data: multiRowDimData, config: defaultConfig });
     const bodyRows = container.querySelectorAll('tbody tr');
 
-    // Row 0: Helsinki (rowspan=2 → rowgroup) + Male (rowspan=1 → row)
     const row0Ths = bodyRows[0].querySelectorAll('th');
-    expect(row0Ths[0].getAttribute('scope')).toBe('rowgroup');
+    const helsinkiId = row0Ths[0].id;
+    const maleId = row0Ths[1].id;
+    expect(row0Ths[0].getAttribute('scope')).toBeNull();
     expect(row0Ths[1].getAttribute('scope')).toBe('row');
+    expect(bodyRows[0].querySelector('td')?.getAttribute('headers')?.split(' ')).toEqual(
+      expect.arrayContaining([helsinkiId, maleId]),
+    );
+    expect(bodyRows[1].querySelector('td')?.getAttribute('headers')?.split(' ')).toContain(helsinkiId);
 
-    // Row 2: Tampere (rowspan=2 → rowgroup) + Male (rowspan=1 → row)
     const row2Ths = bodyRows[2].querySelectorAll('th');
-    expect(row2Ths[0].getAttribute('scope')).toBe('rowgroup');
+    const tampereId = row2Ths[0].id;
+    expect(row2Ths[0].getAttribute('scope')).toBeNull();
+    expect(bodyRows[2].querySelector('td')?.getAttribute('headers')?.split(' ')).toContain(tampereId);
+    expect(bodyRows[3].querySelector('td')?.getAttribute('headers')?.split(' ')).toContain(tampereId);
+    expect(bodyRows[2].querySelector('td')?.getAttribute('headers')?.split(' ')).not.toContain(helsinkiId);
   });
 });

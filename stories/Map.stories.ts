@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/html-vite';
-import { renderChart } from './helpers/renderChart';
+import { renderChart, storeChartInstance } from './helpers/renderChart';
 import { buildConfig } from './helpers/buildConfig';
 import { themeArgTypes, themeArgs } from './helpers/sharedArgs';
 import { getSelectableStoryInputs } from './helpers/selectables';
@@ -209,7 +209,7 @@ export const ClassificationSwitcher: StoryObj = {
             map: { ...mapConfig, classificationMethod: 'jenks-nice' },
           },
         );
-        (wrapper as any).__jscInstance = instance;
+        storeChartInstance(wrapper, instance);
 
         select.addEventListener('change', () => {
           const method = select.value as ClassificationMethod;

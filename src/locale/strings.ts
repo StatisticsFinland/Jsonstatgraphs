@@ -1,3 +1,5 @@
+import type { ChartType } from '../types';
+
 export interface LocaleStrings {
   source: string;
   updated: string;
@@ -15,6 +17,13 @@ export interface LocaleStrings {
   toggleAccessibilityModeOn: string;
   toggleAccessibilityModeOff: string;
   externalLink: string;
+  series: string;
+  dataPoint: string;
+  noData: string;
+  chartLoaded: string;
+  toggleSeries: string;
+  regions: string;
+  chartTypes: Record<ChartType, string>;
 }
 
 const STRINGS: Record<string, LocaleStrings> = {
@@ -35,6 +44,29 @@ const STRINGS: Record<string, LocaleStrings> = {
     toggleAccessibilityModeOn: 'Show symbols in the figure',
     toggleAccessibilityModeOff: 'Remove symbols from the figure',
     externalLink: 'External link',
+    series: 'Series',
+    dataPoint: 'Data point',
+    noData: 'No data',
+    chartLoaded: 'Chart loaded',
+    toggleSeries: 'Toggle series',
+    regions: 'regions',
+    chartTypes: {
+      line: 'Line chart',
+      verticalBar: 'Vertical bar chart',
+      horizontalBar: 'Horizontal bar chart',
+      groupedVerticalBar: 'Grouped vertical bar chart',
+      groupedHorizontalBar: 'Grouped horizontal bar chart',
+      stackedVerticalBar: 'Stacked vertical bar chart',
+      stackedHorizontalBar: 'Stacked horizontal bar chart',
+      percentVerticalBar: 'Percent vertical bar chart',
+      percentHorizontalBar: 'Percent horizontal bar chart',
+      pie: 'Pie chart',
+      scatterPlot: 'Scatter plot',
+      pyramid: 'Pyramid chart',
+      keyFigure: 'Key figure',
+      table: 'Data table',
+      map: 'Map',
+    },
   },
   fi: {
     source: 'Lähde',
@@ -53,6 +85,29 @@ const STRINGS: Record<string, LocaleStrings> = {
     toggleAccessibilityModeOn: 'Näytä kuviossa symbolit',
     toggleAccessibilityModeOff: 'Poista kuviosta symbolit',
     externalLink: 'Ulkoinen linkki',
+    series: 'Sarja',
+    dataPoint: 'Datapiste',
+    noData: 'Ei tietoa',
+    chartLoaded: 'Kuvio ladattu',
+    toggleSeries: 'Näytä tai piilota sarja',
+    regions: 'aluetta',
+    chartTypes: {
+      line: 'Viivakaavio',
+      verticalBar: 'Pystypylväskaavio',
+      horizontalBar: 'Vaakapylväskaavio',
+      groupedVerticalBar: 'Ryhmitelty pystypylväskaavio',
+      groupedHorizontalBar: 'Ryhmitelty vaakapylväskaavio',
+      stackedVerticalBar: 'Pinottu pystypylväskaavio',
+      stackedHorizontalBar: 'Pinottu vaakapylväskaavio',
+      percentVerticalBar: 'Prosenttiosuuksien pystypylväskaavio',
+      percentHorizontalBar: 'Prosenttiosuuksien vaakapylväskaavio',
+      pie: 'Ympyräkaavio',
+      scatterPlot: 'Hajontakaavio',
+      pyramid: 'Pyramidikaavio',
+      keyFigure: 'Avainluku',
+      table: 'Tietotaulukko',
+      map: 'Kartta',
+    },
   },
   sv: {
     source: 'Källa',
@@ -71,6 +126,29 @@ const STRINGS: Record<string, LocaleStrings> = {
     toggleAccessibilityModeOn: 'Visa symboler i diagrammet',
     toggleAccessibilityModeOff: 'Ta bort symbolerna från diagrammet',
     externalLink: 'Extern länk',
+    series: 'Serie',
+    dataPoint: 'Datapunkt',
+    noData: 'Ingen uppgift',
+    chartLoaded: 'Diagrammet har laddats',
+    toggleSeries: 'Visa eller dölj serie',
+    regions: 'regioner',
+    chartTypes: {
+      line: 'Linjediagram',
+      verticalBar: 'Stolpdiagram',
+      horizontalBar: 'Horisontellt stapeldiagram',
+      groupedVerticalBar: 'Grupperat stolpdiagram',
+      groupedHorizontalBar: 'Grupperat horisontellt stapeldiagram',
+      stackedVerticalBar: 'Staplat stolpdiagram',
+      stackedHorizontalBar: 'Staplat horisontellt stapeldiagram',
+      percentVerticalBar: 'Procentuellt stolpdiagram',
+      percentHorizontalBar: 'Procentuellt horisontellt stapeldiagram',
+      pie: 'Cirkeldiagram',
+      scatterPlot: 'Punktdiagram',
+      pyramid: 'Pyramiddiagram',
+      keyFigure: 'Nyckeltal',
+      table: 'Datatabell',
+      map: 'Karta',
+    },
   },
 };
 

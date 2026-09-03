@@ -1,20 +1,13 @@
-import { createChart } from '../src/index';
-import { JsonStatDataset, GeoJsonFeatureCollection } from '../src/types';
+import { createChart as createChartInstance } from '../src/index';
+import {
+  ChartConfig,
+  ChartInstance,
+  GeoJsonFeatureCollection,
+  JsonStatDataset,
+  SelectableSelections,
+} from '../src/types';
 import * as rebuildDatasetModule from '../src/data/rebuild-dataset';
 import * as sortingModule from '../src/data/sorting';
-
-beforeAll(() => {
-  (globalThis as any).ResizeObserver = class {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
-  };
-  (window as any).matchMedia = jest.fn().mockReturnValue({ matches: false });
-  if (typeof requestAnimationFrame === 'undefined') {
-    (globalThis as any).requestAnimationFrame = (cb: () => void) => setTimeout(cb, 0);
-    (globalThis as any).cancelAnimationFrame = (id: number) => clearTimeout(id);
-  }
-});
 
 // --- Test datasets ---
 
@@ -175,12 +168,28 @@ const mockGeoJson: GeoJsonFeatureCollection = {
 // --- Container setup ---
 
 let container: HTMLElement;
+let chartInstances: ChartInstance[];
+
+function createChart(
+  chartContainer: HTMLElement,
+  dataset: JsonStatDataset,
+  config?: ChartConfig,
+  selectableSelections?: SelectableSelections,
+): ChartInstance {
+  const instance = createChartInstance(chartContainer, dataset, config, selectableSelections);
+  chartInstances.push(instance);
+  return instance;
+}
+
 beforeEach(() => {
+  chartInstances = [];
   container = document.createElement('div');
   document.body.appendChild(container);
   jest.spyOn(console, 'warn').mockImplementation(() => {});
 });
 afterEach(() => {
+  jest.useRealTimers();
+  chartInstances.forEach(instance => instance.destroy());
   container.remove();
   jest.restoreAllMocks();
 });
@@ -263,7 +272,7 @@ describe('createChart', () => {
   });
 
   it('renders error message for invalid dataset', () => {
-    createChart(container, {} as any);
+    createChart(container, {} as unknown as JsonStatDataset);
     const errDiv = container.querySelector('.jsc-error');
     expect(errDiv).not.toBeNull();
     expect(errDiv!.getAttribute('role')).toBe('alert');
@@ -271,15 +280,15 @@ describe('createChart', () => {
   });
 
   it('throws TypeError when container is not an HTMLElement', () => {
-    expect(() => createChart(null as any, validDataset)).toThrow(TypeError);
-    expect(() => createChart(null as any, validDataset)).toThrow(
+    expect(() => createChart(null as unknown as HTMLElement, validDataset)).toThrow(TypeError);
+    expect(() => createChart(null as unknown as HTMLElement, validDataset)).toThrow(
       '[JsonStatChart] container must be an HTMLElement',
     );
   });
 
   it('throws TypeError for non-element values', () => {
-    expect(() => createChart('div' as any, validDataset)).toThrow(TypeError);
-    expect(() => createChart(42 as any, validDataset)).toThrow(TypeError);
+    expect(() => createChart('div' as unknown as HTMLElement, validDataset)).toThrow(TypeError);
+    expect(() => createChart(42 as unknown as HTMLElement, validDataset)).toThrow(TypeError);
   });
 });
 
@@ -396,9 +405,11 @@ describe('update', () => {
 
     instance.setChartType('line');
 
-    expect(container.querySelectorAll('.jsc-series').length).toBe(1);
-    expect(container.textContent).toContain('220');
-    expect(container.textContent).not.toContain('300');
+    expect(container.querySelectorAll('.jsc-series')).toHaveLength(1);
+    const datapointLabels = Array.from(container.querySelectorAll('[role="listitem"]'))
+      .map(element => element.getAttribute('aria-label'));
+    expect(datapointLabels.some(label => label?.includes('220'))).toBe(true);
+    expect(datapointLabels.some(label => label?.includes('300'))).toBe(false);
   });
 
   it('rebuilds selectable data only once per render cycle', () => {
@@ -784,7 +795,7 @@ describe('setChartType persistence and override', () => {
   it('destroys previous renderer and shows error on invalid dataset update', () => {
     const instance = createChart(container, validDataset, { chartType: 'table' });
     expect(container.querySelector('table.jsc-table')).not.toBeNull();
-    instance.update({} as any);
+    instance.update({} as unknown as JsonStatDataset);
     expect(container.querySelector('table.jsc-table')).toBeNull();
     expect(container.querySelector('.jsc-error')).not.toBeNull();
   });
@@ -1228,6 +1239,27 @@ describe('mapProvider', () => {
     await Promise.resolve();
     await Promise.resolve();
     expect(container.innerHTML).toBe('');
+  });
+
+  test('destroy() cancels the chart-loaded announcement timer', async () => {
+    jest.useFakeTimers();
+    const provider = jest.fn().mockResolvedValue(mockGeoJson);
+    const instance = createChart(container, geoDataset, {
+      chartType: 'map',
+      locale: 'fi',
+      mapProvider: provider,
+      map: { geoIdProperty: 'natcode', geoCodeMapper: code => code.replace(/^MK/, '') },
+    });
+
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(container.querySelector('[role="status"]')?.textContent).toBe('Kuvio ladattu');
+    expect(jest.getTimerCount()).toBeGreaterThan(0);
+
+    instance.destroy();
+
+    expect(jest.getTimerCount()).toBe(0);
   });
 
   test('update() cancels pending provider and starts new resolution', async () => {

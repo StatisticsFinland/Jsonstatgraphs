@@ -2,15 +2,6 @@ import { bindInteractions, DataElementInfo } from '../../src/charts/bindInteract
 import { resolveTheme } from '../../src/theme/theme';
 import { ChartData } from '../../src/types';
 
-beforeAll(() => {
-  (globalThis as any).ResizeObserver = class {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
-  };
-  (window as any).matchMedia = jest.fn().mockReturnValue({ matches: false });
-});
-
 function makeElement(): SVGCircleElement {
   const el = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
   el.setAttribute('tabindex', '0');
@@ -29,6 +20,108 @@ afterEach(() => {
 });
 
 describe('buildTooltipData via bindInteractions focus event', () => {
+  it('moves the visual focus class with DOM focus', () => {
+    const first = makeElement();
+    const second = makeElement();
+    first.setAttribute('cx', '10');
+    second.setAttribute('cx', '20');
+    container.append(first, second);
+    const theme = resolveTheme(container);
+    const interactions = bindInteractions({
+      container,
+      elements: [
+        {
+          element: first,
+          seriesIndex: 0,
+          pointIndex: 0,
+          category: '2023',
+          seriesName: 'Total',
+          value: 5,
+          formattedValue: '5',
+        },
+        {
+          element: second,
+          seriesIndex: 0,
+          pointIndex: 1,
+          category: '2024',
+          seriesName: 'Total',
+          value: 6,
+          formattedValue: '6',
+        },
+      ],
+      theme,
+    });
+
+    first.focus();
+    expect(first.classList.contains('jsc-keyboard-focus')).toBe(true);
+    expect(container.querySelector('.jsc-focus-indicator')?.parentNode).toBe(first.parentNode);
+
+    first.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'ArrowRight',
+      bubbles: true,
+      cancelable: true,
+    }));
+
+    expect(first.classList.contains('jsc-keyboard-focus')).toBe(false);
+    expect(second.classList.contains('jsc-keyboard-focus')).toBe(true);
+    expect(document.activeElement).toBe(second);
+    const indicator = container.querySelector('.jsc-focus-indicator');
+    expect(indicator).not.toBeNull();
+    expect(indicator?.getAttribute('cx')).toBe(second.getAttribute('cx'));
+    expect(container.querySelectorAll('.jsc-focus-indicator')).toHaveLength(1);
+
+    interactions.destroy();
+  });
+
+  it('restores the visual focus class when interactions are rebound', () => {
+    const element = makeElement();
+    container.appendChild(element);
+    const theme = resolveTheme(container);
+    const elements: DataElementInfo[] = [{
+      element,
+      seriesIndex: 0,
+      pointIndex: 0,
+      category: '2024',
+      seriesName: 'Total',
+      value: 6,
+      formattedValue: '6',
+    }];
+    const firstBinding = bindInteractions({ container, elements, theme });
+    element.focus();
+
+    firstBinding.destroy();
+    expect(element.classList.contains('jsc-keyboard-focus')).toBe(false);
+
+    const secondBinding = bindInteractions({ container, elements, theme });
+    expect(element.classList.contains('jsc-keyboard-focus')).toBe(true);
+    expect(container.querySelector('.jsc-focus-indicator')).not.toBeNull();
+
+    secondBinding.destroy();
+    expect(container.querySelector('.jsc-focus-indicator')).toBeNull();
+  });
+
+  it('does not append an implicit hidden data table', () => {
+    const el = makeElement();
+    container.appendChild(el);
+    const theme = resolveTheme(container);
+    const interactions = bindInteractions({
+      container,
+      elements: [{
+        element: el,
+        seriesIndex: 0,
+        pointIndex: 0,
+        category: '2024',
+        seriesName: 'Total',
+        value: 5,
+        formattedValue: '5',
+      }],
+      theme,
+    });
+
+    expect(container.querySelector('table.jsc-sr-only')).toBeNull();
+    interactions.destroy();
+  });
+
   it('shows seriesLabel dimension line even when xLabel is absent', () => {
     const el = makeElement();
     container.appendChild(el);
@@ -70,6 +163,99 @@ describe('buildTooltipData via bindInteractions focus event', () => {
     // With the fix, "Region: North" should appear as a div.
     expect(tooltip!.textContent).toContain('Region');
     expect(tooltip!.textContent).toContain('North');
+
+    interactions.destroy();
+  });
+
+  it('includes the value-axis label in the standalone point name', () => {
+    const el = makeElement();
+    container.appendChild(el);
+    const chartData: ChartData = {
+      yLabel: 'persons',
+      series: [{ name: 'Population', code: 'population', points: [] }],
+      categories: ['2024'],
+      categoryLabels: ['2024'],
+    };
+    const elements: DataElementInfo[] = [{
+      element: el,
+      seriesIndex: 0,
+      pointIndex: 0,
+      category: '2024',
+      seriesName: 'Population',
+      value: 10,
+      formattedValue: '10',
+    }];
+
+    const interactions = bindInteractions({
+      container,
+      elements,
+      theme: resolveTheme(container),
+      chartData,
+    });
+
+    expect(el.getAttribute('aria-label')).toBe('2024, Population: 10 persons');
+    interactions.destroy();
+  });
+
+  it('announces category before series and the unit-qualified value', () => {
+    const el = makeElement();
+    container.appendChild(el);
+    const chartData: ChartData = {
+      xLabel: 'Year',
+      yLabel: 'persons',
+      series: [{ name: 'Population', code: 'population', points: [] }],
+      categories: ['2024'],
+      categoryLabels: ['2024'],
+    };
+
+    const interactions = bindInteractions({
+      container,
+      elements: [{
+        element: el,
+        seriesIndex: 0,
+        pointIndex: 0,
+        category: '2024',
+        seriesName: 'Population',
+        value: 10,
+        formattedValue: '10',
+      }],
+      theme: resolveTheme(container),
+      chartData,
+    });
+
+    expect(el.getAttribute('aria-label')).toBe('Year: 2024, Population: 10 persons');
+    interactions.destroy();
+  });
+
+  it('adds the value-axis unit to the tooltip value', () => {
+    const el = makeElement();
+    container.appendChild(el);
+    const chartData: ChartData = {
+      yLabel: 'persons',
+      series: [{ name: 'Population', code: 'population', points: [] }],
+      categories: ['2024'],
+      categoryLabels: ['2024'],
+    };
+
+    const interactions = bindInteractions({
+      container,
+      elements: [{
+        element: el,
+        seriesIndex: 0,
+        pointIndex: 0,
+        category: '2024',
+        seriesName: 'Population',
+        value: 10,
+        formattedValue: '10',
+      }],
+      theme: resolveTheme(container),
+      chartData,
+    });
+
+    el.dispatchEvent(new FocusEvent('focus', { bubbles: true }));
+
+    const tooltip = container.querySelector('.jsc-tooltip');
+    expect(tooltip?.textContent).toContain('10 persons');
 
     interactions.destroy();
   });

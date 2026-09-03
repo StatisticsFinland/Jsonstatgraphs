@@ -28,7 +28,6 @@ export class Tooltip {
     el.className = 'jsc-tooltip';
     el.setAttribute('role', 'tooltip');
     el.id = `jsc-tooltip-${++Tooltip.idCounter}`;
-    el.setAttribute('aria-live', 'polite');
     el.style.position = 'absolute';
     el.style.pointerEvents = 'none';
     el.style.opacity = '0';

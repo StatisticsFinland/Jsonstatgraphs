@@ -53,7 +53,9 @@ export function createPyramidChart(chartConfig: PyramidChartConfig): PyramidChar
         categoryLabels: data.categoryLabels,
         xLabel: data.categoryDimensionLabel,
         seriesLabel: data.splitDimensionLabel,
+        yLabel: data.yLabel,
       },
+      pointAxis: 'vertical',
       ariaLabel: config.ariaLabel,
       caption: config.title ?? config.ariaLabel,
     });
@@ -102,7 +104,7 @@ export function createPyramidChart(chartConfig: PyramidChartConfig): PyramidChar
         .attr('class', `jsc-series jsc-series-${si}`) as unknown as import('d3-selection').Selection<SVGGElement, unknown, null, undefined>;
 
       const seriesGroupEl = seriesGroup.node() as SVGGElement;
-      applySeriesGroupAttributes(seriesGroupEl, series.name, si);
+      applySeriesGroupAttributes(seriesGroupEl, series.name, si, config.locale);
       seriesGroupElements.set(si, seriesGroupEl);
 
       type BarPoint = { value: number; label: string; categoryCode: string };
@@ -152,6 +154,8 @@ export function createPyramidChart(chartConfig: PyramidChartConfig): PyramidChar
           element: rectEl,
           seriesIndex: si,
           pointIndex: pi,
+          navigationPointIndex: nonNullPoints.length - pi - 1,
+          pointKey: point.categoryCode,
           category: point.label,
           seriesName: series.name,
           value: point.value,
@@ -181,7 +185,7 @@ export function createPyramidChart(chartConfig: PyramidChartConfig): PyramidChar
   });
 
   const ariaLabel = config.ariaLabel ?? (config.title ?? 'Pyramid chart');
-  applyChartAriaAttributes(container, ariaLabel);
+  applyChartAriaAttributes(container, ariaLabel, 'pyramid', config.locale);
 
   scaffold.render();
 
@@ -192,7 +196,7 @@ export function createPyramidChart(chartConfig: PyramidChartConfig): PyramidChar
         config = newConfig;
       }
       const updatedAriaLabel = config.ariaLabel ?? (config.title ?? 'Pyramid chart');
-      applyChartAriaAttributes(container, updatedAriaLabel);
+      applyChartAriaAttributes(container, updatedAriaLabel, 'pyramid', config.locale);
       scaffold.update({
         mode: 'categorical' as const,
         container,
@@ -214,6 +218,7 @@ export function createPyramidChart(chartConfig: PyramidChartConfig): PyramidChar
       scaffold.destroy();
       container.removeAttribute('role');
       container.removeAttribute('aria-label');
+      container.removeAttribute('aria-roledescription');
     },
   };
 }

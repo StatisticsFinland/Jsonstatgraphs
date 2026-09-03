@@ -68,6 +68,7 @@ export function createLineChart(chartConfig: LineChartConfig): LineChartInstance
       chartData: data,
       ariaLabel: config.ariaLabel,
       caption: config.title ?? config.ariaLabel,
+      pointAxis: 'horizontal',
     });
   }
 
@@ -113,7 +114,7 @@ export function createLineChart(chartConfig: LineChartConfig): LineChartInstance
         .attr('class', `jsc-series jsc-series-${si}`) as unknown as import('d3-selection').Selection<SVGGElement, unknown, null, undefined>;
 
       const seriesGroupEl = seriesGroup.node() as SVGGElement;
-      applySeriesGroupAttributes(seriesGroupEl, series.name, si);
+      applySeriesGroupAttributes(seriesGroupEl, series.name, si, config.locale);
       seriesGroupElements.set(si, seriesGroupEl);
 
       // Build line generator
@@ -129,6 +130,7 @@ export function createLineChart(chartConfig: LineChartConfig): LineChartInstance
         .append('path')
         .datum(series.points)
         .attr('class', 'jsc-line')
+        .attr('aria-hidden', 'true')
         .attr('fill', 'none')
         .attr('stroke', color)
         .attr('stroke-width', '2')
@@ -179,6 +181,7 @@ export function createLineChart(chartConfig: LineChartConfig): LineChartInstance
           element: markerEl,
           seriesIndex: si,
           pointIndex: pi,
+          pointKey: point.categoryCode,
           category: point.label,
           seriesName: series.name,
           value: point.value,
@@ -211,7 +214,7 @@ export function createLineChart(chartConfig: LineChartConfig): LineChartInstance
 
   // Apply chart-level ARIA
   const ariaLabel = config.ariaLabel ?? (config.title ?? 'Line chart');
-  applyChartAriaAttributes(container, ariaLabel);
+  applyChartAriaAttributes(container, ariaLabel, 'line', config.locale);
 
   // Trigger initial render
   scaffold.render();
@@ -223,7 +226,7 @@ export function createLineChart(chartConfig: LineChartConfig): LineChartInstance
         config = newConfig;
       }
       const updatedAriaLabel = config.ariaLabel ?? (config.title ?? 'Line chart');
-      applyChartAriaAttributes(container, updatedAriaLabel);
+      applyChartAriaAttributes(container, updatedAriaLabel, 'line', config.locale);
       const updatedValueRange = computeValueRange(data, config.cutValueAxis);
       scaffold.update({
         mode: 'categorical' as const,
@@ -249,6 +252,7 @@ export function createLineChart(chartConfig: LineChartConfig): LineChartInstance
       scaffold.destroy();
       container.removeAttribute('role');
       container.removeAttribute('aria-label');
+      container.removeAttribute('aria-roledescription');
     },
   };
 }

@@ -70,6 +70,7 @@ export function createBarChart(chartConfig: BarChartConfig): BarChartInstance {
       theme: lastTheme!,
       locale: config.locale,
       chartData: renderData,
+      pointAxis: resolvedChartType === 'horizontalBar' ? 'vertical' : 'horizontal',
       ariaLabel: config.ariaLabel,
       caption: config.title ?? config.ariaLabel,
     });
@@ -98,6 +99,7 @@ export function createBarChart(chartConfig: BarChartConfig): BarChartInstance {
 
     const { svg, theme } = ctx;
     const plotAreaGroup = svg.select<SVGGElement>('.jsc-plot-area');
+    const interactionGroup = plotAreaGroup.append('g');
     const elements: DataElementInfo[] = [];
 
     if (config.accessibilityMode) {
@@ -117,12 +119,12 @@ export function createBarChart(chartConfig: BarChartConfig): BarChartInstance {
     const series = data.series[si];
     const color = getSeriesColor(theme, si);
 
-    const seriesGroup = plotAreaGroup
+    const seriesGroup = interactionGroup
       .append('g')
       .attr('class', `jsc-series jsc-series-${si}`) as unknown as import('d3-selection').Selection<SVGGElement, unknown, null, undefined>;
 
     const seriesGroupEl = seriesGroup.node() as SVGGElement;
-    applySeriesGroupAttributes(seriesGroupEl, series.name, si);
+    applySeriesGroupAttributes(seriesGroupEl, series.name, si, config.locale);
     seriesGroupElements.set(si, seriesGroupEl);
 
     type BarPoint = { value: number; categoryCode: string; label: string };
@@ -177,6 +179,7 @@ export function createBarChart(chartConfig: BarChartConfig): BarChartInstance {
         element: rectEl,
         seriesIndex: si,
         pointIndex: pi,
+        pointKey: point.categoryCode,
         category: point.label,
         seriesName: series.name,
         value: point.value,
@@ -205,7 +208,7 @@ export function createBarChart(chartConfig: BarChartConfig): BarChartInstance {
   });
 
   const ariaLabel = config.ariaLabel ?? (config.title ?? 'Bar chart');
-  applyChartAriaAttributes(container, ariaLabel);
+  applyChartAriaAttributes(container, ariaLabel, resolvedChartType, config.locale);
 
   scaffold.render();
 
@@ -217,7 +220,7 @@ export function createBarChart(chartConfig: BarChartConfig): BarChartInstance {
       }
       renderData = buildRenderData();
       const updatedAriaLabel = config.ariaLabel ?? (config.title ?? 'Bar chart');
-      applyChartAriaAttributes(container, updatedAriaLabel);
+      applyChartAriaAttributes(container, updatedAriaLabel, resolvedChartType, config.locale);
       scaffold.update({
         mode: 'categorical' as const,
         container,
@@ -242,6 +245,7 @@ export function createBarChart(chartConfig: BarChartConfig): BarChartInstance {
       scaffold.destroy();
       container.removeAttribute('role');
       container.removeAttribute('aria-label');
+      container.removeAttribute('aria-roledescription');
     },
   };
 }

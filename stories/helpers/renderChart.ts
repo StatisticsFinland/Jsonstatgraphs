@@ -10,6 +10,18 @@ export interface RenderChartArgs {
   selectableConfig?: SelectableConfig;
 }
 
+type ChartInstanceElement = HTMLElement & { __jscInstance?: ChartInstance };
+
+export function storeChartInstance(element: HTMLElement, instance: ChartInstance): void {
+  (element as ChartInstanceElement).__jscInstance = instance;
+}
+
+export function destroyStoredChartInstance(element: Element): void {
+  if (element instanceof HTMLElement) {
+    (element as ChartInstanceElement).__jscInstance?.destroy();
+  }
+}
+
 function withSelectableConfig(dataset: JsonStatDataset, selectableConfig: SelectableConfig | undefined): JsonStatDataset {
   if (!selectableConfig) return dataset;
   return {
@@ -33,9 +45,6 @@ export function renderChart(args: RenderChartArgs): HTMLElement {
   wrapper.style.boxSizing = 'border-box';
   wrapper.style.margin = '20px auto';
 
-  wrapper.setAttribute('role', 'figure');
-  wrapper.setAttribute('aria-label', 'Chart loading');
-
   // Defer chart creation until element is in DOM
   requestAnimationFrame(() => {
     if (wrapper.isConnected) {
@@ -46,7 +55,7 @@ export function renderChart(args: RenderChartArgs): HTMLElement {
         args.selectableSelections,
       );
       // Store instance for cleanup in preview decorator
-      (wrapper as any).__jscInstance = instance;
+      storeChartInstance(wrapper, instance);
     }
   });
 

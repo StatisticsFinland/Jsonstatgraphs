@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/html-vite';
 import { createChart } from '../src';
 import type { ChartInstance } from '../src/types';
+import { storeChartInstance } from './helpers/renderChart';
 
 const meta: Meta = {
   title: 'Other/Edge Cases',
@@ -39,7 +40,7 @@ export const AllNulls: StoryObj = {
           allNullsData,
           { chartType: 'table', locale: 'en' },
         );
-        (wrapper as any).__jscInstance = instance;
+        storeChartInstance(wrapper, instance);
       }
     });
 
@@ -62,10 +63,10 @@ export const InvalidDataset: StoryObj = {
       if (wrapper.isConnected) {
         const instance: ChartInstance = createChart(
           wrapper,
-          invalidData as any,
+          invalidData as unknown as import('../src/types').JsonStatDataset,
           { chartType: 'verticalBar', locale: 'en' },
         );
-        (wrapper as any).__jscInstance = instance;
+        storeChartInstance(wrapper, instance);
       }
     });
 

@@ -560,11 +560,13 @@ const results = getChartTypesForDataset(dataset, { mapAvailable: true });
 
 ## Accessibility
 
-- All charts include `role="figure"` with `aria-roledescription`
-- Screen-reader-only data table included for all visual charts
-- Keyboard navigation: arrow keys, Home/End, Escape
+- Visual charts use a named `role="region"`; the chart title or configured `ariaLabel` is announced without nested image semantics.
+- Focusable datapoints use a localized `aria-roledescription` and roving `tabindex`.
+- Vertical charts and line charts use Left/Right for categories and Up/Down for series. Horizontal bars and pyramids use Up/Down for categories and Left/Right for series. Pie and scatter charts use Left/Right as a single point sequence.
+- Arrow navigation stops at chart boundaries. Home/End move within the current point sequence, and Tab/Shift+Tab leave the chart normally.
+- The library does not generate hidden data tables. Applications that require an alternate data presentation must provide a visible table or use the chart menu's explicit table view.
 - Interactive legend with `aria-pressed` toggle
-- Tooltips with `aria-live="polite"`
+- Tooltips are not `aria-live` regions to avoid duplicate screen-reader announcements
 - Line charts use transparent focus and hover targets for every non-null point when visible accessibility markers are disabled.
 
 ## Development

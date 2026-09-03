@@ -11,9 +11,9 @@ import {
 
 describe('a11y patterns utilities', () => {
   it('exposes expected pattern and marker library sizes', () => {
-    expect(PATTERN_DEFINITIONS.length).toBe(15);
-    expect(PATTERN_PATHS.length).toBe(15);
-    expect(MARKER_SHAPES.length).toBe(5);
+    expect(PATTERN_DEFINITIONS).toHaveLength(15);
+    expect(PATTERN_PATHS).toHaveLength(15);
+    expect(MARKER_SHAPES).toHaveLength(5);
   });
 
   it('keeps pattern path list aligned with named pattern definitions', () => {
@@ -33,7 +33,7 @@ describe('a11y patterns utilities', () => {
     injectPatternDefs(defsSel, DEFAULT_THEME, 4);
 
     const patterns = defs.querySelectorAll('pattern[id^="jsc-pattern-"]');
-    expect(patterns.length).toBe(4);
+    expect(patterns).toHaveLength(4);
     expect(patterns[0].getAttribute('width')).toBe('10');
     expect(patterns[0].getAttribute('height')).toBe('10');
     expect(patterns[0].querySelector('rect')).not.toBeNull();
@@ -50,7 +50,7 @@ describe('a11y patterns utilities', () => {
     injectPatternDefs(defsSel, DEFAULT_THEME, 2);
 
     const patterns = defs.querySelectorAll('pattern[id^="jsc-pattern-"]');
-    expect(patterns.length).toBe(2);
+    expect(patterns).toHaveLength(2);
   });
 
   it('creates marker paths for all supported shape indices', () => {
