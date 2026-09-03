@@ -177,18 +177,33 @@ describe('Legend', () => {
     legend.render();
 
     const buttons = container.querySelectorAll('.jsc-legend-item') as NodeListOf<HTMLButtonElement>;
-    expect(buttons[0].getAttribute('aria-label')).toBe('Toggle series: Series A');
-    expect(buttons[1].getAttribute('aria-label')).toBe('Toggle series: Series B');
+    expect(buttons[0].tagName).toBe('BUTTON');
+    expect(buttons[0].getAttribute('aria-label')).toBe('Series A, Toggle series');
+    expect(buttons[1].getAttribute('aria-label')).toBe('Series B, Toggle series');
   });
 
-  it('localizes button aria-labels', () => {
+  it('localizes button aria-labels and keeps the visible name first', () => {
     container = document.createElement('div');
     document.body.appendChild(container);
     const legend = new Legend(container, seriesNames, mockTheme, { locale: 'fi' });
     legend.render();
 
     const button = container.querySelector('.jsc-legend-item') as HTMLButtonElement;
-    expect(button.getAttribute('aria-label')).toBe('Näytä tai piilota sarja: Series A');
+    expect(button.getAttribute('aria-label')).toBe('Series A, Näytä tai piilota sarja');
+  });
+
+  it.each([
+    ['en', 'Series A, Toggle series'],
+    ['fi', 'Series A, Näytä tai piilota sarja'],
+    ['sv', 'Series A, Visa eller dölj serie'],
+  ])('uses a fully localized action text for %s', (locale, expectedLabel) => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    const legend = new Legend(container, seriesNames, mockTheme, { locale });
+    legend.render();
+
+    const button = container.querySelector('.jsc-legend-item') as HTMLButtonElement;
+    expect(button.getAttribute('aria-label')).toBe(expectedLabel);
   });
 
   it('injects focus-visible CSS style into document head', () => {
