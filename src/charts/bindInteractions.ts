@@ -19,6 +19,7 @@ export interface DataElementInfo {
   ariaLabel?: string;
   dimensionLabels?: { label: string; value: string }[];
   hideValueLine?: boolean;
+  omitSeriesNameFromAriaLabel?: boolean;
 }
 
 export interface BindInteractionsConfig {
@@ -145,7 +146,9 @@ export function bindInteractions(config: BindInteractionsConfig): BoundInteracti
     const categoryName = chartData?.xLabel
       ? `${chartData.xLabel}: ${category}`
       : category;
-    const announcedValue = `${seriesName}: ${formattedMeasurement}`;
+    const announcedValue = info.omitSeriesNameFromAriaLabel
+      ? formattedMeasurement
+      : `${seriesName}: ${formattedMeasurement}`;
     applyDataPointAttributes(element, categoryName, announcedValue, locale);
     if (info.ariaLabel) {
       element.setAttribute('aria-label', info.ariaLabel);

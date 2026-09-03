@@ -106,7 +106,29 @@ describe('createBarChart', () => {
     }));
 
     expect(document.activeElement).toBe(rects[1]);
-    expect(document.activeElement?.getAttribute('aria-label')).toBe('2021, Population: 150');
+    expect(document.activeElement?.getAttribute('aria-label')).toBe('2021, 150');
+  });
+
+  it.each([
+    ['verticalBar', undefined],
+    ['horizontalBar', 'horizontalBar'],
+  ] as const)('does not repeat the series name in %s data-point labels', (_name, chartType) => {
+    const data: ChartData = {
+      ...singleSeriesData,
+      xLabel: 'Age',
+      yLabel: '%',
+      series: [{
+        name: 'Age',
+        code: 'age',
+        points: [{ value: 55, label: '35-44', categoryCode: '35-44' }],
+      }],
+      categories: ['35-44'],
+      categoryLabels: ['35-44'],
+    };
+
+    createBarChart({ container, data, config: defaultConfig, chartType });
+
+    expect(container.querySelector('.jsc-bar')?.getAttribute('aria-label')).toBe('Age: 35-44, 55 %');
   });
 
   it('ARIA: container has role="region"', () => {

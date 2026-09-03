@@ -184,6 +184,7 @@ export function createBarChart(chartConfig: BarChartConfig): BarChartInstance {
         seriesName: series.name,
         value: point.value,
         formattedValue: point.value.toLocaleString(config.locale),
+        omitSeriesNameFromAriaLabel: true,
       });
     }
 
