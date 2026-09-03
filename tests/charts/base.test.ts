@@ -24,6 +24,31 @@ function createScaffoldConfig(overrides: Partial<CategoricalScaffoldConfig> = {}
 }
 
 describe('ChartScaffold', () => {
+  describe('runtime text spacing', () => {
+    it('rerenders when inherited text metrics change', async () => {
+      jest.useFakeTimers();
+      const container = createContainer(500, 400);
+      const scaffold = new ChartScaffold(createScaffoldConfig({ container }));
+      const renderSpy = jest.fn();
+      scaffold.onRender(renderSpy);
+      scaffold.render();
+      expect(renderSpy).toHaveBeenCalledTimes(1);
+
+      const style = document.createElement('style');
+      style.textContent = '.spaced-chart .jsc-axis-x text { letter-spacing: 0.12em; line-height: 1.5; }';
+      document.head.appendChild(style);
+      container.classList.add('spaced-chart');
+      await Promise.resolve();
+      jest.advanceTimersByTime(50);
+
+      expect(renderSpy).toHaveBeenCalledTimes(2);
+
+      scaffold.destroy();
+      style.remove();
+      jest.useRealTimers();
+    });
+  });
+
   afterEach(() => {
     document.body.innerHTML = '';
   });
@@ -125,6 +150,9 @@ describe('ChartScaffold', () => {
     scaffold.render();
     const tspans = document.querySelectorAll('.jsc-axis-x .tick text tspan');
     expect(tspans.length).toBeGreaterThan(0);
+    const visibleText = Array.from(document.querySelectorAll('.jsc-axis-x .tick text'));
+    expect(visibleText[0].getAttribute('text-anchor')).toBe('middle');
+    expect(visibleText.at(-1)?.getAttribute('text-anchor')).toBe('middle');
   });
 
   it('shortens and culls dense horizontal category labels', () => {
@@ -158,6 +186,12 @@ describe('ChartScaffold', () => {
     expect(visibleLabels).toHaveLength(2);
     expect(visibleLabels.some(label => label.querySelectorAll('tspan').length > 1)).toBe(true);
     expect(visibleLabels.every(label => (label.textContent ?? '').length >= categories[0].length - 5)).toBe(true);
+    expect(visibleLabels.every(label => label.getAttribute('dx') === null)).toBe(true);
+    expect(visibleLabels.every(label => label.querySelector('tspan')?.getAttribute('x') === '-9')).toBe(true);
+    const plotX = Number(document.querySelector('.jsc-plot-area')?.getAttribute('transform')?.match(/translate\(([^,]+)/)?.[1]);
+    const availableTextWidth = plotX - 16;
+    const renderedLines = Array.from(document.querySelectorAll('.jsc-axis-y .tick text tspan'));
+    expect(renderedLines.every(line => (line.textContent?.length ?? 0) * 8 <= availableTextWidth)).toBe(true);
   });
 
   it('render() renders legend overlay when seriesCount > 1', () => {
@@ -253,6 +287,28 @@ describe('ChartScaffold', () => {
     scaffold.render();
     const footerText = document.querySelector('.jsc-footer-text');
     expect(footerText).not.toBeNull();
+  });
+
+  it('wraps long footer values when the available chart width is narrow', () => {
+    const scaffold = new ChartScaffold(
+      createScaffoldConfig({
+        container: createContainer(240, 500),
+        config: {
+          footerItems: [{
+            label: 'Source:',
+            value: 'Statistics Finland regional accounts publication',
+            type: 'source',
+          }],
+        },
+      })
+    );
+
+    scaffold.render();
+
+    const footerLines = document.querySelectorAll('.jsc-footer-text');
+    expect(footerLines.length).toBeGreaterThan(1);
+    expect(document.querySelectorAll('.jsc-footer-label')).toHaveLength(1);
+    expect(document.querySelectorAll('.jsc-footer-value').length).toBeGreaterThan(1);
   });
 
   it('x-axis tick lines have y2 = 8 (X_AXIS_TICK_SIZE)', () => {

@@ -5,7 +5,8 @@ import { ChartConfig, MapChartData, MapClassBreak, ResolvedTheme, ZoneType, Zone
 import { resolveTheme } from '../theme/theme';
 import { createZones, applyMeasuredSizes } from '../layout/zones';
 import { computeLayout } from '../layout/layout-engine';
-import { renderSvgFooter } from './footer';
+import { measureSvgFooterHeight, renderSvgFooter } from './footer';
+import { createSvgTextMeasurement, wrapMeasuredText } from '../layout/text-measurement';
 import { bindInteractions, DataElementInfo, BoundInteractions } from './bindInteractions';
 import { applyChartAriaAttributes, applySeriesGroupAttributes } from '../a11y/aria';
 import { captureChartFocusBeforeRedraw } from '../interaction/keyboard';
@@ -24,6 +25,20 @@ export interface MapChartInstance {
   update(data: MapChartData, config?: ChartConfig): void;
   destroy(): void;
 }
+
+interface MapHeaderLayout {
+  titleLines: string[];
+  subtitleLines: string[];
+  titleLineHeight: number;
+  subtitleLineHeight: number;
+  height: number;
+}
+
+const MAP_HEADER_HORIZONTAL_PADDING = 20;
+const MAP_HEADER_VERTICAL_PADDING = 12;
+const MAP_HEADER_CONTENT_GAP = 4;
+const MAP_MENU_ONLY_HEADER_HEIGHT = 48;
+const MAP_FOOTER_HORIZONTAL_PADDING = 8;
 
 function getClassificationBreaks(data: MapChartData): MapClassBreak[] {
   return data.classification.method === 'linear' ? [] : data.classification.breaks;
@@ -103,56 +118,78 @@ function renderMap(
   return elements;
 }
 
+function measureMapHeader(
+  svg: Selection<SVGSVGElement, unknown, null, undefined>,
+  config: ChartConfig,
+  theme: ResolvedTheme,
+  containerWidth: number,
+): MapHeaderLayout {
+  const titleFontSize = Number.parseFloat(theme.fontSizeTitle) || 16;
+  const subtitleFontSize = Number.parseFloat(theme.fontSizeLabel) || 14;
+  const titleMeasurement = createSvgTextMeasurement(svg, {
+    parentClass: 'jsc-header',
+    textClass: 'jsc-title',
+    fontFamily: theme.fontFamily,
+    fontSize: theme.fontSizeTitle,
+    fontWeight: theme.fontWeightBold,
+    fallbackCharWidth: 8,
+    fallbackLineHeight: titleFontSize * 1.25,
+  });
+  const subtitleMeasurement = createSvgTextMeasurement(svg, {
+    parentClass: 'jsc-header',
+    textClass: 'jsc-subtitle',
+    fontFamily: theme.fontFamily,
+    fontSize: theme.fontSizeLabel,
+    fontWeight: theme.fontWeightNormal,
+    fallbackCharWidth: 8,
+    fallbackLineHeight: subtitleFontSize * 1.25,
+  });
+  const maxWidth = Math.max(1, containerWidth - MAP_HEADER_HORIZONTAL_PADDING * 2 - (
+    config.burgerMenuVisible ? BURGER_MENU_CLEARANCE : 0
+  ));
+  const titleLines = config.title
+    ? wrapMeasuredText(config.title, maxWidth, titleMeasurement.measureText)
+    : [];
+  const subtitleLines = config.subtitle
+    ? wrapMeasuredText(config.subtitle, maxWidth, subtitleMeasurement.measureText)
+    : [];
+  titleMeasurement.destroy();
+  subtitleMeasurement.destroy();
+  const hasContent = titleLines.length > 0 || subtitleLines.length > 0;
+  const gap = titleLines.length > 0 && subtitleLines.length > 0 ? MAP_HEADER_CONTENT_GAP : 0;
+  const contentHeight = titleLines.length * titleMeasurement.lineHeight
+    + subtitleLines.length * subtitleMeasurement.lineHeight
+    + gap;
+  const height = config.showHeader === false
+    ? (config.burgerMenuVisible ? MAP_MENU_ONLY_HEADER_HEIGHT : 0)
+    : hasContent
+      ? contentHeight + MAP_HEADER_VERTICAL_PADDING
+      : (config.burgerMenuVisible ? MAP_MENU_ONLY_HEADER_HEIGHT : 0);
+  return {
+    titleLines,
+    subtitleLines,
+    titleLineHeight: titleMeasurement.lineHeight,
+    subtitleLineHeight: subtitleMeasurement.lineHeight,
+    height,
+  };
+}
+
 function renderHeader(
   svg: Selection<SVGSVGElement, unknown, null, undefined>,
   layout: LayoutResult,
   config: ChartConfig,
   theme: ResolvedTheme,
+  headerLayout: MapHeaderLayout,
 ): void {
   const headerRect = layout.zones.get(ZoneType.Header);
-  if (!headerRect || config.showHeader === false || (!config.title && !config.subtitle)) return;
-
+  if (!headerRect || config.showHeader === false) return;
+  const { titleLines, subtitleLines, titleLineHeight, subtitleLineHeight } = headerLayout;
+  if (titleLines.length === 0 && subtitleLines.length === 0) return;
   const headerGroup = svg.append('g').attr('class', 'jsc-header').attr('aria-hidden', 'true');
-
-  const CHAR_WIDTH = 8;
-  const LINE_HEIGHT = 1.25;
-  const PADDING = 20;
-  const maxWidth = headerRect.width - PADDING * 2 - (
-    config.burgerMenuVisible ? BURGER_MENU_CLEARANCE : 0
-  );
-
-  const titleFontSize = Number.parseFloat(theme.fontSizeTitle) || 16;
-  const subtitleFontSize = Number.parseFloat(theme.fontSizeLabel) || 14;
-  const titleLineHeight = titleFontSize * LINE_HEIGHT;
-  const contentStartX = headerRect.x + PADDING;
-
-  function wrapText(text: string, charWidth: number): string[] {
-    const fullWidth = text.length * charWidth;
-    if (fullWidth <= maxWidth) return [text];
-    const words = text.split(/\s+/);
-    const lines: string[] = [];
-    let currentLine = '';
-    for (const word of words) {
-      const candidate = currentLine ? `${currentLine} ${word}` : word;
-      if (candidate.length * charWidth > maxWidth && currentLine) {
-        lines.push(currentLine);
-        currentLine = word;
-      } else {
-        currentLine = candidate;
-      }
-    }
-    if (currentLine) lines.push(currentLine);
-    return lines.length > 0 ? lines : [text];
-  }
-
-  let titleLines: string[] = [];
-  if (config.title) {
-    titleLines = wrapText(config.title, CHAR_WIDTH);
-  }
-
+  const contentStartX = headerRect.x + MAP_HEADER_HORIZONTAL_PADDING;
   const titleBlockHeight = titleLines.length * titleLineHeight;
-  const subtitleBlockHeight = config.subtitle ? subtitleFontSize * LINE_HEIGHT : 0;
-  const gap = (config.title && config.subtitle) ? 4 : 0;
+  const subtitleBlockHeight = subtitleLines.length * subtitleLineHeight;
+  const gap = titleLines.length > 0 && subtitleLines.length > 0 ? MAP_HEADER_CONTENT_GAP : 0;
   const totalContentHeight = titleBlockHeight + gap + subtitleBlockHeight;
   const contentStartY = headerRect.y + (headerRect.height - totalContentHeight) / 2;
 
@@ -161,6 +198,7 @@ function renderHeader(
       .attr('class', 'jsc-title')
       .attr('x', contentStartX)
       .attr('text-anchor', 'start')
+      .attr('dominant-baseline', 'middle')
       .attr('font-size', theme.fontSizeTitle)
       .attr('font-family', theme.fontFamily)
       .attr('font-weight', theme.fontWeightBold)
@@ -172,19 +210,22 @@ function renderHeader(
     }
   }
 
-  if (config.subtitle) {
-    const subtitleY = contentStartY + titleBlockHeight + gap + subtitleFontSize * 0.5 * LINE_HEIGHT;
-    headerGroup.append('text')
+  if (subtitleLines.length > 0) {
+    const subtitleEl = headerGroup.append('text')
       .attr('class', 'jsc-subtitle')
       .attr('x', contentStartX)
-      .attr('y', subtitleY)
       .attr('text-anchor', 'start')
       .attr('dominant-baseline', 'middle')
       .attr('font-size', theme.fontSizeLabel)
       .attr('font-family', theme.fontFamily)
       .attr('font-weight', theme.fontWeightNormal)
-      .attr('fill', theme.colorTextSecondary)
-      .text(config.subtitle);
+      .attr('fill', theme.colorTextSecondary);
+    subtitleLines.forEach((line, index) => {
+      subtitleEl.append('tspan')
+        .attr('x', contentStartX)
+        .attr('y', contentStartY + titleBlockHeight + gap + (index + 0.5) * subtitleLineHeight)
+        .text(line);
+    });
   }
 }
 
@@ -561,47 +602,13 @@ function measureMapZoneSizes(
   config: ChartConfig,
   data: MapChartData,
   theme: ResolvedTheme,
-  containerWidth: number,
   isPortrait: boolean,
+  headerHeight: number,
+  footerHeight: number,
 ): Partial<Record<ZoneType, number>> {
   const measurements: Partial<Record<ZoneType, number>> = {};
-  const CHAR_WIDTH = 8;
-  const titleFontSize = Number.parseFloat(theme.fontSizeTitle) || 16;
-  const subtitleFontSize = Number.parseFloat(theme.fontSizeLabel) || 14;
   const tickFontSize = Number.parseFloat(theme.fontSizeTick) || 12;
-
-  const TITLE_LINE_HEIGHT = titleFontSize * 1.25;
-  const SUBTITLE_LINE_HEIGHT = subtitleFontSize * 1.25;
-  const HEADER_PADDING = 12;
-
-  if (config.showHeader === false) {
-    measurements[ZoneType.Header] = config.burgerMenuVisible ? 48 : 0;
-  } else if (config.title) {
-    const titleMaxWidth = containerWidth - 40 - (
-      config.burgerMenuVisible ? BURGER_MENU_CLEARANCE : 0
-    );
-    const words = config.title.split(/\s+/);
-    let titleLineCount = 0;
-    let currentLine = '';
-    for (const word of words) {
-      const candidate = currentLine ? `${currentLine} ${word}` : word;
-      if (titleMaxWidth > 0 && candidate.length * CHAR_WIDTH > titleMaxWidth && currentLine) {
-        titleLineCount++;
-        currentLine = word;
-      } else {
-        currentLine = candidate;
-      }
-    }
-    if (currentLine) titleLineCount++;
-    titleLineCount = Math.max(1, titleLineCount);
-    let headerHeight = titleLineCount * TITLE_LINE_HEIGHT + HEADER_PADDING;
-    if (config.subtitle) headerHeight += SUBTITLE_LINE_HEIGHT;
-    measurements[ZoneType.Header] = headerHeight;
-  } else if (config.subtitle) {
-    measurements[ZoneType.Header] = SUBTITLE_LINE_HEIGHT + HEADER_PADDING;
-  } else {
-    measurements[ZoneType.Header] = config.burgerMenuVisible ? 48 : 0;
-  }
+  measurements[ZoneType.Header] = headerHeight;
 
   const showLegend = config.showLegend ?? true;
   const breaks = getClassificationBreaks(data);
@@ -662,12 +669,7 @@ function measureMapZoneSizes(
     measurements[ZoneType.RightMargin] = 0;
   }
 
-  if (config.footerItems && config.footerItems.length > 0) {
-    const FOOTER_LINE_HEIGHT = Math.ceil(tickFontSize * 1.4);
-    measurements[ZoneType.FooterText] = config.footerItems.length * FOOTER_LINE_HEIGHT + FOOTER_LINE_HEIGHT;
-  } else {
-    measurements[ZoneType.FooterText] = 0;
-  }
+  measurements[ZoneType.FooterText] = footerHeight;
 
   measurements[ZoneType.YAxisTitle] = 0;
   measurements[ZoneType.YAxisLabels] = 0;
@@ -684,7 +686,10 @@ export function createMapChart(chartConfig: MapChartConfig): MapChartInstance {
 
   let boundInteractions: BoundInteractions | null = null;
   let resizeObserver: ResizeObserver | null = null;
+  let textStyleObserver: MutationObserver | null = null;
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+  let textMetricTimer: ReturnType<typeof setTimeout> | null = null;
+  let textMetricFingerprint: string | null = null;
   let cachedAspectRatio: number | null = null;
   const originalOverflow = container.style.overflow;
 
@@ -700,6 +705,51 @@ export function createMapChart(chartConfig: MapChartConfig): MapChartInstance {
   const svg = select(svgEl) as Selection<SVGSVGElement, unknown, null, undefined>;
   svg.attr('class', 'jsc-chart').attr('role', 'none').attr('width', '100%').attr('height', '100%');
 
+  function createFooterMeasurement(theme: ResolvedTheme) {
+    return createSvgTextMeasurement(svg, {
+      parentClass: 'jsc-footer',
+      textClass: 'jsc-footer-text',
+      fontFamily: theme.fontFamily,
+      fontSize: theme.fontSizeTick,
+      fallbackCharWidth: 8,
+      fallbackLineHeight: Math.ceil((Number.parseFloat(theme.fontSizeTick) || 12) * 1.4),
+    });
+  }
+
+  function captureTextMetricFingerprint(): string {
+    const theme = resolveTheme(container, config.theme);
+    const sample = 'Accessibility labels 0123456789';
+    const measurements = [
+      createSvgTextMeasurement(svg, {
+        parentClass: 'jsc-header',
+        textClass: 'jsc-title',
+        fontFamily: theme.fontFamily,
+        fontSize: theme.fontSizeTitle,
+        fontWeight: theme.fontWeightBold,
+      }),
+      createFooterMeasurement(theme),
+    ];
+    const fingerprint = JSON.stringify(measurements.map(measurement => [
+      Math.round(measurement.measureText(sample) * 100) / 100,
+      Math.round(measurement.lineHeight * 100) / 100,
+    ]));
+    measurements.forEach(measurement => measurement.destroy());
+    return fingerprint;
+  }
+
+  function scheduleTextMetricCheck(): void {
+    if (textMetricTimer !== null) clearTimeout(textMetricTimer);
+    textMetricTimer = setTimeout(() => {
+      textMetricTimer = null;
+      const nextFingerprint = captureTextMetricFingerprint();
+      if (textMetricFingerprint !== null && nextFingerprint !== textMetricFingerprint) {
+        render();
+      } else {
+        textMetricFingerprint = nextFingerprint;
+      }
+    }, 50);
+  }
+
   function render(): void {
     const theme = resolveTheme(container, config.theme);
 
@@ -710,6 +760,17 @@ export function createMapChart(chartConfig: MapChartConfig): MapChartInstance {
 
     cachedAspectRatio ??= computeGeoBboxAspectRatio(data);
     const isPortrait = cachedAspectRatio > 1.2;
+    const headerLayout = measureMapHeader(svg, config, theme, width);
+    let footerHeight = 0;
+    if (config.footerItems && config.footerItems.length > 0) {
+      const footerMeasurement = createFooterMeasurement(theme);
+      footerHeight = measureSvgFooterHeight(
+        config.footerItems,
+        Math.max(1, width - MAP_FOOTER_HORIZONTAL_PADDING * 2),
+        footerMeasurement,
+      );
+      footerMeasurement.destroy();
+    }
 
     const zones = createZones({
       chartType: 'map',
@@ -721,7 +782,14 @@ export function createMapChart(chartConfig: MapChartConfig): MapChartInstance {
       hasHeaderContent: config.showHeader !== false && Boolean(config.title?.trim() || config.subtitle?.trim()),
     });
 
-    const measurements = measureMapZoneSizes(config, data, theme, width, isPortrait);
+    const measurements = measureMapZoneSizes(
+      config,
+      data,
+      theme,
+      isPortrait,
+      headerLayout.height,
+      footerHeight,
+    );
     const measuredZones = applyMeasuredSizes(zones, measurements);
     const layout = computeLayout(width, height, measuredZones);
 
@@ -774,7 +842,7 @@ export function createMapChart(chartConfig: MapChartConfig): MapChartInstance {
       }
     }
 
-    renderHeader(svg, layout, config, theme);
+    renderHeader(svg, layout, config, theme, headerLayout);
     const elements = renderMap(
       svg,
       data,
@@ -799,18 +867,22 @@ export function createMapChart(chartConfig: MapChartConfig): MapChartInstance {
     }
 
     if (footerRect && config.footerItems && config.footerItems.length > 0) {
-      const footerFontSize = Number.parseFloat(theme.fontSizeTick) || 12;
-      const footerLineHeight = Math.ceil(footerFontSize * 1.4);
+      const footerMeasurement = createFooterMeasurement(theme);
       renderSvgFooter({
         parent: svg,
         footerItems: config.footerItems,
         sourceLink: config.sourceLink,
         theme,
-        x: footerRect.x + 8,
-        y: footerRect.y + footerLineHeight,
-        lineHeight: footerLineHeight,
+        x: footerRect.x + MAP_FOOTER_HORIZONTAL_PADDING,
+        y: footerRect.y,
+        lineHeight: footerMeasurement.lineHeight,
+        maxWidth: Math.max(1, footerRect.width - MAP_FOOTER_HORIZONTAL_PADDING * 2),
+        textMetrics: footerMeasurement,
       });
+      footerMeasurement.destroy();
     }
+
+    textMetricFingerprint = captureTextMetricFingerprint();
 
   }
 
@@ -824,6 +896,21 @@ export function createMapChart(chartConfig: MapChartConfig): MapChartInstance {
     }, 150);
   });
   resizeObserver.observe(container);
+  textStyleObserver = new MutationObserver(() => scheduleTextMetricCheck());
+  textStyleObserver.observe(document.head, {
+    attributes: true,
+    childList: true,
+    characterData: true,
+    subtree: true,
+  });
+  let ancestor: HTMLElement | null = container;
+  while (ancestor !== null) {
+    textStyleObserver.observe(ancestor, {
+      attributes: true,
+      attributeFilter: ['class', 'style'],
+    });
+    ancestor = ancestor.parentElement;
+  }
 
   return {
     update(newData: MapChartData, newConfig?: ChartConfig): void {
@@ -837,9 +924,17 @@ export function createMapChart(chartConfig: MapChartConfig): MapChartInstance {
         resizeObserver.disconnect();
         resizeObserver = null;
       }
+      if (textStyleObserver) {
+        textStyleObserver.disconnect();
+        textStyleObserver = null;
+      }
       if (debounceTimer !== null) {
         clearTimeout(debounceTimer);
         debounceTimer = null;
+      }
+      if (textMetricTimer !== null) {
+        clearTimeout(textMetricTimer);
+        textMetricTimer = null;
       }
       boundInteractions?.destroy();
       boundInteractions = null;

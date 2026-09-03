@@ -296,7 +296,7 @@ describe('createTableChart', () => {
     expect(subtitleEl!.textContent).toBe('By region');
   });
 
-  it('wraps the title and ellipsizes the subtitle within the protected heading area', () => {
+  it('wraps title and subtitle text within the protected heading area', () => {
     const config: ChartConfig = { title: 'Population', subtitle: 'By region' };
     createTableChart({ container, data: tableData2D, config });
 
@@ -304,8 +304,17 @@ describe('createTableChart', () => {
     const subtitleEl = container.querySelector('div.jsc-table-subtitle') as HTMLElement;
     expect(titleEl.style.overflowWrap).toBe('break-word');
     expect(titleEl.style.whiteSpace).toBe('');
-    expect(subtitleEl.style.textOverflow).toBe('ellipsis');
-    expect(subtitleEl.style.whiteSpace).toBe('nowrap');
+    expect(subtitleEl.style.overflowWrap).toBe('break-word');
+    expect(subtitleEl.style.textOverflow).toBe('');
+    expect(subtitleEl.style.whiteSpace).toBe('');
+  });
+
+  it('allows long table headers to wrap without forcing page-level overflow', () => {
+    createTableChart({ container, data: tableData2D, config: defaultConfig });
+
+    const headers = container.querySelectorAll<HTMLElement>('th');
+    expect(headers.length).toBeGreaterThan(0);
+    headers.forEach(header => expect(header.style.overflowWrap).toBe('anywhere'));
   });
 
   it('renders footer items', () => {

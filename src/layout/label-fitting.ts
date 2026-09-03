@@ -2,6 +2,11 @@ const LINE_HEIGHT_PX = 16;
 const DEFAULT_CHAR_WIDTH = 8;
 const MAX_LINES = 3;
 
+export interface LabelTextMetrics {
+  measureText(text: string): number;
+  lineHeight: number;
+}
+
 export interface FittedLabel {
   original: string;
   lines: string[];
@@ -16,14 +21,27 @@ export interface LabelFitResult {
   zoneSizeNeeded: number;
 }
 
-function truncateLine(text: string, slotWidth: number, charWidth: number): { text: string; truncated: boolean } {
-  const pixelWidth = text.length * charWidth;
+function truncateLine(
+  text: string,
+  slotWidth: number,
+  measureText: (text: string) => number,
+): { text: string; truncated: boolean } {
+  const pixelWidth = measureText(text);
   if (pixelWidth <= slotWidth) {
     return { text, truncated: false };
   }
   const ellipsis = '…';
-  const maxChars = Math.max(0, Math.floor((slotWidth - ellipsis.length * charWidth) / charWidth));
-  return { text: text.slice(0, maxChars) + ellipsis, truncated: true };
+  let low = 0;
+  let high = text.length;
+  while (low < high) {
+    const candidateLength = Math.ceil((low + high) / 2);
+    if (measureText(text.slice(0, candidateLength) + ellipsis) <= slotWidth) {
+      low = candidateLength;
+    } else {
+      high = candidateLength - 1;
+    }
+  }
+  return { text: text.slice(0, low) + ellipsis, truncated: true };
 }
 
 export function truncateLabel(
@@ -31,10 +49,14 @@ export function truncateLabel(
   slotWidth: number,
   estimateCharWidth: number = DEFAULT_CHAR_WIDTH,
 ): { text: string; truncated: boolean } {
-  return truncateLine(text, slotWidth, estimateCharWidth);
+  return truncateLine(text, slotWidth, value => value.length * estimateCharWidth);
 }
 
-function wrapLabel(label: string, slotWidth: number, charWidth: number): { lines: string[]; truncated: boolean } {
+function wrapLabel(
+  label: string,
+  slotWidth: number,
+  measureText: (text: string) => number,
+): { lines: string[]; truncated: boolean } {
   const words = label.split(' ');
   const lines: string[] = [];
   let currentLine = '';
@@ -42,7 +64,7 @@ function wrapLabel(label: string, slotWidth: number, charWidth: number): { lines
 
   for (const word of words) {
     const candidate = currentLine === '' ? word : currentLine + ' ' + word;
-    if (candidate.length * charWidth <= slotWidth) {
+    if (measureText(candidate) <= slotWidth) {
       currentLine = candidate;
     } else if (currentLine !== '') {
       lines.push(currentLine);
@@ -70,7 +92,7 @@ function wrapLabel(label: string, slotWidth: number, charWidth: number): { lines
   // Truncate any line that still overflows
   const result: string[] = [];
   for (const line of lines) {
-    const { text, truncated: wasTruncated } = truncateLine(line, slotWidth, charWidth);
+    const { text, truncated: wasTruncated } = truncateLine(line, slotWidth, measureText);
     result.push(text);
     if (wasTruncated) truncated = true;
   }
@@ -89,17 +111,19 @@ export function fitLabels(
   labelSlotWidth: number,
   estimateCharWidth: number = DEFAULT_CHAR_WIDTH,
   niceSkipOptions?: NiceSkipOptions,
+  textMetrics?: LabelTextMetrics,
 ): LabelFitResult {
   if (labels.length === 0) {
     return { labels: [], maxLineCount: 0, skipInterval: 1, zoneSizeNeeded: 0 };
   }
 
   // Step 1: Compute original label pixel widths
-  const originalWidths = labels.map(l => l.length * estimateCharWidth);
+  const measureText = textMetrics?.measureText ?? ((text: string) => text.length * estimateCharWidth);
+  const originalWidths = labels.map(measureText);
   const maxLabelPx = Math.max(...originalWidths);
 
   // Step 2: Wrap/truncate all labels at labelSlotWidth
-  const initialWrapped = labels.map(l => wrapLabel(l, labelSlotWidth, estimateCharWidth));
+  const initialWrapped = labels.map(l => wrapLabel(l, labelSlotWidth, measureText));
 
   // Step 3: Detect severe truncation — a label whose single line was truncated (can't wrap)
   const severeTruncation = initialWrapped.some(w => w.truncated && w.lines.length === 1);
@@ -153,14 +177,14 @@ export function fitLabels(
       labelSlotWidth;
 
     fitted = labels.map(l => {
-      const { lines, truncated } = wrapLabel(l, effectiveSlotWidth, estimateCharWidth);
+      const { lines, truncated } = wrapLabel(l, effectiveSlotWidth, measureText);
       return { original: l, lines, truncated, skip: false };
     });
   } else {
     // Step 4b: No severe truncation — multi-word labels wrapped cleanly.
     // Use the already-wrapped labels; only cull if their total width still overflows.
     const totalEffectiveWidth = initialWrapped.reduce((sum, w) => {
-      const maxLineWidth = Math.max(...w.lines.map(line => line.length * estimateCharWidth));
+      const maxLineWidth = Math.max(...w.lines.map(measureText));
       return sum + maxLineWidth;
     }, 0);
 
@@ -229,7 +253,7 @@ export function fitLabels(
 
   // Step 6: Compute maxLineCount and zoneSizeNeeded from the fitted labels
   const maxLineCount = Math.max(...fitted.map(f => f.lines.length));
-  const zoneSizeNeeded = maxLineCount * LINE_HEIGHT_PX;
+  const zoneSizeNeeded = maxLineCount * (textMetrics?.lineHeight ?? LINE_HEIGHT_PX);
 
   return { labels: fitted, maxLineCount, skipInterval, zoneSizeNeeded };
 }

@@ -173,6 +173,16 @@ describe('fitLabels', () => {
       expect(result.maxLineCount).toBe(3);
       expect(result.zoneSizeNeeded).toBe(48);
     });
+
+    it('uses supplied text metrics for wrapping and line height', () => {
+      const result = fitLabels(['wide words'], 70, 70, 8, undefined, {
+        measureText: text => text.length * 8 + Math.max(0, text.length - 1) * 2,
+        lineHeight: 24,
+      });
+
+      expect(result.labels[0].lines).toEqual(['wide', 'words']);
+      expect(result.zoneSizeNeeded).toBe(48);
+    });
   });
 });
 

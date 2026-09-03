@@ -73,6 +73,31 @@ describe('createMapChart accessible name', () => {
   });
 });
 
+describe('createMapChart text layout', () => {
+  it('wraps long titles and footer values in narrow containers', () => {
+    Object.defineProperty(container, 'clientWidth', { value: 240, configurable: true });
+    Object.defineProperty(container, 'clientHeight', { value: 600, configurable: true });
+    const chart = createMapChart({
+      container,
+      data: mapData,
+      config: {
+        showHeader: true,
+        title: 'General government establishments by detailed region',
+        footerItems: [{
+          type: 'source',
+          label: 'Source:',
+          value: 'Statistics Finland regional entrepreneurial activity',
+        }],
+      },
+    });
+
+    expect(container.querySelectorAll('.jsc-title tspan').length).toBeGreaterThan(1);
+    expect(container.querySelectorAll('.jsc-footer-text').length).toBeGreaterThan(2);
+
+    chart.destroy();
+  });
+});
+
 describe('createMapChart keyboard accessibility', () => {
   it('does not hide the map svg from assistive technology', () => {
     createMapChart({ container, data: mapData, config: defaultConfig });

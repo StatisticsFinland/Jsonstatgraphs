@@ -1,6 +1,6 @@
 import type { Selection } from 'd3-selection';
 import type { ChartConfig, ChartType, ResolvedTheme } from '../types';
-import { fitLabels, NiceSkipOptions } from './label-fitting';
+import { fitLabels, LabelTextMetrics, NiceSkipOptions } from './label-fitting';
 import { getTickPositions } from './tick-positions';
 import { formatNumber } from '../locale/number';
 import { PLOT_AREA_MIN_SIZE } from './zones';
@@ -9,6 +9,8 @@ export interface ZoneMeasurementContext {
   svg: Selection<SVGSVGElement, unknown, null, undefined>;
   config: ChartConfig;
   theme: ResolvedTheme;
+  xAxisTextMetrics?: LabelTextMetrics;
+  yAxisTextMetrics?: LabelTextMetrics;
 }
 
 const FALLBACK_CHAR_WIDTH = 8;
@@ -114,8 +116,15 @@ export function createZoneMeasurementContext(
   svg: Selection<SVGSVGElement, unknown, null, undefined>,
   config: ChartConfig,
   theme: ResolvedTheme,
+  textMetrics?: { xAxis?: LabelTextMetrics; yAxis?: LabelTextMetrics },
 ): ZoneMeasurementContext {
-  return { svg, config, theme };
+  return {
+    svg,
+    config,
+    theme,
+    xAxisTextMetrics: textMetrics?.xAxis,
+    yAxisTextMetrics: textMetrics?.yAxis,
+  };
 }
 
 export interface CategoricalMeasurementOptions {
@@ -142,9 +151,18 @@ export function measureCategoricalYAxisLabels(
   const labelTexts = options.categoryLabels ?? options.categories;
   if (options.isHorizontal) {
     const maxWidth = containerWidth * HORIZONTAL_LABEL_WIDTH_RATIO;
-    const fitResult = fitLabels(labelTexts, maxWidth, maxWidth, AXIS_CHAR_WIDTH);
+    const fitResult = fitLabels(
+      labelTexts,
+      maxWidth,
+      maxWidth,
+      AXIS_CHAR_WIDTH,
+      undefined,
+      context.yAxisTextMetrics,
+    );
+    const measureText = context.yAxisTextMetrics?.measureText
+      ?? ((text: string) => text.length * AXIS_CHAR_WIDTH);
     const maxLineWidth = fitResult.labels.reduce(
-      (max, label) => Math.max(max, ...label.lines.map(line => line.length * AXIS_CHAR_WIDTH)),
+      (max, label) => Math.max(max, ...label.lines.map(measureText)),
       0,
     );
     return maxLineWidth + AXIS_TICK_MARGIN;
@@ -198,6 +216,7 @@ export function measureCategoricalRightMargin(
 }
 
 export function measureCategoricalXAxisLabels(
+  context: ZoneMeasurementContext,
   options: CategoricalMeasurementOptions,
   containerWidth: number,
   yAxisWidth: number,
@@ -221,6 +240,7 @@ export function measureCategoricalXAxisLabels(
     slotWidth,
     AXIS_CHAR_WIDTH,
     options.timeSeriesLabels,
+    context.xAxisTextMetrics,
   );
   return fitResult.zoneSizeNeeded + X_AXIS_TICK_SIZE + X_AXIS_TICK_LABEL_GAP;
 }
