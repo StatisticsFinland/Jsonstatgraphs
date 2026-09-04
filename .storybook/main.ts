@@ -20,6 +20,23 @@ const config: StorybookConfig = {
     disableTelemetry: true,
   },
   viteFinal: (config) => {
+    config.server = config.server || {};
+    config.server.watch = config.server.watch || {};
+
+    const ignored = config.server.watch.ignored;
+    const ignoredList = Array.isArray(ignored)
+      ? ignored
+      : ignored !== undefined
+        ? [ignored]
+        : [];
+
+    config.server.watch.ignored = [
+      ...ignoredList,
+      '**/.vs/**',
+      '**/.git/**',
+      '**/node_modules/**',
+    ];
+
     config.plugins = config.plugins || [];
     config.plugins.push({
       name: 'geojson-loader',

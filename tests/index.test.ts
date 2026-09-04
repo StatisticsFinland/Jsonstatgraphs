@@ -1,5 +1,21 @@
-import { createChart } from '../src/index';
-import { JsonStatDataset, GeoJsonFeatureCollection } from '../src/types';
+import { createChart as createChartInstance, exportCsv, exportPng, exportSvg } from '../src/index';
+import {
+  ChartConfig,
+  ChartInstance,
+  GeoJsonFeatureCollection,
+  JsonStatDataset,
+  SelectableSelections,
+} from '../src/types';
+import * as rebuildDatasetModule from '../src/data/rebuild-dataset';
+import * as sortingModule from '../src/data/sorting';
+
+describe('public export API', () => {
+  it('exports CSV, SVG, and PNG download functions from the package entrypoint', () => {
+    expect(exportCsv).toEqual(expect.any(Function));
+    expect(exportSvg).toEqual(expect.any(Function));
+    expect(exportPng).toEqual(expect.any(Function));
+  });
+});
 
 beforeAll(() => {
   (globalThis as any).ResizeObserver = class {
@@ -69,6 +85,75 @@ const multiDimDataset: JsonStatDataset = {
   role: { time: ['year'] },
 };
 
+const selectableScatterDataset: JsonStatDataset = {
+  id: ['metric', 'region'],
+  size: [2, 3],
+  dimension: {
+    metric: { label: 'Metric', category: { index: ['x', 'y'], label: { x: 'X', y: 'Y' } } },
+    region: { label: 'Region', category: { index: ['hel', 'tre', 'tur'], label: { hel: 'Helsinki', tre: 'Tampere', tur: 'Turku' } } },
+  },
+  value: [1, 2, 3, 10, 20, 30],
+  role: { metric: ['metric'] },
+};
+
+const selectablePyramidDataset: JsonStatDataset = {
+  id: ['age', 'sex'],
+  size: [3, 2],
+  dimension: {
+    age: { label: 'Age', category: { index: ['young', 'adult', 'senior'], label: { young: 'Young', adult: 'Adult', senior: 'Senior' } } },
+    sex: { label: 'Sex', category: { index: ['female', 'male'], label: { female: 'Female', male: 'Male' } } },
+  },
+  value: [10, 20, 30, 11, 21, 31],
+};
+
+const selectableYearBarDataset: JsonStatDataset = {
+  id: ['year', 'age', 'metric'],
+  size: [2, 3, 1],
+  dimension: {
+    year: { label: 'Year', category: { index: ['2022', '2023'], label: { '2022': '2022', '2023': '2023' } } },
+    age: { label: 'Age', category: { index: ['18-24', '25-34', '35-44'], label: { '18-24': '18 - 24', '25-34': '25 - 34', '35-44': '35 - 44' } } },
+    metric: { label: 'Metric', category: { index: ['participants'], label: { participants: 'Participants' }, unit: { participants: { label: '%', decimals: 0 } } } },
+  },
+  value: [44, 48, 53, 46, 50, 55],
+  role: { time: ['year'], metric: ['metric'] },
+};
+
+const selectableTitleDataset: JsonStatDataset = {
+  id: ['metric', 'gender'],
+  size: [1, 3],
+  dimension: {
+    metric: { label: 'Metric', category: { index: ['population'], label: { population: 'Population' } } },
+    gender: { label: 'Gender', category: { index: ['male', 'female', 'total'], label: { male: 'Male', female: 'Female', total: 'Total' } } },
+  },
+  value: [10, 20, 30],
+  role: { metric: ['metric'] },
+};
+
+const selectableYearPyramidDataset: JsonStatDataset = {
+  id: ['year', 'sex', 'county', 'age', 'metric'],
+  size: [2, 2, 1, 3, 1],
+  dimension: {
+    year: { label: 'Year', category: { index: ['2022', '2023'], label: { '2022': '2022', '2023': '2023' } } },
+    sex: { label: 'Sex', category: { index: ['male', 'female'], label: { male: 'Male', female: 'Female' } } },
+    county: { label: 'County', category: { index: ['total'], label: { total: 'Total' } } },
+    age: { label: 'Age', category: { index: ['20-24', '25-29', '30-34'], label: { '20-24': '20 - 24', '25-29': '25 - 29', '30-34': '30 - 34' } } },
+    metric: { label: 'Metric', category: { index: ['count'], label: { count: 'Count' }, unit: { count: { label: 'number', decimals: 0 } } } },
+  },
+  value: Array.from({ length: 12 }, (_, index) => index + 1),
+  role: { time: ['year'], metric: ['metric'] },
+};
+
+const selectableKeyFigureDataset: JsonStatDataset = {
+  id: ['year', 'metric'],
+  size: [2, 1],
+  dimension: {
+    year: { label: 'Year', category: { index: ['2023', '2024'], label: { '2023': '2023', '2024': '2024' } } },
+    metric: { label: 'Metric', category: { index: ['value'], label: { value: 'Value' } } },
+  },
+  value: [10, 20],
+  role: { time: ['year'], metric: ['metric'] },
+};
+
 const geoDataset: JsonStatDataset = {
   id: ['Vuosi', 'Region'],
   size: [1, 3],
@@ -104,12 +189,28 @@ const mockGeoJson: GeoJsonFeatureCollection = {
 // --- Container setup ---
 
 let container: HTMLElement;
+let chartInstances: ChartInstance[];
+
+function createChart(
+  chartContainer: HTMLElement,
+  dataset: JsonStatDataset,
+  config?: ChartConfig,
+  selectableSelections?: SelectableSelections,
+): ChartInstance {
+  const instance = createChartInstance(chartContainer, dataset, config, selectableSelections);
+  chartInstances.push(instance);
+  return instance;
+}
+
 beforeEach(() => {
+  chartInstances = [];
   container = document.createElement('div');
   document.body.appendChild(container);
   jest.spyOn(console, 'warn').mockImplementation(() => {});
 });
 afterEach(() => {
+  jest.useRealTimers();
+  chartInstances.forEach(instance => instance.destroy());
   container.remove();
   jest.restoreAllMocks();
 });
@@ -124,8 +225,75 @@ describe('createChart', () => {
     expect(table).not.toBeNull();
   });
 
+  it('keeps age categories when a pyramid time dimension is selected', () => {
+    createChart(
+      container,
+      selectableYearPyramidDataset,
+      { chartType: 'pyramid', showBurgerMenu: false },
+      { year: ['2023'] },
+    );
+
+    expect(container.querySelectorAll('.jsc-bar-left')).toHaveLength(3);
+    expect(container.querySelectorAll('.jsc-bar-right')).toHaveLength(3);
+  });
+
+  it('keeps age categories when a vertical bar time dimension is selected', () => {
+    createChart(
+      container,
+      selectableYearBarDataset,
+      { chartType: 'verticalBar', showBurgerMenu: false },
+      { year: ['2023'] },
+    );
+
+    expect(container.querySelectorAll('.jsc-bar')).toHaveLength(3);
+  });
+
+  it('includes the selected category of a selectable dimension in the automatic title', () => {
+    createChart(
+      container,
+      selectableTitleDataset,
+      { chartType: 'keyFigure', multiSelectableDimensionCode: undefined },
+      { gender: ['male'] },
+    );
+
+    expect(container.querySelector('.jsc-key-figure-title')?.textContent).toBe('Population, Male');
+  });
+
+  it('treats selected categories of the multi-selectable dimension as a variable in the automatic title', () => {
+    createChart(
+      container,
+      selectableTitleDataset,
+      { chartType: 'keyFigure', multiSelectableDimensionCode: 'gender' },
+      { gender: ['male', 'female'] },
+    );
+
+    expect(container.querySelector('.jsc-key-figure-title')?.textContent).toBe('Population by Gender');
+  });
+
+  it('includes the burger menu by default', () => {
+    createChart(container, validDataset, { chartType: 'table' });
+    expect(container.querySelector('.jsc-burger-menu-button')).not.toBeNull();
+  });
+
+  it('can disable the burger menu', () => {
+    createChart(container, validDataset, { chartType: 'table', showBurgerMenu: false });
+    expect(container.querySelector('.jsc-burger-menu-button')).toBeNull();
+    expect(container.querySelector('table.jsc-table')).not.toBeNull();
+  });
+
+  it('updates burger menu visibility with chart configuration', () => {
+    const instance = createChart(container, validDataset, { chartType: 'table', showBurgerMenu: false });
+    expect(container.querySelector('.jsc-burger-menu-button')).toBeNull();
+
+    instance.update(validDataset, { chartType: 'table', showBurgerMenu: true });
+    expect(container.querySelector('.jsc-burger-menu-button')).not.toBeNull();
+
+    instance.update(validDataset, { chartType: 'table', showBurgerMenu: false });
+    expect(container.querySelector('.jsc-burger-menu-button')).toBeNull();
+  });
+
   it('renders error message for invalid dataset', () => {
-    createChart(container, {} as any);
+    createChart(container, {} as unknown as JsonStatDataset);
     const errDiv = container.querySelector('.jsc-error');
     expect(errDiv).not.toBeNull();
     expect(errDiv!.getAttribute('role')).toBe('alert');
@@ -133,15 +301,15 @@ describe('createChart', () => {
   });
 
   it('throws TypeError when container is not an HTMLElement', () => {
-    expect(() => createChart(null as any, validDataset)).toThrow(TypeError);
-    expect(() => createChart(null as any, validDataset)).toThrow(
-      '[JsonStatChart] container must be an HTMLElement',
+    expect(() => createChart(null as unknown as HTMLElement, validDataset)).toThrow(TypeError);
+    expect(() => createChart(null as unknown as HTMLElement, validDataset)).toThrow(
+      '[Jsonstatgraphs] container must be an HTMLElement',
     );
   });
 
   it('throws TypeError for non-element values', () => {
-    expect(() => createChart('div' as any, validDataset)).toThrow(TypeError);
-    expect(() => createChart(42 as any, validDataset)).toThrow(TypeError);
+    expect(() => createChart('div' as unknown as HTMLElement, validDataset)).toThrow(TypeError);
+    expect(() => createChart(42 as unknown as HTMLElement, validDataset)).toThrow(TypeError);
   });
 });
 
@@ -230,6 +398,63 @@ describe('update', () => {
     expect(instance.getChartType()).toBe('table');
   });
 
+  it('applies selectable selections when updating without a new config', () => {
+    const instance = createChart(
+      container,
+      multiDimDataset,
+      { chartType: 'table', layout: { rows: ['region'], columns: ['year'] } },
+      { region: ['hel'] },
+    );
+    expect(container.querySelector('tbody')?.textContent).toContain('100');
+    expect(container.querySelector('tbody')?.textContent).not.toContain('80');
+    expect(Array.from(container.querySelectorAll('thead th')).map(cell => cell.textContent)).not.toContain('Helsinki');
+    expect(Array.from(container.querySelectorAll('thead th')).map(cell => cell.textContent)).toContain('2020');
+
+    instance.update(multiDimDataset, undefined, { region: ['tre'] });
+
+    expect(container.querySelector('tbody')?.textContent).toContain('80');
+    expect(container.querySelector('tbody')?.textContent).not.toContain('100');
+  });
+
+  it('preserves active selections when switching chart types', () => {
+    const instance = createChart(
+      container,
+      multiDimDataset,
+      { chartType: 'table', layout: { rows: ['region'], columns: ['year'] } },
+      { region: ['tre'] },
+    );
+
+    instance.setChartType('line');
+
+    expect(container.querySelectorAll('.jsc-series')).toHaveLength(1);
+    const datapointLabels = Array.from(container.querySelectorAll('[role="listitem"]'))
+      .map(element => element.getAttribute('aria-label'));
+    expect(datapointLabels.some(label => label?.includes('220'))).toBe(true);
+    expect(datapointLabels.some(label => label?.includes('300'))).toBe(false);
+  });
+
+  it('rebuilds selectable data only once per render cycle', () => {
+    const rebuildSpy = jest.spyOn(rebuildDatasetModule, 'rebuildDataset');
+
+    const instance = createChart(
+      container,
+      multiDimDataset,
+      { chartType: 'table', layout: { rows: ['region'], columns: ['year'] } },
+      { region: ['hel'] },
+    );
+    expect(rebuildSpy).toHaveBeenCalledTimes(1);
+
+    rebuildSpy.mockClear();
+    instance.setChartType('line');
+    expect(rebuildSpy).toHaveBeenCalledTimes(1);
+
+    rebuildSpy.mockClear();
+    instance.update(multiDimDataset, undefined, { region: ['tre'] });
+    expect(rebuildSpy).toHaveBeenCalledTimes(1);
+
+    rebuildSpy.mockRestore();
+  });
+
   it('does nothing after destroy', () => {
     const instance = createChart(container, validDataset, { chartType: 'table' });
     instance.destroy();
@@ -253,23 +478,149 @@ describe('destroy', () => {
   });
 });
 
+describe('sorting wiring (cfg.sorting)', () => {
+  it.each([
+    ['horizontalBar', false],
+    ['groupedHorizontalBar', false],
+    ['stackedHorizontalBar', false],
+    ['percentHorizontalBar', true],
+    ['pie', false],
+  ] as const)('threads cfg.sorting into %s with isPercent=%s', (chartType, isPercent) => {
+    const spy = jest.spyOn(sortingModule, 'applySorting');
+    createChart(container, validDataset, { chartType, sorting: 'sum', showBurgerMenu: false });
+    expect(spy).toHaveBeenCalledWith(expect.anything(), 'sum', isPercent, chartType);
+  });
+
+  it.each(['verticalBar', 'groupedVerticalBar', 'stackedVerticalBar', 'percentVerticalBar'] as const)(
+    'does not apply sorting for %s charts',
+    (chartType) => {
+      const spy = jest.spyOn(sortingModule, 'applySorting');
+      createChart(container, validDataset, { chartType, sorting: 'sum', showBurgerMenu: false });
+      expect(spy).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(['line', 'pyramid', 'table', 'keyFigure'] as const)(
+    'does not apply sorting for %s charts',
+    (chartType) => {
+      const spy = jest.spyOn(sortingModule, 'applySorting');
+      createChart(container, multiDimDataset, { chartType, sorting: 'sum', showBurgerMenu: false });
+      expect(spy).not.toHaveBeenCalled();
+    },
+  );
+
+  it('does not apply sorting for scatterPlot charts', () => {
+    const spy = jest.spyOn(sortingModule, 'applySorting');
+    createChart(container, selectableScatterDataset, { chartType: 'scatterPlot', sorting: 'sum', showBurgerMenu: false });
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it('does not apply sorting for map charts', async () => {
+    const spy = jest.spyOn(sortingModule, 'applySorting');
+    const provider = jest.fn().mockResolvedValue(mockGeoJson);
+    createChart(container, geoDataset, { chartType: 'map', mapProvider: provider, sorting: 'sum', showBurgerMenu: false });
+    await Promise.resolve();
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it('renders bars in original dataset order without sorting', () => {
+    Object.defineProperty(container, 'clientWidth', { value: 600, configurable: true });
+    Object.defineProperty(container, 'clientHeight', { value: 400, configurable: true });
+    createChart(container, validDataset, { chartType: 'verticalBar', showBurgerMenu: false });
+    const heights = Array.from(container.querySelectorAll<SVGRectElement>('.jsc-bar')).map(r => parseFloat(r.getAttribute('height') ?? '0'));
+    expect(heights[0]).toBeLessThan(heights[1]);
+    expect(heights[1]).toBeLessThan(heights[2]);
+  });
+});
+
+describe('selectable non-categorical renderers', () => {
+  it('maps scatter series[1] to X and series[0] to Y', () => {
+    createChart(container, selectableScatterDataset, { chartType: 'scatterPlot' });
+
+    const points = Array.from(container.querySelectorAll<SVGCircleElement>('.jsc-scatter-point'));
+    const firstPoint = points[0];
+    expect(firstPoint).not.toBeNull();
+    expect(firstPoint?.getAttribute('aria-label')).toContain('Y: 10');
+    expect(firstPoint?.getAttribute('aria-label')).toContain('X: 1');
+  });
+
+  it('filters scatter observations', () => {
+    createChart(
+      container,
+      selectableScatterDataset,
+      { chartType: 'scatterPlot' },
+      { region: ['tre'] },
+    );
+
+    expect(container.querySelectorAll('.jsc-scatter-point')).toHaveLength(1);
+  });
+
+  it('filters pyramid categories', () => {
+    createChart(
+      container,
+      selectablePyramidDataset,
+      { chartType: 'pyramid' },
+      { age: ['adult'] },
+    );
+
+    expect(container.querySelectorAll('.jsc-bar')).toHaveLength(2);
+  });
+
+  it('uses the selected value for a key figure', () => {
+    createChart(
+      container,
+      selectableKeyFigureDataset,
+      { chartType: 'keyFigure' },
+      { year: ['2024'] },
+    );
+
+    expect(container.querySelector('.jsc-key-figure-value')?.textContent).toBe('20');
+  });
+
+  it('uses the default value for a key figure when the current selection is empty', () => {
+    createChart(
+      container,
+      selectableKeyFigureDataset,
+      { chartType: 'keyFigure', defaultSelectableSelections: { year: ['2023'] } },
+      { year: [] },
+    );
+
+    expect(container.querySelector('.jsc-key-figure-value')?.textContent).toBe('10');
+  });
+
+  it('renders an explicit error when an empty selection has no default', () => {
+    createChart(container, selectableKeyFigureDataset, { chartType: 'keyFigure' }, { year: [] });
+
+    expect(container.querySelector('.jsc-error')?.textContent).toContain('No selections were provided for dimension: "year"');
+  });
+
+  it('trusts an explicit scatter type with selections on its metric dimension', () => {
+    createChart(container, selectableScatterDataset, { chartType: 'scatterPlot' }, { metric: ['x'] });
+
+    expect(container.querySelector('.jsc-error')).toBeNull();
+  });
+
+  it('trusts an explicit pyramid type with selections on its split dimension', () => {
+    createChart(container, selectablePyramidDataset, { chartType: 'pyramid' }, { sex: ['female'] });
+
+    expect(container.querySelector('.jsc-error')).toBeNull();
+  });
+});
+
 describe('error containment', () => {
-  it('renders error div when renderer throws (bad xDimension)', () => {
-    // Force line chart with a non-existent xDimension → transformDataset throws
+  it('allows an explicit layout to omit a multi-value dimension', () => {
     createChart(container, validDataset, {
       chartType: 'line',
-      xDimension: 'nonexistent_dim',
+      layout: { rows: [], columns: [] },
     });
-    const errDiv = container.querySelector('.jsc-error');
-    expect(errDiv).not.toBeNull();
-    expect(errDiv!.getAttribute('role')).toBe('alert');
+    expect(container.querySelector('.jsc-error')).toBeNull();
   });
 
   it('does not throw when renderer encounters an error', () => {
     expect(() => {
       createChart(container, validDataset, {
         chartType: 'line',
-        xDimension: 'nonexistent_dim',
+        layout: { rows: [], columns: [] },
       });
     }).not.toThrow();
   });
@@ -418,10 +769,11 @@ describe('auto header building', () => {
       dimension: {
         category: {
           label: 'Category',
-          category: {
-            index: ['a', 'b', 'c'],
-            label: { a: 'Alpha', b: 'Beta', c: 'Gamma' },
-          },
+          category:
+            {
+              index: ['a', 'b', 'c'],
+              label: { a: 'Alpha', b: 'Beta', c: 'Gamma' },
+            },
         },
       },
       value: [10, 20, 30],
@@ -465,7 +817,7 @@ describe('setChartType persistence and override', () => {
   it('destroys previous renderer and shows error on invalid dataset update', () => {
     const instance = createChart(container, validDataset, { chartType: 'table' });
     expect(container.querySelector('table.jsc-table')).not.toBeNull();
-    instance.update({} as any);
+    instance.update({} as unknown as JsonStatDataset);
     expect(container.querySelector('table.jsc-table')).toBeNull();
     expect(container.querySelector('.jsc-error')).not.toBeNull();
   });
@@ -628,6 +980,51 @@ describe('axis titles after update', () => {
   });
 });
 
+describe('unit footer visibility', () => {
+  const datasetWithUnit: JsonStatDataset = {
+    id: ['ContVar', 'Year'],
+    size: [1, 3],
+    dimension: {
+      ContVar: {
+        label: 'Measure',
+        category: {
+          index: ['POP'],
+          label: { POP: 'Population' },
+          unit: { POP: { label: 'persons', decimals: 0 } },
+        },
+      },
+      Year: {
+        label: 'Year',
+        category: {
+          index: ['2020', '2021', '2022'],
+          label: { '2020': '2020', '2021': '2021', '2022': '2022' },
+        },
+      },
+    },
+    value: [100, 200, 300],
+    role: { metric: ['ContVar'], time: ['Year'] },
+  };
+
+  it('does not add the unit to the footer by default', () => {
+    Object.defineProperty(container, 'clientWidth', { value: 600, configurable: true });
+    Object.defineProperty(container, 'clientHeight', { value: 400, configurable: true });
+    createChart(container, datasetWithUnit, { chartType: 'line' });
+
+    expect(container.querySelector('.jsc-footer-unit')).toBeNull();
+    expect(container.querySelector('.jsc-axis-title-y')).not.toBeNull();
+  });
+
+  it('adds the unit to the footer when showUnit is enabled', () => {
+    Object.defineProperty(container, 'clientWidth', { value: 600, configurable: true });
+    Object.defineProperty(container, 'clientHeight', { value: 400, configurable: true });
+    createChart(container, datasetWithUnit, { chartType: 'line', showUnit: true });
+
+    const footerTexts = Array.from(container.querySelectorAll('.jsc-footer-text'))
+      .map(element => element.textContent);
+    expect(footerTexts).toContain('Unit: persons');
+  });
+});
+
 // --- Key figure datasets ---
 
 const keyFigureDataset: JsonStatDataset = {
@@ -690,27 +1087,25 @@ describe('keyFigure chart type', () => {
     expect(container.querySelector('.jsc-key-figure')).not.toBeNull();
   });
 
-  it('keyFigure falls back to table for multi-cell dataset', () => {
+  it('honors an explicit keyFigure for a multi-cell dataset', () => {
     const instance = createChart(container, multiCellDataset, { chartType: 'keyFigure' });
-    expect(container.querySelector('table.jsc-table')).not.toBeNull();
-    expect(container.querySelector('.jsc-key-figure')).toBeNull();
-    expect(instance.getChartType()).toBe('table');
+    expect(container.querySelector('.jsc-key-figure')).not.toBeNull();
+    expect(instance.getChartType()).toBe('keyFigure');
   });
 
-  it('getChartType() returns table when keyFigure is forced on multi-cell data', () => {
+  it('getChartType() returns keyFigure when forced on multi-cell data', () => {
     const instance = createChart(container, multiCellDataset, { chartType: 'keyFigure' });
-    expect(instance.getChartType()).toBe('table');
+    expect(instance.getChartType()).toBe('keyFigure');
   });
 
-  it('setChartType(keyFigure) on multi-cell dataset falls back to table', () => {
+  it('setChartType(keyFigure) honors the runtime override on multi-cell data', () => {
     const instance = createChart(container, multiCellDataset, { chartType: 'table' });
     instance.setChartType('keyFigure');
-    expect(instance.getChartType()).toBe('table');
-    expect(container.querySelector('table.jsc-table')).not.toBeNull();
-    expect(container.querySelector('.jsc-key-figure')).toBeNull();
+    expect(instance.getChartType()).toBe('keyFigure');
+    expect(container.querySelector('.jsc-key-figure')).not.toBeNull();
   });
 
-  it('keyFigure on zero-dimension dataset falls back to table', () => {
+  it('rejects a zero-dimension dataset before explicit chart resolution', () => {
     const zeroDimDataset: JsonStatDataset = {
       version: '2.0',
       class: 'dataset',
@@ -721,6 +1116,7 @@ describe('keyFigure chart type', () => {
     };
     const instance = createChart(container, zeroDimDataset, { chartType: 'keyFigure' });
     expect(instance.getChartType()).toBe('table');
+    expect(container.querySelector('.jsc-error')).not.toBeNull();
   });
 
   it('keyFigure renders title and footer from metadata', () => {
@@ -750,6 +1146,43 @@ describe('mapProvider', () => {
     createChart(container, geoDataset, { chartType: 'map', mapProvider: provider });
     await Promise.resolve();
     expect(provider).toHaveBeenCalledTimes(1);
+    expect(provider).toHaveBeenCalledWith('Region', ['MK01', 'MK02', 'MK03'], expect.any(AbortSignal), '2023');
+  });
+
+  test('calls mapProvider with selected geo codes', async () => {
+    const provider = jest.fn().mockResolvedValue(null);
+    createChart(
+      container,
+      geoDataset,
+      { chartType: 'map', mapProvider: provider },
+      { Region: ['MK02'] },
+    );
+    await Promise.resolve();
+    expect(provider).toHaveBeenCalledWith('Region', ['MK02'], expect.any(AbortSignal), '2023');
+  });
+
+  test('uses the default time selection when the current selection is empty', async () => {
+    const datasetWithMultipleYears: JsonStatDataset = {
+      ...geoDataset,
+      size: [2, 3],
+      dimension: {
+        ...geoDataset.dimension,
+        Vuosi: {
+          ...geoDataset.dimension.Vuosi,
+          category: { index: ['2023', '2024'], label: { '2023': '2023', '2024': '2024' } },
+        },
+      },
+      value: [100, 200, 300, 400, 500, 600],
+    };
+    const provider = jest.fn().mockResolvedValue(null);
+    createChart(
+      container,
+      datasetWithMultipleYears,
+      { chartType: 'map', mapProvider: provider, defaultSelectableSelections: { Vuosi: ['2023'] } },
+      { Vuosi: [] },
+    );
+
+    await Promise.resolve();
     expect(provider).toHaveBeenCalledWith('Region', ['MK01', 'MK02', 'MK03'], expect.any(AbortSignal), '2023');
   });
 
@@ -828,6 +1261,27 @@ describe('mapProvider', () => {
     await Promise.resolve();
     await Promise.resolve();
     expect(container.innerHTML).toBe('');
+  });
+
+  test('destroy() cancels the chart-loaded announcement timer', async () => {
+    jest.useFakeTimers();
+    const provider = jest.fn().mockResolvedValue(mockGeoJson);
+    const instance = createChart(container, geoDataset, {
+      chartType: 'map',
+      locale: 'fi',
+      mapProvider: provider,
+      map: { geoIdProperty: 'natcode', geoCodeMapper: code => code.replace(/^MK/, '') },
+    });
+
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(container.querySelector('[role="status"]')?.textContent).toBe('Kuvio ladattu');
+    expect(jest.getTimerCount()).toBeGreaterThan(0);
+
+    instance.destroy();
+
+    expect(jest.getTimerCount()).toBe(0);
   });
 
   test('update() cancels pending provider and starts new resolution', async () => {

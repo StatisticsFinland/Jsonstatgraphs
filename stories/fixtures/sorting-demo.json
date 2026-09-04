@@ -1,0 +1,85 @@
+{
+  "version": "2.0",
+  "class": "dataset",
+  "id": [
+    "tuoteryhma",
+    "markkina",
+    "tiedot"
+  ],
+  "label": "Sales by product group and market, 2024",
+  "source": "Example Institute, trade statistics",
+  "updated": "2025-01-01T08:00:00",
+  "dimension": {
+    "tuoteryhma": {
+      "label": "Product group",
+      "category": {
+        "index": [
+          "A",
+          "B",
+          "C",
+          "D",
+          "E"
+        ],
+        "label": {
+          "A": "Product A",
+          "B": "Product B",
+          "C": "Product C",
+          "D": "Product D",
+          "E": "Product E"
+        }
+      }
+    },
+    "markkina": {
+      "label": "Market",
+      "category": {
+        "index": [
+          "domestic",
+          "export"
+        ],
+        "label": {
+          "domestic": "Domestic market",
+          "export": "Export market"
+        }
+      }
+    },
+    "tiedot": {
+      "label": "Information",
+      "category": {
+        "index": [
+          "maara_meur"
+        ],
+        "label": {
+          "maara_meur": "Sales (EUR million)"
+        },
+        "unit": {
+          "maara_meur": {
+            "label": "EUR million",
+            "decimals": 0
+          }
+        }
+      }
+    }
+  },
+  "value": [
+    10,
+    15,
+    50,
+    5,
+    30,
+    45,
+    40,
+    25,
+    20,
+    30
+  ],
+  "size": [
+    5,
+    2,
+    1
+  ],
+  "role": {
+    "metric": [
+      "tiedot"
+    ]
+  }
+}

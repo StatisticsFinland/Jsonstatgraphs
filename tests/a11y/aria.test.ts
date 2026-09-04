@@ -16,14 +16,25 @@ describe('applyChartAriaAttributes', () => {
     container.remove();
   });
 
-  it('sets role to figure', () => {
-    applyChartAriaAttributes(container, 'My Chart');
-    expect(container.getAttribute('role')).toBe('figure');
+  it('sets role to region', () => {
+    applyChartAriaAttributes(container, 'My Chart', 'line');
+    expect(container.getAttribute('role')).toBe('region');
   });
 
   it('sets aria-label', () => {
-    applyChartAriaAttributes(container, 'Population by Region');
+    applyChartAriaAttributes(container, 'Population by Region', 'verticalBar');
     expect(container.getAttribute('aria-label')).toBe('Population by Region');
+  });
+
+  it('sets a localized chart type description', () => {
+    applyChartAriaAttributes(container, 'Population', 'scatterPlot');
+    expect(container.getAttribute('aria-roledescription')).toBe('Scatter plot');
+
+    applyChartAriaAttributes(container, 'Väestö', 'pyramid', 'fi');
+    expect(container.getAttribute('aria-roledescription')).toBe('Pyramidikaavio');
+
+    applyChartAriaAttributes(container, 'Befolkning', 'table', 'sv');
+    expect(container.getAttribute('aria-roledescription')).toBe('Datatabell');
   });
 });
 
@@ -50,6 +61,11 @@ describe('applySeriesGroupAttributes', () => {
     applySeriesGroupAttributes(group, 'Revenue', 1);
     expect(group.getAttribute('aria-label')).toContain('Revenue');
   });
+
+  it('localizes the series label', () => {
+    applySeriesGroupAttributes(group, 'Myynti', 0, 'fi');
+    expect(group.getAttribute('aria-label')).toBe('Sarja: Myynti');
+  });
 });
 
 describe('applyDataPointAttributes', () => {
@@ -71,14 +87,16 @@ describe('applyDataPointAttributes', () => {
     expect(rect.getAttribute('role')).toBe('listitem');
   });
 
-  it('sets aria-roledescription to data point', () => {
+  it('sets aria-roledescription to localized data point', () => {
     applyDataPointAttributes(rect, 'Q1', '1000');
-    expect(rect.getAttribute('aria-roledescription')).toBe('data point');
+    expect(rect.getAttribute('aria-roledescription')).toBe('Data point');
+    applyDataPointAttributes(rect, 'Q1', '1000', 'fi');
+    expect(rect.getAttribute('aria-roledescription')).toBe('Datapiste');
   });
 
   it('sets aria-label with label and value', () => {
     applyDataPointAttributes(rect, 'Q1', '1000');
-    expect(rect.getAttribute('aria-label')).toBe('Q1: 1000');
+    expect(rect.getAttribute('aria-label')).toBe('Q1, 1000');
   });
 
   it('handles special characters in aria-label safely', () => {
@@ -86,7 +104,7 @@ describe('applyDataPointAttributes', () => {
     const specialValue = 'val>0';
     applyDataPointAttributes(rect, specialLabel, specialValue);
     // setAttribute stores the raw string; the browser escapes on serialization
-    expect(rect.getAttribute('aria-label')).toBe(`${specialLabel}: ${specialValue}`);
+    expect(rect.getAttribute('aria-label')).toBe(`${specialLabel}, ${specialValue}`);
   });
 
   it('works with both SVG and HTML elements', () => {
@@ -94,10 +112,10 @@ describe('applyDataPointAttributes', () => {
     document.body.appendChild(div);
 
     applyDataPointAttributes(rect, 'SVG', '42');
-    expect(rect.getAttribute('aria-label')).toBe('SVG: 42');
+    expect(rect.getAttribute('aria-label')).toBe('SVG, 42');
 
     applyDataPointAttributes(div, 'HTML', '99');
-    expect(div.getAttribute('aria-label')).toBe('HTML: 99');
+    expect(div.getAttribute('aria-label')).toBe('HTML, 99');
 
     div.remove();
   });

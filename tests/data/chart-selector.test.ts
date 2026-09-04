@@ -375,7 +375,7 @@ describe('convenience functions', () => {
   });
 
   test('getChartTypesForDataset returns all invalid for bad dataset', () => {
-    const badDataset = { version: '2.0' } as any;
+    const badDataset = { version: '2.0' } as unknown as JsonStatDataset;
     const results = getChartTypesForDataset(badDataset);
     expect(results.length).toBeGreaterThan(0);
     expect(results.every(r => !r.valid)).toBe(true);
@@ -465,7 +465,9 @@ describe('convenience functions', () => {
   });
 
   test('selectChartTypeForDataset returns table for invalid dataset', () => {
-    const result = selectChartTypeForDataset({ version: '2.0' } as any);
+    const result = selectChartTypeForDataset(
+      { version: '2.0' } as unknown as JsonStatDataset,
+    );
     expect(result).toBe('table');
   });
 });

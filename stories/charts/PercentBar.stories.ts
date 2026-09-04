@@ -3,12 +3,17 @@ import { renderChart } from '../helpers/renderChart';
 import { buildConfig } from '../helpers/buildConfig';
 import { themeArgTypes, themeArgs } from '../helpers/sharedArgs';
 import multiSeriesData from '../fixtures/multi-series.json';
+import percentBarSelectableData from '../fixtures/percent-bar-selectable.json';
 import tableWideData from '../fixtures/table-wide.json';
+import sortingDemoData from '../fixtures/sorting-demo.json';
+import { getSelectableStoryInputs } from '../helpers/selectables';
 
 const meta: Meta = {
   title: 'Charts/Percent Bar',
   argTypes: {
     ...themeArgTypes,
+    // Bar charts always anchor the value axis at zero — cutValueAxis has no effect here.
+    cutValueAxis: { table: { disable: true } },
   },
   args: {
     ...themeArgs,
@@ -36,6 +41,25 @@ export const Horizontal: StoryObj = {
     }),
 };
 
+export const SelectableYear: StoryObj = {
+  args: {
+    selectableSelections: {
+      year: ['2024'],
+    },
+  },
+  render: (args) =>
+    renderChart({
+      dataset: percentBarSelectableData,
+      config: buildConfig(args, {
+        chartType: 'percentVerticalBar',
+        layout: { rows: ['sex'], columns: ['age'] },
+      }),
+      ...getSelectableStoryInputs(args),
+      width: args.width as string,
+      height: args.height as string | undefined,
+    }),
+};
+
 export const VerticalManySeries: StoryObj = {
   render: (args) =>
     renderChart({
@@ -51,6 +75,20 @@ export const HorizontalManySeries: StoryObj = {
     renderChart({
       dataset: tableWideData,
       config: buildConfig(args, { chartType: 'percentHorizontalBar' }),
+      width: args.width as string,
+      height: args.height as string | undefined,
+    }),
+};
+
+export const HorizontalSortedByReferenceSeries: StoryObj = {
+  args: { sorting: 'export' },
+  render: (args) =>
+    renderChart({
+      dataset: sortingDemoData,
+      config: buildConfig(args, {
+        chartType: 'percentHorizontalBar',
+        layout: { rows: ['markkina'], columns: ['tuoteryhma'] },
+      }),
       width: args.width as string,
       height: args.height as string | undefined,
     }),

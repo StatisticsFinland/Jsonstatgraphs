@@ -7,6 +7,8 @@ import { bindInteractions, DataElementInfo, BoundInteractions } from './bindInte
 import { applyChartAriaAttributes, applySeriesGroupAttributes } from '../a11y/aria';
 import { getSeriesColor } from '../theme/palette';
 import { resolveTheme } from '../theme/theme';
+import { ensureDefs, getPatternFillUrl, injectPatternDefs } from '../a11y/patterns';
+import { captureChartFocusBeforeRedraw } from '../interaction/keyboard';
 
 export interface StackedBarChartConfig {
   container: HTMLElement;
@@ -124,6 +126,9 @@ export function createStackedBarChart(chartConfig: StackedBarChartConfig): Stack
       theme: lastTheme!,
       locale: config.locale,
       chartData: visibleData,
+      pointAxis: resolvedChartType === 'stackedHorizontalBar' || resolvedChartType === 'percentHorizontalBar'
+        ? 'horizontal'
+        : 'vertical',
       ariaLabel: config.ariaLabel,
       caption: config.title ?? config.ariaLabel,
     });
@@ -148,11 +153,18 @@ export function createStackedBarChart(chartConfig: StackedBarChartConfig): Stack
   });
 
   function drawBars(ctx: ScaffoldRenderContext): void {
+    captureChartFocusBeforeRedraw(container);
     ctx.svg.select('.jsc-plot-area').selectAll('*').remove();
 
     const { svg, theme } = ctx;
     const plotAreaGroup = svg.select<SVGGElement>('.jsc-plot-area');
+    const interactionGroup = plotAreaGroup.append('g');
     const elements: DataElementInfo[] = [];
+
+    if (config.accessibilityMode) {
+      const defs = ensureDefs(svg);
+      injectPatternDefs(defs, theme, data.series.length);
+    }
 
     const visibleData = getVisibleData();
     const visibleIndices = data.series
@@ -189,12 +201,12 @@ export function createStackedBarChart(chartConfig: StackedBarChartConfig): Stack
         const origIdx = visibleIndices[si];
         const color = getSeriesColor(theme, origIdx);
 
-        const seriesGroup = plotAreaGroup
+        const seriesGroup = interactionGroup
           .append('g')
           .attr('class', `jsc-series jsc-series-${origIdx}`) as unknown as import('d3-selection').Selection<SVGGElement, unknown, null, undefined>;
 
         const seriesGroupEl = seriesGroup.node() as SVGGElement;
-        applySeriesGroupAttributes(seriesGroupEl, series.name, origIdx);
+        applySeriesGroupAttributes(seriesGroupEl, series.name, origIdx, config.locale);
 
         for (let catIdx = 0; catIdx < layer.length; catIdx++) {
           const [y0, y1] = layer[catIdx];
@@ -211,7 +223,7 @@ export function createStackedBarChart(chartConfig: StackedBarChartConfig): Stack
             .attr('y', yScale(cat)!)
             .attr('width', xScale(y1) - xScale(y0))
             .attr('height', yScale.bandwidth())
-            .attr('fill', color)
+            .attr('fill', config.accessibilityMode ? getPatternFillUrl(origIdx) : color)
             .attr('stroke', theme.colorBorder)
             .attr('stroke-width', '1')
             .attr('tabindex', '0');
@@ -229,6 +241,10 @@ export function createStackedBarChart(chartConfig: StackedBarChartConfig): Stack
             element: rectEl,
             seriesIndex: origIdx,
             pointIndex: catIdx,
+            pointKey: cat,
+            navigationGroupIndex: catIdx,
+            navigationPointIndex: origIdx,
+            navigationPointKey: `${cat}:${series.code}`,
             category: originalPoint.label,
             seriesName: series.name,
             value: rawValue,
@@ -247,12 +263,12 @@ export function createStackedBarChart(chartConfig: StackedBarChartConfig): Stack
         const origIdx = visibleIndices[si];
         const color = getSeriesColor(theme, origIdx);
 
-        const seriesGroup = plotAreaGroup
+        const seriesGroup = interactionGroup
           .append('g')
           .attr('class', `jsc-series jsc-series-${origIdx}`) as unknown as import('d3-selection').Selection<SVGGElement, unknown, null, undefined>;
 
         const seriesGroupEl = seriesGroup.node() as SVGGElement;
-        applySeriesGroupAttributes(seriesGroupEl, series.name, origIdx);
+        applySeriesGroupAttributes(seriesGroupEl, series.name, origIdx, config.locale);
 
         for (let catIdx = 0; catIdx < layer.length; catIdx++) {
           const [y0, y1] = layer[catIdx];
@@ -269,7 +285,7 @@ export function createStackedBarChart(chartConfig: StackedBarChartConfig): Stack
             .attr('y', yScale(y1))
             .attr('width', xScale.bandwidth())
             .attr('height', yScale(y0) - yScale(y1))
-            .attr('fill', color)
+            .attr('fill', config.accessibilityMode ? getPatternFillUrl(origIdx) : color)
             .attr('stroke', theme.colorBorder)
             .attr('stroke-width', '1')
             .attr('tabindex', '0');
@@ -287,6 +303,10 @@ export function createStackedBarChart(chartConfig: StackedBarChartConfig): Stack
             element: rectEl,
             seriesIndex: origIdx,
             pointIndex: catIdx,
+            pointKey: cat,
+            navigationGroupIndex: catIdx,
+            navigationPointIndex: -origIdx,
+            navigationPointKey: `${cat}:${series.code}`,
             category: originalPoint.label,
             seriesName: series.name,
             value: rawValue,
@@ -323,7 +343,7 @@ export function createStackedBarChart(chartConfig: StackedBarChartConfig): Stack
   });
 
   const ariaLabel = config.ariaLabel ?? (config.title ?? 'Stacked bar chart');
-  applyChartAriaAttributes(container, ariaLabel);
+  applyChartAriaAttributes(container, ariaLabel, resolvedChartType, config.locale);
 
   scaffold.render();
 
@@ -335,7 +355,7 @@ export function createStackedBarChart(chartConfig: StackedBarChartConfig): Stack
         config = newConfig;
       }
       const updatedAriaLabel = config.ariaLabel ?? (config.title ?? 'Stacked bar chart');
-      applyChartAriaAttributes(container, updatedAriaLabel);
+      applyChartAriaAttributes(container, updatedAriaLabel, resolvedChartType, config.locale);
       scaffold.update({
         mode: 'categorical' as const,
         container,
@@ -360,6 +380,7 @@ export function createStackedBarChart(chartConfig: StackedBarChartConfig): Stack
       scaffold.destroy();
       container.removeAttribute('role');
       container.removeAttribute('aria-label');
+      container.removeAttribute('aria-roledescription');
     },
   };
 }

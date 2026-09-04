@@ -8,7 +8,7 @@ export default defineConfig({
   build: {
     lib: {
       entry: 'src/index.ts',
-      name: 'JsonStatChart',
+      name: 'Jsonstatgraphs',
       formats: ['es'],
       fileName: () => 'index.js',
     },

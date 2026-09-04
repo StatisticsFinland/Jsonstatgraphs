@@ -2,15 +2,6 @@ import { createPieChart } from '../../src/charts/pie';
 import { ChartData, ChartConfig } from '../../src/types';
 import { DEFAULT_THEME } from '../../src/theme/defaults';
 
-beforeAll(() => {
-  (globalThis as any).ResizeObserver = class {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
-  };
-  (window as any).matchMedia = jest.fn().mockReturnValue({ matches: false });
-});
-
 const pieData: ChartData = {
   series: [{
     name: 'Population',
@@ -50,7 +41,46 @@ describe('createPieChart', () => {
     createPieChart({ container, data: pieData, config: defaultConfig });
     const slices = container.querySelectorAll('.jsc-slice');
     // 3 non-null points (Helsinki, Tampere, Turku); null Oulu excluded
-    expect(slices.length).toBe(3);
+    expect(slices).toHaveLength(3);
+  });
+
+  it('does not render scaffold grid lines behind the pie', () => {
+    createPieChart({ container, data: pieData, config: defaultConfig });
+    expect(container.querySelector('.jsc-grid')).toBeNull();
+  });
+
+  it('keeps every callout connector point clear of its label text', () => {
+    createPieChart({ container, data: pieData, config: defaultConfig });
+    const lines = container.querySelectorAll<SVGPolylineElement>('.jsc-pie-callout-line');
+    const labels = container.querySelectorAll<SVGTextElement>('.jsc-pie-callout-label');
+
+    expect(lines).toHaveLength(labels.length);
+    lines.forEach((line, index) => {
+      const label = labels[index];
+      const labelX = Number(label.getAttribute('x'));
+      const pointXs = (line.getAttribute('points') ?? '')
+        .trim()
+        .split(/\s+/)
+        .map(point => Number(point.split(',')[0]));
+
+      if (label.getAttribute('text-anchor') === 'start') {
+        expect(Math.max(...pointXs)).toBeLessThanOrEqual(labelX - 12);
+      } else {
+        expect(Math.min(...pointXs)).toBeGreaterThanOrEqual(labelX + 12);
+      }
+    });
+  });
+
+  it('uses the available plot width for a mobile pie without clipped callouts', () => {
+    Object.defineProperty(container, 'clientWidth', { value: 320, configurable: true });
+    createPieChart({ container, data: pieData, config: defaultConfig });
+
+    const firstSlicePath = container.querySelector<SVGPathElement>('.jsc-slice')?.getAttribute('d') ?? '';
+    const radius = Number(firstSlicePath.match(/^M0,-([\d.]+)A/)?.[1]);
+
+    expect(radius).toBeGreaterThan(100);
+    expect(container.querySelectorAll('.jsc-pie-callout-label')).toHaveLength(0);
+    expect(container.querySelectorAll('.jsc-legend-item')).toHaveLength(3);
   });
 
   it('null values are excluded from slices', () => {
@@ -70,7 +100,7 @@ describe('createPieChart', () => {
     };
     createPieChart({ container, data: dataWithMoreNulls, config: defaultConfig });
     const slices = container.querySelectorAll('.jsc-slice');
-    expect(slices.length).toBe(2);
+    expect(slices).toHaveLength(2);
   });
 
   it('all slices have a fill color', () => {
@@ -84,9 +114,9 @@ describe('createPieChart', () => {
     }
   });
 
-  it('ARIA: container has role="figure"', () => {
+  it('ARIA: container has role="region"', () => {
     createPieChart({ container, data: pieData, config: defaultConfig });
-    expect(container.getAttribute('role')).toBe('figure');
+    expect(container.getAttribute('role')).toBe('region');
   });
 
   it('ARIA: slices have role="listitem"', () => {
@@ -104,6 +134,24 @@ describe('createPieChart', () => {
     for (const slice of slices) {
       expect(slice.getAttribute('aria-label')).not.toBeNull();
     }
+  });
+
+  it('moves focus between slices inside the series list', () => {
+    createPieChart({ container, data: pieData, config: defaultConfig });
+    const list = container.querySelector('[role="list"]');
+    const slices = container.querySelectorAll<SVGPathElement>('.jsc-slice');
+
+    expect(container.querySelector('[role="application"]')).toBeNull();
+    expect(list?.contains(slices[0])).toBe(true);
+
+    slices[0].focus();
+    slices[0].dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'ArrowRight',
+      bubbles: true,
+      cancelable: true,
+    }));
+
+    expect(document.activeElement).toBe(slices[1]);
   });
 
   it('slices use theme.colorSurface for stroke', () => {
@@ -151,17 +199,17 @@ describe('createPieChart', () => {
   it('toggling a slice off reflows the pie — slice is removed from DOM', () => {
     createPieChart({ container, data: pieData, config: defaultConfig });
 
-    expect(container.querySelectorAll('.jsc-slice').length).toBe(3);
+    expect(container.querySelectorAll('.jsc-slice')).toHaveLength(3);
 
     // Legend renders one button per non-null point for pie charts
     const legendButtons = container.querySelectorAll('.jsc-legend-item');
-    expect(legendButtons.length).toBe(3);
+    expect(legendButtons).toHaveLength(3);
 
     // Toggle off slice 0 (Helsinki)
     (legendButtons[0] as HTMLElement).click();
 
     // Only 2 slices should be in the DOM — no hidden display:none remnants
-    expect(container.querySelectorAll('.jsc-slice').length).toBe(2);
+    expect(container.querySelectorAll('.jsc-slice')).toHaveLength(2);
   });
 
   it('toggling a slice off then on restores all slices', () => {
@@ -169,10 +217,10 @@ describe('createPieChart', () => {
 
     const legendButtons = container.querySelectorAll('.jsc-legend-item');
     (legendButtons[0] as HTMLElement).click(); // toggle off
-    expect(container.querySelectorAll('.jsc-slice').length).toBe(2);
+    expect(container.querySelectorAll('.jsc-slice')).toHaveLength(2);
 
     (container.querySelectorAll('.jsc-legend-item')[0] as HTMLElement).click(); // toggle on
-    expect(container.querySelectorAll('.jsc-slice').length).toBe(3);
+    expect(container.querySelectorAll('.jsc-slice')).toHaveLength(3);
   });
 
   it('update() resets hidden slices so all slices reappear', () => {
@@ -180,13 +228,13 @@ describe('createPieChart', () => {
 
     const legendButtons = container.querySelectorAll('.jsc-legend-item');
     (legendButtons[0] as HTMLElement).click(); // hide slice 0
-    expect(container.querySelectorAll('.jsc-slice').length).toBe(2);
+    expect(container.querySelectorAll('.jsc-slice')).toHaveLength(2);
 
     instance.update(pieData);
-    expect(container.querySelectorAll('.jsc-slice').length).toBe(3);
+    expect(container.querySelectorAll('.jsc-slice')).toHaveLength(3);
   });
 
-  it('handles nulls in the middle correctly for screen reader data', () => {
+  it('does not create a hidden table for data containing nulls', () => {
     const dataWithNullInMiddle: ChartData = {
       series: [{
         name: 'Values',
@@ -202,14 +250,7 @@ describe('createPieChart', () => {
     };
     createPieChart({ container, data: dataWithNullInMiddle, config: defaultConfig });
     const srTable = container.querySelector('table.jsc-sr-only');
-    expect(srTable).not.toBeNull();
-    const rows = srTable!.querySelectorAll('tbody tr');
-    // Only 2 non-null rows: Alpha and Charlie
-    expect(rows.length).toBe(2);
-    const firstRowLabel = rows[0].querySelector('th, td')?.textContent;
-    const secondRowLabel = rows[1].querySelector('th, td')?.textContent;
-    expect(firstRowLabel).toContain('Alpha');
-    expect(secondRowLabel).toContain('Charlie');
+    expect(srTable).toBeNull();
   });
 
   it('remaining slices preserve their original colors after a toggle', () => {
@@ -227,5 +268,17 @@ describe('createPieChart', () => {
     const slicesAfter = container.querySelectorAll<SVGPathElement>('.jsc-slice');
     expect(slicesAfter[0].getAttribute('fill')).toBe(fillSlice1Before);
     expect(slicesAfter[1].getAttribute('fill')).toBe(fillSlice2Before);
+  });
+
+  it('accessibility mode applies patterned fills to slices', () => {
+    createPieChart({
+      container,
+      data: pieData,
+      config: { ...defaultConfig, accessibilityMode: true },
+    });
+
+    const firstSlice = container.querySelector('.jsc-slice') as SVGPathElement;
+    expect(firstSlice).not.toBeNull();
+    expect(firstSlice.getAttribute('fill')).toContain('url(#jsc-pattern-');
   });
 });

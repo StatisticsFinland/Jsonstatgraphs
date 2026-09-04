@@ -2,17 +2,6 @@ import { ChartScaffold, ChartScaffoldConfig, CategoricalScaffoldConfig } from '.
 import { getTickPositions } from '../../src/layout/tick-positions';
 import { ZoneType } from '../../src/types';
 
-// Mock ResizeObserver (not available in jsdom)
-class MockResizeObserver {
-  observe() {}
-  unobserve() {}
-  disconnect() {}
-}
-(globalThis as any).ResizeObserver = MockResizeObserver;
-
-// Mock matchMedia (not available in jsdom)
-(window as any).matchMedia = jest.fn().mockReturnValue({ matches: false });
-
 function createContainer(width = 800, height = 400): HTMLDivElement {
   const div = document.createElement('div');
   document.body.appendChild(div);
@@ -35,6 +24,57 @@ function createScaffoldConfig(overrides: Partial<CategoricalScaffoldConfig> = {}
 }
 
 describe('ChartScaffold', () => {
+  describe('runtime text spacing', () => {
+    it('rerenders when inherited text metrics change', async () => {
+      jest.useFakeTimers();
+      const container = createContainer(500, 400);
+      const scaffold = new ChartScaffold(createScaffoldConfig({ container }));
+      const renderSpy = jest.fn();
+      scaffold.onRender(renderSpy);
+      scaffold.render();
+      expect(renderSpy).toHaveBeenCalledTimes(1);
+
+      const style = document.createElement('style');
+      style.textContent = '.spaced-chart .jsc-axis-x text { letter-spacing: 0.12em; line-height: 1.5; }';
+      document.head.appendChild(style);
+      container.classList.add('spaced-chart');
+      await Promise.resolve();
+      jest.advanceTimersByTime(50);
+
+      expect(renderSpy).toHaveBeenCalledTimes(2);
+
+      scaffold.destroy();
+      style.remove();
+      jest.useRealTimers();
+    });
+
+    it('rerenders resolved rem text sizes when the root font size changes', async () => {
+      jest.useFakeTimers();
+      document.documentElement.style.fontSize = '16px';
+      const container = createContainer(500, 400);
+      const scaffold = new ChartScaffold(createScaffoldConfig({
+        container,
+        config: { title: 'Scalable title', showHeader: true },
+      }));
+      const renderSpy = jest.fn();
+      scaffold.onRender(renderSpy);
+      scaffold.render();
+
+      expect(document.querySelector('.jsc-title')?.getAttribute('font-size')).toBe('16px');
+
+      document.documentElement.style.fontSize = '32px';
+      await Promise.resolve();
+      jest.advanceTimersByTime(50);
+
+      expect(renderSpy).toHaveBeenCalledTimes(2);
+      expect(document.querySelector('.jsc-title')?.getAttribute('font-size')).toBe('32px');
+
+      scaffold.destroy();
+      document.documentElement.style.fontSize = '';
+      jest.useRealTimers();
+    });
+  });
+
   afterEach(() => {
     document.body.innerHTML = '';
   });
@@ -52,6 +92,7 @@ describe('ChartScaffold', () => {
     scaffold.render();
     const svg = document.querySelector('svg.jsc-chart');
     expect(svg?.getAttribute('aria-hidden')).toBeNull();
+    expect(svg?.getAttribute('role')).toBe('none');
   });
 
   it('decorative SVG groups have aria-hidden="true"', () => {
@@ -73,6 +114,31 @@ describe('ChartScaffold', () => {
     expect(document.querySelector('.jsc-footer')?.getAttribute('aria-hidden')).toBeNull();
   });
 
+  it('reserves nested-config burger clearance without rendering a disabled header', () => {
+    const scaffold = new ChartScaffold(createScaffoldConfig({
+      config: { title: 'Hidden Title', showHeader: false, burgerMenuVisible: true },
+    }));
+    const context = scaffold.render();
+
+    expect(document.querySelector('.jsc-header')).toBeNull();
+    expect(context.plotArea.y).toBe(48);
+  });
+
+  it('wraps the header title before the burger menu', () => {
+    const scaffold = new ChartScaffold(createScaffoldConfig({
+      container: createContainer(240),
+      config: {
+        title: 'A very long chart heading',
+        showHeader: true,
+        burgerMenuVisible: true,
+      },
+    }));
+    scaffold.render();
+
+    expect(document.querySelectorAll('.jsc-title tspan')).toHaveLength(2);
+    expect(document.querySelector('.jsc-title')?.getAttribute('dominant-baseline')).toBe('middle');
+  });
+
   it('render() uses custom tick positions from getTickPositions', () => {
     const scaffold = new ChartScaffold(createScaffoldConfig({ valueRange: [0, 1000] }));
     const context = scaffold.render();
@@ -83,7 +149,21 @@ describe('ChartScaffold', () => {
     const expectedTicks = rawTicks.length >= 2 ? rawTicks : [0, paddedMax];
     const gridLines = document.querySelectorAll('.jsc-grid line');
     expect(gridLines.length).toBeGreaterThan(0);
-    expect(gridLines.length).toBe(expectedTicks.length);
+    expect(gridLines).toHaveLength(expectedTicks.length);
+  });
+
+  it('localizes numeric Y-axis labels', () => {
+    const scaffold = new ChartScaffold(createScaffoldConfig({
+      config: { locale: 'fi-FI' },
+      valueRange: [0, 50000],
+    }));
+    scaffold.render();
+
+    const labels = Array.from(document.querySelectorAll('.jsc-axis-y .tick text'))
+      .map((label) => label.textContent);
+    const expected = new Intl.NumberFormat('fi-FI').format(50000);
+    expect(labels).toContain(expected);
+    expect(labels).not.toContain('50,000');
   });
 
   it('render() applies fitted labels to band axis', () => {
@@ -97,6 +177,48 @@ describe('ChartScaffold', () => {
     scaffold.render();
     const tspans = document.querySelectorAll('.jsc-axis-x .tick text tspan');
     expect(tspans.length).toBeGreaterThan(0);
+    const visibleText = Array.from(document.querySelectorAll('.jsc-axis-x .tick text'));
+    expect(visibleText[0].getAttribute('text-anchor')).toBe('middle');
+    expect(visibleText.at(-1)?.getAttribute('text-anchor')).toBe('middle');
+  });
+
+  it('shortens and culls dense horizontal category labels', () => {
+    const categories = Array.from({ length: 30 }, (_, index) => `Category ${index} with an exceptionally long industry label that cannot fit`);
+    const scaffold = new ChartScaffold(createScaffoldConfig({
+      chartType: 'horizontalBar',
+      categories,
+      categoryLabels: categories,
+    }));
+    scaffold.render();
+
+    const labels = Array.from(document.querySelectorAll('.jsc-axis-y .tick text'));
+    const visibleLabels = labels.filter(label => (label as SVGTextElement).style.display !== 'none');
+    expect(visibleLabels.length).toBeLessThan(categories.length);
+    expect(visibleLabels.every(label => label.querySelectorAll('tspan').length === 1)).toBe(true);
+    expect(visibleLabels.every(label => (label.textContent ?? '').length < categories[0].length)).toBe(true);
+  });
+
+  it('keeps wrapped horizontal labels when category bands have room', () => {
+    const categories = ['First category with a long descriptive label', 'Second category with a long descriptive label'];
+    const scaffold = new ChartScaffold(createScaffoldConfig({
+      container: createContainer(800, 600),
+      chartType: 'horizontalBar',
+      categories,
+      categoryLabels: categories,
+    }));
+    scaffold.render();
+
+    const visibleLabels = Array.from(document.querySelectorAll('.jsc-axis-y .tick text'))
+      .filter(label => (label as SVGTextElement).style.display !== 'none');
+    expect(visibleLabels).toHaveLength(2);
+    expect(visibleLabels.some(label => label.querySelectorAll('tspan').length > 1)).toBe(true);
+    expect(visibleLabels.every(label => (label.textContent ?? '').length >= categories[0].length - 5)).toBe(true);
+    expect(visibleLabels.every(label => label.getAttribute('dx') === null)).toBe(true);
+    expect(visibleLabels.every(label => label.querySelector('tspan')?.getAttribute('x') === '-9')).toBe(true);
+    const plotX = Number(document.querySelector('.jsc-plot-area')?.getAttribute('transform')?.match(/translate\(([^,]+)/)?.[1]);
+    const availableTextWidth = plotX - 16;
+    const renderedLines = Array.from(document.querySelectorAll('.jsc-axis-y .tick text tspan'));
+    expect(renderedLines.every(line => (line.textContent?.length ?? 0) * 8 <= availableTextWidth)).toBe(true);
   });
 
   it('render() renders legend overlay when seriesCount > 1', () => {
@@ -180,7 +302,7 @@ describe('ChartScaffold', () => {
     scaffold.render();
     scaffold.render();
     const legends = cfg.container.querySelectorAll('.jsc-legend');
-    expect(legends.length).toBe(1);
+    expect(legends).toHaveLength(1);
   });
 
   it('render() renders footer items', () => {
@@ -192,6 +314,28 @@ describe('ChartScaffold', () => {
     scaffold.render();
     const footerText = document.querySelector('.jsc-footer-text');
     expect(footerText).not.toBeNull();
+  });
+
+  it('wraps long footer values when the available chart width is narrow', () => {
+    const scaffold = new ChartScaffold(
+      createScaffoldConfig({
+        container: createContainer(240, 500),
+        config: {
+          footerItems: [{
+            label: 'Source:',
+            value: 'Statistics Finland regional accounts publication',
+            type: 'source',
+          }],
+        },
+      })
+    );
+
+    scaffold.render();
+
+    const footerLines = document.querySelectorAll('.jsc-footer-text');
+    expect(footerLines.length).toBeGreaterThan(1);
+    expect(document.querySelectorAll('.jsc-footer-label')).toHaveLength(1);
+    expect(document.querySelectorAll('.jsc-footer-value').length).toBeGreaterThan(1);
   });
 
   it('x-axis tick lines have y2 = 8 (X_AXIS_TICK_SIZE)', () => {
@@ -243,6 +387,21 @@ describe('ChartScaffold', () => {
       expect(path.getAttribute('stroke')).toBe('#767676');
     });
   });
+
+  it.each(['verticalBar', 'horizontalBar'] as const)(
+    '%s axis domain paths are straight lines without outer end caps',
+    (chartType) => {
+      const scaffold = new ChartScaffold(createScaffoldConfig({ chartType }));
+      scaffold.render();
+
+      const yDomain = document.querySelector('.jsc-axis-y .domain')?.getAttribute('d') ?? '';
+      const xDomain = document.querySelector('.jsc-axis-x .domain')?.getAttribute('d') ?? '';
+      expect(yDomain).toContain('V');
+      expect(yDomain).not.toContain('H');
+      expect(xDomain).toContain('H');
+      expect(xDomain).not.toContain('V');
+    },
+  );
 
   it('grid lines use colorBorder (#aaaaaa), not colorTick (#555555)', () => {
     const scaffold = new ChartScaffold(
@@ -430,9 +589,22 @@ describe('ChartScaffold', () => {
 
     const rightMargin = context.layout.zones.get(ZoneType.RightMargin);
     expect(rightMargin).toBeDefined();
-    // Old code used String(6000000).length = 7 → Math.min(Math.ceil(7*8/2), 40) = 28.
-    // Fixed code uses D3 formatter → "6,000,000" (9 chars) → Math.min(Math.ceil(9*8/2), 40) = 36.
+    // Old code used String(6000000).length = 7, while the measured formatted label is wider.
     expect(rightMargin!.width).toBeGreaterThanOrEqual(36);
+  });
+
+  it('scales horizontal axis zones with enlarged text', () => {
+    const scaffold = new ChartScaffold(createScaffoldConfig({
+      chartType: 'horizontalBar',
+      yLabel: 'Euros',
+      config: {
+        theme: { fontSizeTick: '24px', fontSizeLabel: '28px' },
+      },
+    }));
+    const context = scaffold.render();
+
+    expect(context.layout.zones.get(ZoneType.XAxisLabels)?.height).toBeGreaterThanOrEqual(40);
+    expect(context.layout.zones.get(ZoneType.XAxisTitle)?.height).toBeGreaterThanOrEqual(42);
   });
 
   it('decimal/small range: plotArea.x is non-zero (sanity)', () => {

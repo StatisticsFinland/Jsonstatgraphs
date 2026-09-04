@@ -2,6 +2,9 @@ import { ChartConfig, FooterItem } from '../types';
 import { renderHtmlFooter } from './footer';
 import { resolveTheme } from '../theme/theme';
 import { applyChartAriaAttributes } from '../a11y/aria';
+import { getLocaleStrings } from '../locale/strings';
+
+let keyFigureIdCounter = 0;
 
 export interface KeyFigureChartConfig {
   container: HTMLElement;
@@ -16,7 +19,8 @@ function renderKeyFigure(
   value: number | null,
   unit: string,
   decimals: number | undefined,
-  config: ChartConfig
+  config: ChartConfig,
+  titleId: string,
 ): void {
   wrapper.innerHTML = '';
 
@@ -25,6 +29,7 @@ function renderKeyFigure(
   wrapper.appendChild(styleEl);
 
   const theme = resolveTheme(wrapper.parentElement, config.theme);
+  const strings = getLocaleStrings(config.locale);
 
   const container = document.createElement('div');
   container.className = 'jsc-key-figure';
@@ -43,6 +48,8 @@ function renderKeyFigure(
   if (title !== '') {
     const titleEl = document.createElement('div');
     titleEl.className = 'jsc-key-figure-title';
+    titleEl.id = titleId;
+    titleEl.setAttribute('aria-hidden', 'true');
     titleEl.textContent = title;
     titleEl.style.fontSize = theme.fontSizeLabel;
     titleEl.style.fontWeight = String(theme.fontWeightNormal);
@@ -62,7 +69,7 @@ function renderKeyFigure(
   valueEl.className = 'jsc-key-figure-value';
   if (value === null) {
     valueEl.textContent = '\u2013';
-    valueEl.setAttribute('aria-label', 'No data');
+    valueEl.setAttribute('aria-label', strings.noData);
   } else {
     const formatOptions: Intl.NumberFormatOptions =
       decimals === undefined
@@ -101,6 +108,16 @@ function renderKeyFigure(
   wrapper.appendChild(container);
 }
 
+function applyKeyFigureAria(container: HTMLElement, config: ChartConfig, titleId: string): void {
+  applyChartAriaAttributes(container, config.ariaLabel ?? config.title ?? 'Key figure', 'keyFigure', config.locale);
+  if (!config.ariaLabel && config.title) {
+    container.removeAttribute('aria-label');
+    container.setAttribute('aria-labelledby', titleId);
+  } else {
+    container.removeAttribute('aria-labelledby');
+  }
+}
+
 export function createKeyFigureChart(chartConfig: KeyFigureChartConfig): {
   update(value: number | null, unit: string, decimals: number | undefined, config: ChartConfig): void;
   destroy(): void;
@@ -114,10 +131,10 @@ export function createKeyFigureChart(chartConfig: KeyFigureChartConfig): {
   const wrapper = document.createElement('div');
   wrapper.className = 'jsc-key-figure-wrapper';
   container.appendChild(wrapper);
+  const titleId = `jsc-key-figure-${++keyFigureIdCounter}-title`;
 
-  applyChartAriaAttributes(container, config.ariaLabel ?? config.title ?? 'Key figure');
-
-  renderKeyFigure(wrapper, value, unit, decimals, config);
+  renderKeyFigure(wrapper, value, unit, decimals, config, titleId);
+  applyKeyFigureAria(container, config, titleId);
 
   return {
     update(newValue: number | null, newUnit: string, newDecimals: number | undefined, newConfig: ChartConfig): void {
@@ -125,14 +142,16 @@ export function createKeyFigureChart(chartConfig: KeyFigureChartConfig): {
       unit = newUnit;
       decimals = newDecimals;
       config = newConfig;
-      applyChartAriaAttributes(container, config.ariaLabel ?? config.title ?? 'Key figure');
-      renderKeyFigure(wrapper, value, unit, decimals, config);
+      renderKeyFigure(wrapper, value, unit, decimals, config, titleId);
+      applyKeyFigureAria(container, config, titleId);
     },
 
     destroy(): void {
       wrapper.remove();
       container.removeAttribute('role');
       container.removeAttribute('aria-label');
+      container.removeAttribute('aria-labelledby');
+      container.removeAttribute('aria-roledescription');
     },
   };
 }

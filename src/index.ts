@@ -3,6 +3,11 @@ export type {
   JsonStatCategory,
   JsonStatDimension,
   JsonStatDataset,
+  JsonStatDatasetExtension,
+  JsonStatSourceExtension,
+  JsonStatChartExtension,
+  SelectableConfig,
+  SelectableSelections,
   ChartType,
   ChartTypeResult,
   FooterItem,
@@ -21,7 +26,7 @@ export type {
   LayoutResult,
   ChartInstance,
   TableData,
-  TableLayout,
+  Layout,
   TableDimension,
   MapConfig,
   MapProvider,
@@ -50,6 +55,7 @@ import type {
   ScatterChartData,
   PyramidChartData,
   GeoJsonFeatureCollection,
+  SelectableSelections,
 } from './types';
 import { validateDataset } from './data/validate';
 import {
@@ -58,7 +64,10 @@ import {
   transformPyramidData,
   getOrderedCodes,
 } from './data/transform';
+import { applySorting } from './data/sorting';
 import { transformTableData } from './data/table-transform';
+import { hasSelectableDatasetOptions, resolveSelectableDatasetOptions } from './data/selectable-settings';
+import { rebuildDataset, resolveSelectedCodes } from './data/rebuild-dataset';
 import { getApplicableChartTypes, selectDefaultChartType, CHART_TYPE_ORDER, ChartRejectionReason } from './data/chart-selector';
 import type { DataProperties, ChartSelectorOptions } from './data/chart-selector';
 import { resolveTheme } from './theme/theme';
@@ -73,6 +82,8 @@ import { createTableChart } from './charts/table';
 import { createKeyFigureChart } from './charts/key-figure';
 import { createMapChart } from './charts/map';
 import { transformMapData } from './data/map-transform';
+import { BurgerMenu } from './interaction/burger-menu';
+import { resolveDatasetSource } from './data/source';
 
 import { getLocaleStrings } from './locale/strings';
 import type { NiceSkipOptions } from './layout/label-fitting';
@@ -85,6 +96,10 @@ export { getApplicableChartTypes, selectDefaultChartType } from './data/chart-se
 export type { ChartSelectorOptions, DataProperties } from './data/chart-selector';
 export { resolveTheme } from './theme/theme';
 export { transformMapData } from './data/map-transform';
+export { resolveDatasetSource } from './data/source';
+export { exportCsv } from './interaction/csvUtils';
+export { exportPng } from './interaction/pngUtils';
+export { exportSvg } from './interaction/svgUtils';
 
 // --- Internal helpers ---
 
@@ -237,7 +252,6 @@ function renderLoadingIndicator(container: HTMLElement, theme: ResolvedTheme, ar
   const wrapper = document.createElement('div');
   wrapper.className = 'jsc-loading';
   wrapper.setAttribute('role', 'status');
-  wrapper.setAttribute('aria-label', ariaLabel);
   wrapper.setAttribute('aria-live', 'polite');
   wrapper.setAttribute('aria-atomic', 'true');
   wrapper.style.display = 'flex';
@@ -270,14 +284,119 @@ function renderLoadingIndicator(container: HTMLElement, theme: ResolvedTheme, ar
   container.appendChild(wrapper);
 }
 
-function transformScatterDataForChart(dataset: JsonStatDataset, cfg: ChartConfig): ScatterChartData {
-  const contentDimId =
-    dataset.role?.metric?.[0] ??
+function getActiveSelectableCategoryCodes(
+  dataset: JsonStatDataset,
+  cfg: ChartConfig,
+  selectableSelections: SelectableSelections | undefined,
+): Record<string, string[]> {
+  const options = resolveSelectableDatasetOptions(dataset, cfg, selectableSelections);
+  const selectableDimensionCodes = new Set([
+    ...Object.keys(options.defaultSelectableSelections ?? {}),
+    ...Object.keys(options.selectableSelections ?? {}),
+    ...(options.multiSelectableDimensionCode ? [options.multiSelectableDimensionCode] : []),
+  ]);
+  return Object.fromEntries([...selectableDimensionCodes].map(dimensionCode => {
+    const categoryCodes = getOrderedCodes(dataset.dimension[dimensionCode].category.index);
+    const selectedCodes = resolveSelectedCodes(
+      options.selectableSelections?.[dimensionCode],
+      options.defaultSelectableSelections?.[dimensionCode],
+      categoryCodes,
+      dataset.role?.time?.includes(dimensionCode) ?? false,
+      dimensionCode,
+    );
+    return [dimensionCode, selectedCodes];
+  }));
+}
+
+function getAutoTitleDimensions(
+  dataset: JsonStatDataset,
+  cfg: ChartConfig,
+  selectableSelections: SelectableSelections | undefined,
+  dimensions: DimensionMeta[],
+): DimensionMeta[] {
+  const options = resolveSelectableDatasetOptions(dataset, cfg, selectableSelections);
+  const selectableDimensionCodes = new Set([
+    ...Object.keys(options.defaultSelectableSelections ?? {}),
+    ...Object.keys(options.selectableSelections ?? {}),
+    ...(options.multiSelectableDimensionCode ? [options.multiSelectableDimensionCode] : []),
+  ]);
+
+  return dimensions.map(dimension => {
+    if (!selectableDimensionCodes.has(dimension.code)) return dimension;
+
+    const categoryCodes = getOrderedCodes(dataset.dimension[dimension.code].category.index);
+    const selectedCodes = resolveSelectedCodes(
+      options.selectableSelections?.[dimension.code],
+      options.defaultSelectableSelections?.[dimension.code],
+      categoryCodes,
+      dataset.role?.time?.includes(dimension.code) ?? false,
+      dimension.code,
+    );
+    const titleCodes = dimension.code === options.multiSelectableDimensionCode
+      ? selectedCodes
+      : selectedCodes.slice(0, 1);
+    const selectedCodeSet = new Set(titleCodes);
+
+    return {
+      ...dimension,
+      size: titleCodes.length,
+      values: dimension.values?.filter(value => selectedCodeSet.has(value.code)),
+    };
+  });
+}
+
+function getScatterContentDimensionId(dataset: JsonStatDataset): string {
+  return dataset.role?.metric?.[0] ??
     dataset.id.find((dimId) => {
       const idx = dataset.id.indexOf(dimId);
       return !dataset.role?.time?.includes(dimId) && dataset.size[idx] > 1;
     }) ??
     dataset.id[0];
+}
+
+function getPyramidSplitDimensionId(dataset: JsonStatDataset): string | undefined {
+  const metricDimensions = new Set(dataset.role?.metric ?? []);
+  return dataset.id.find((dimensionCode, index) =>
+    !metricDimensions.has(dimensionCode)
+    && !dataset.role?.time?.includes(dimensionCode)
+    && dataset.size[index] === 2,
+  ) ?? dataset.id.find((dimensionCode, index) =>
+    !dataset.role?.time?.includes(dimensionCode) && dataset.size[index] === 2,
+  );
+}
+
+function validateRendererSelectableDimensions(
+  dataset: JsonStatDataset,
+  cfg: ChartConfig,
+  selectableSelections: SelectableSelections | undefined,
+  type: ChartType,
+): void {
+  if (type !== 'scatterPlot' && type !== 'pyramid') return;
+
+  const options = resolveSelectableDatasetOptions(dataset, cfg, selectableSelections);
+  const selectableDimensionCodes = new Set([
+    ...Object.keys(options.selectableSelections ?? {}),
+    ...Object.keys(options.defaultSelectableSelections ?? {}),
+    ...(options.multiSelectableDimensionCode ? [options.multiSelectableDimensionCode] : []),
+  ]);
+  const requiredDimensionCode = type === 'scatterPlot'
+    ? getScatterContentDimensionId(dataset)
+    : getPyramidSplitDimensionId(dataset);
+
+  if (requiredDimensionCode && selectableDimensionCodes.has(requiredDimensionCode)) {
+    const rendererDimension = type === 'scatterPlot' ? 'metric/content' : 'split';
+    throw new Error(
+      `[Jsonstatgraphs] Dimension "${requiredDimensionCode}" cannot be selectable for ${type}: it defines the ${rendererDimension} dimension`,
+    );
+  }
+}
+
+function transformScatterDataForChart(
+  dataset: JsonStatDataset,
+  cfg: ChartConfig,
+  activeCategoryCodes: Record<string, string[]>,
+): ScatterChartData {
+  const contentDimId = getScatterContentDimensionId(dataset);
 
   const contentDim = dataset.dimension[contentDimId];
   const contentCodes = getOrderedCodes(contentDim.category.index);
@@ -287,39 +406,62 @@ function transformScatterDataForChart(dataset: JsonStatDataset, cfg: ChartConfig
   }
 
   return transformScatterData(dataset, {
-    xContentValue: contentCodes[0],
-    yContentValue: contentCodes[1],
-    observationDimension: cfg.xDimension,
+    xContentValue: contentCodes[1],
+    yContentValue: contentCodes[0],
+    observationDimension: cfg.layout?.columns[0],
+    activeCategoryCodes,
   });
 }
 
-function transformPyramidDataForChart(dataset: JsonStatDataset, _cfg: ChartConfig): PyramidChartData {
-  const dimSizes = dataset.id.map((dimId, i) => ({ id: dimId, size: dataset.size[i] }));
-  const splitDim = dimSizes.find((d) => d.size === 2);
+function transformPyramidDataForChart(
+  dataset: JsonStatDataset,
+  _cfg: ChartConfig,
+  activeCategoryCodes: Record<string, string[]>,
+): PyramidChartData {
+  const metricDimensions = new Set(dataset.role?.metric ?? []);
+  const dimSizes = dataset.id.map((id, index) => ({ id, size: dataset.size[index] }));
+  const visibleDimensions = dimSizes.filter(dimension =>
+    !activeCategoryCodes[dimension.id] && !metricDimensions.has(dimension.id),
+  );
+  const splitDim = visibleDimensions.find((d) => d.size === 2) ?? dimSizes.find((d) => d.id === getPyramidSplitDimensionId(dataset));
   const catDim =
+    visibleDimensions.find((d) => d.id !== splitDim?.id && d.size > 1) ??
     dimSizes.find((d) => d.id !== splitDim?.id && d.size > 1) ??
+    visibleDimensions.find((d) => d.id !== splitDim?.id) ??
     dimSizes.find((d) => d.id !== splitDim?.id);
 
   return transformPyramidData(dataset, {
     categoryDimension: catDim?.id ?? dataset.id[0],
     splitDimension: splitDim?.id ?? dataset.id[1],
+    activeCategoryCodes,
   });
 }
 
 /** Key figure requires all dimensions to have exactly one category. */
-function isKeyFigureCompatible(dataset: JsonStatDataset): boolean {
-  return dataset.size.length > 0 && dataset.size.every(s => s === 1);
+function isKeyFigureCompatible(
+  dataset: JsonStatDataset,
+  activeCategoryCodes: Record<string, string[]> = {},
+): boolean {
+  return dataset.size.length > 0 && dataset.id.every((dimensionCode, index) =>
+    dataset.size[index] === 1 || activeCategoryCodes[dimensionCode] !== undefined,
+  );
 }
 
-function extractKeyFigureData(dataset: JsonStatDataset): { value: number | null; unit: string; decimals?: number } {
-  // Find the first non-null numeric value, or null if all are null
-  let value: number | null = null;
-  for (const v of dataset.value) {
-    if (v !== null && typeof v !== 'string') {
-      value = v;
-      break;
-    }
-  }
+function isChartVisualizationType(type: ChartType): boolean {
+  return type !== 'table' && type !== 'keyFigure' && type !== 'map';
+}
+
+function extractKeyFigureData(
+  dataset: JsonStatDataset,
+  activeCategoryCodes: Record<string, string[]>,
+): { value: number | null; unit: string; decimals?: number } {
+  const strides = dataset.size.map((_, index) => dataset.size.slice(index + 1).reduce((product, size) => product * size, 1));
+  const sourceIndex = dataset.id.reduce((index, dimensionCode, dimensionIndex) => {
+    const categoryCode = activeCategoryCodes[dimensionCode]?.[0] ?? getOrderedCodes(dataset.dimension[dimensionCode].category.index)[0];
+    return index + getOrderedCodes(dataset.dimension[dimensionCode].category.index).indexOf(categoryCode) * strides[dimensionIndex];
+  }, 0);
+  const rawValue = dataset.value[sourceIndex];
+  const value = rawValue === null || typeof rawValue === 'string' ? null : rawValue;
 
   // Extract unit from content dimension
   let unit = '';
@@ -327,7 +469,7 @@ function extractKeyFigureData(dataset: JsonStatDataset): { value: number | null;
   const contentDimId = dataset.role?.metric?.[0] ?? dataset.id[0];
   const contentDim = dataset.dimension[contentDimId];
   if (contentDim?.category?.unit) {
-    const codes = getOrderedCodes(contentDim.category.index);
+    const codes = activeCategoryCodes[contentDimId] ?? getOrderedCodes(contentDim.category.index);
     const unitInfo = contentDim.category.unit[codes[0]];
     if (unitInfo) {
       unit = unitInfo.label ?? '';
@@ -375,95 +517,143 @@ function computeTimeSeriesLabels(
 function createRenderer(
   type: ChartType,
   container: HTMLElement,
-  dataset: JsonStatDataset,
+  activeDataset: JsonStatDataset,
   cfg: ChartConfig,
+  selectableOptions: ReturnType<typeof resolveSelectableDatasetOptions>,
+  burgerMenuVisible: boolean,
   timeSeriesLabels?: NiceSkipOptions,
   mapGeometry?: GeoJsonFeatureCollection,
 ): { destroy(): void } {
-  const xDim = cfg.xDimension;
-  const yDim = cfg.yDimension;
-
+  const rendererConfig = { ...cfg, burgerMenuVisible };
+  const datasetTransformOptions = {
+    layout: selectableOptions.layout,
+    multiSelectableDimensionCode: selectableOptions.multiSelectableDimensionCode,
+  };
   switch (type) {
     case 'line':
       return createLineChart({
         container,
-        data: transformDataset(dataset, { xDimension: xDim, seriesDimension: yDim }),
-        config: cfg,
+        data: transformDataset(activeDataset, datasetTransformOptions),
+        config: rendererConfig,
         timeSeriesLabels,
       });
-    case 'verticalBar':
     case 'horizontalBar':
       return createBarChart({
         container,
-        data: transformDataset(dataset, { xDimension: xDim, seriesDimension: yDim }),
-        config: cfg,
+        data: applySorting(
+          transformDataset(activeDataset, datasetTransformOptions),
+          cfg.sorting,
+          false,
+          type
+        ),
+        config: rendererConfig,
+        chartType: type,
+        timeSeriesLabels,
+      });
+    case 'verticalBar':
+      return createBarChart({
+        container,
+        data: transformDataset(activeDataset, datasetTransformOptions),
+        config: rendererConfig,
+        chartType: type,
+        timeSeriesLabels,
+      });
+    case 'groupedHorizontalBar':
+      return createGroupedBarChart({
+        container,
+        data: applySorting(
+          transformDataset(activeDataset, datasetTransformOptions),
+          cfg.sorting,
+          false,
+          type
+        ),
+        config: rendererConfig,
         chartType: type,
         timeSeriesLabels,
       });
     case 'groupedVerticalBar':
-    case 'groupedHorizontalBar':
       return createGroupedBarChart({
         container,
-        data: transformDataset(dataset, { xDimension: xDim, seriesDimension: yDim }),
-        config: cfg,
+        data: transformDataset(activeDataset, datasetTransformOptions),
+        config: rendererConfig,
         chartType: type,
         timeSeriesLabels,
       });
-    case 'stackedVerticalBar':
     case 'stackedHorizontalBar':
-    case 'percentVerticalBar':
-    case 'percentHorizontalBar':
+    case 'percentHorizontalBar': {
+      const isPercent = type === 'percentHorizontalBar';
       return createStackedBarChart({
         container,
-        data: transformDataset(dataset, { xDimension: xDim, seriesDimension: yDim }),
-        config: cfg,
+        data: applySorting(
+          transformDataset(activeDataset, datasetTransformOptions),
+          cfg.sorting,
+          isPercent,
+          type
+        ),
+        config: rendererConfig,
+        chartType: type,
+        timeSeriesLabels,
+      });
+    }
+    case 'stackedVerticalBar':
+    case 'percentVerticalBar':
+      return createStackedBarChart({
+        container,
+        data: transformDataset(activeDataset, datasetTransformOptions),
+        config: rendererConfig,
         chartType: type,
         timeSeriesLabels,
       });
     case 'pie':
       return createPieChart({
         container,
-        data: transformDataset(dataset, { xDimension: xDim }),
-        config: cfg,
+        data: applySorting(
+          transformDataset(activeDataset, datasetTransformOptions),
+          cfg.sorting,
+          false,
+          type
+        ),
+        config: rendererConfig,
       });
     case 'scatterPlot':
       return createScatterChart({
         container,
-        data: transformScatterDataForChart(dataset, cfg),
-        config: cfg,
+        data: transformScatterDataForChart(activeDataset, cfg, {}),
+        config: rendererConfig,
       });
     case 'pyramid':
       return createPyramidChart({
         container,
-        data: transformPyramidDataForChart(dataset, cfg),
-        config: cfg,
+        data: transformPyramidDataForChart(activeDataset, cfg, {}),
+        config: rendererConfig,
       });
     case 'keyFigure': {
-      const kfData = extractKeyFigureData(dataset);
+      const kfData = extractKeyFigureData(activeDataset, {});
       return createKeyFigureChart({
         container,
         value: kfData.value,
         unit: kfData.unit,
         decimals: kfData.decimals,
-        config: cfg,
+        config: rendererConfig,
       });
     }
     case 'table':
       return createTableChart({
         container,
-        data: transformTableData(dataset, { tableLayout: cfg.tableLayout }),
-        config: cfg,
+        data: transformTableData(activeDataset, { layout: selectableOptions.layout }),
+        config: rendererConfig,
+        burgerMenuVisible,
       });
     case 'map': {
       if (!mapGeometry) {
-        throw new Error('[JsonStatChart] Map chart requires mapProvider to supply geometry');
+        throw new Error('[Jsonstatgraphs] Map chart requires mapProvider to supply geometry');
       }
       const theme = resolveTheme(container, cfg.theme);
-      const mapData = transformMapData(dataset, mapGeometry, cfg.map ?? {}, theme);
+      const mapData = transformMapData(activeDataset, mapGeometry, cfg.map ?? {}, theme);
       return createMapChart({
         container,
         data: mapData,
-        config: cfg,
+        config: rendererConfig,
       });
     }
   }
@@ -475,13 +665,15 @@ export function createChart(
   container: HTMLElement,
   dataset: JsonStatDataset,
   config?: ChartConfig,
+  selectableSelections?: SelectableSelections,
 ): ChartInstance {
   if (!(container instanceof HTMLElement)) {
-    throw new TypeError('[JsonStatChart] container must be an HTMLElement');
+    throw new TypeError('[Jsonstatgraphs] container must be an HTMLElement');
   }
 
   let currentDataset = dataset;
   let currentConfig: ChartConfig = config ?? {};
+  let currentSelectableSelections = selectableSelections;
   let currentChartType: ChartType = 'table';
   let currentRenderer: { destroy(): void } | null = null;
   let destroyed = false;
@@ -489,8 +681,47 @@ export function createChart(
   let generation = 0;
   let pendingAbort: AbortController | null = null;
   let pendingSpinnerRaf: number | null = null;
+  let pendingAnnouncementTimer: ReturnType<typeof setTimeout> | null = null;
   let lastMapAvailable = false;
   let resolvedMapGeometry: GeoJsonFeatureCollection | null = null;
+  let burgerMenu: BurgerMenu | null = null;
+  let chartModeType: ChartType | null = null;
+  let accessibilityMode = currentConfig.accessibilityMode ?? false;
+
+  function clearPendingAnnouncement(): void {
+    if (pendingAnnouncementTimer !== null) {
+      clearTimeout(pendingAnnouncementTimer);
+      pendingAnnouncementTimer = null;
+    }
+  }
+
+  function announceChartLoaded(locale: string): void {
+    clearPendingAnnouncement();
+    const announcement = createSrOnlyElement('div', getLocaleStrings(locale).chartLoaded);
+    announcement.setAttribute('role', 'status');
+    announcement.setAttribute('aria-live', 'polite');
+    container.appendChild(announcement);
+    pendingAnnouncementTimer = setTimeout(() => {
+      announcement.remove();
+      pendingAnnouncementTimer = null;
+    }, 1000);
+  }
+
+  function applyChartTypeOverride(type: ChartType): void {
+    if (destroyed) return;
+    chartTypeOverride = type;
+    try {
+      rebuildPipeline(currentDataset, currentConfig);
+    } catch (err) {
+      console.warn('[Jsonstatgraphs]', err);
+      const theme = resolveTheme(container, currentConfig.theme);
+      renderError(
+        container,
+        err instanceof Error ? err.message : 'An unexpected error occurred',
+        theme,
+      );
+    }
+  }
 
   function rebuildPipeline(ds: JsonStatDataset, cfg: ChartConfig): void {
     // Increment generation to invalidate any pending async callbacks
@@ -506,6 +737,7 @@ export function createChart(
       cancelAnimationFrame(pendingSpinnerRaf);
       pendingSpinnerRaf = null;
     }
+    clearPendingAnnouncement();
     // Clear stale map state — will be set again when provider resolves or sync path completes
     resolvedMapGeometry = null;
     lastMapAvailable = false;
@@ -514,6 +746,10 @@ export function createChart(
     if (currentRenderer) {
       currentRenderer.destroy();
       currentRenderer = null;
+    }
+    if (burgerMenu) {
+      burgerMenu.destroy();
+      burgerMenu = null;
     }
 
     const theme = resolveTheme(container, cfg.theme);
@@ -530,6 +766,8 @@ export function createChart(
       renderError(container, validation.errors[0].message, theme);
       return;
     }
+
+    const activeCategoryCodes = getActiveSelectableCategoryCodes(ds, cfg, currentSelectableSelections);
 
     // Derive data properties
     const dataProps = deriveDataProperties(ds);
@@ -555,7 +793,7 @@ export function createChart(
     // Early validation: explicit map type without provider
     if ((cfg.chartType === 'map' || chartTypeOverride === 'map') && !hasMapProvider) {
       container.innerHTML = '';
-      throw new Error('[JsonStatChart] Map chart requires config.mapProvider');
+      throw new Error('[Jsonstatgraphs] Map chart requires config.mapProvider');
     }
 
     const explicitType = chartTypeOverride ?? cfg.chartType;
@@ -577,9 +815,9 @@ export function createChart(
     if (needsMapResolution) {
       // Async path: resolve map provider
       const dim = ds.dimension[geoDimId!];
-      const geoCodes = getOrderedCodes(dim.category.index);
+      const geoCodes = activeCategoryCodes[geoDimId!] ?? getOrderedCodes(dim.category.index);
       const timeCode = timeDimForMap
-        ? getOrderedCodes(ds.dimension[timeDimForMap.code].category.index)[0]
+        ? (activeCategoryCodes[timeDimForMap.code] ?? getOrderedCodes(ds.dimension[timeDimForMap.code].category.index))[0]
         : undefined;
 
       const abort = new AbortController();
@@ -615,7 +853,7 @@ export function createChart(
             mapAvailable = true;
           } else if (cfg.chartType === 'map' || chartTypeOverride === 'map') {
             // Provider returned null but map was explicitly requested — fall back
-            console.warn('[JsonStatChart] mapProvider returned null for explicit map chart type, falling back');
+            console.warn('[Jsonstatgraphs] mapProvider returned null for explicit map chart type, falling back');
             if (chartTypeOverride === 'map') chartTypeOverride = null;
             effectiveCfg = { ...cfg, chartType: undefined };
           }
@@ -624,13 +862,9 @@ export function createChart(
           try {
             container.innerHTML = '';
             finishRebuild(ds, effectiveCfg, dataProps, dimMeta, resolvedLocale, theme, mapAvailable);
-            const announcement = createSrOnlyElement('div', 'Chart loaded');
-            announcement.setAttribute('role', 'status');
-            announcement.setAttribute('aria-live', 'polite');
-            container.appendChild(announcement);
-            setTimeout(() => announcement.remove(), 1000);
+            announceChartLoaded(resolvedLocale);
           } catch (err) {
-            console.warn('[JsonStatChart]', err);
+            console.warn('[Jsonstatgraphs]', err);
             renderError(container, err instanceof Error ? err.message : 'An unexpected error occurred', theme);
           }
         })
@@ -641,7 +875,7 @@ export function createChart(
             cancelAnimationFrame(pendingSpinnerRaf);
             pendingSpinnerRaf = null;
           }
-          console.warn('[JsonStatChart] mapProvider failed:', err);
+          console.warn('[Jsonstatgraphs] mapProvider failed:', err);
 
           if (chartTypeOverride === 'map') chartTypeOverride = null;
           const catchCfg = (cfg.chartType === 'map') ? { ...cfg, chartType: undefined } : cfg;
@@ -649,13 +883,9 @@ export function createChart(
           try {
             container.innerHTML = '';
             finishRebuild(ds, catchCfg, dataProps, dimMeta, resolvedLocale, theme, false);
-            const announcement = createSrOnlyElement('div', 'Chart loaded');
-            announcement.setAttribute('role', 'status');
-            announcement.setAttribute('aria-live', 'polite');
-            container.appendChild(announcement);
-            setTimeout(() => announcement.remove(), 1000);
+            announceChartLoaded(resolvedLocale);
           } catch (finishErr) {
-            console.warn('[JsonStatChart]', finishErr);
+            console.warn('[Jsonstatgraphs]', finishErr);
             renderError(container, finishErr instanceof Error ? finishErr.message : 'An unexpected error occurred', theme);
           }
         });
@@ -685,9 +915,16 @@ export function createChart(
       ?? selectDefaultChartType(dataProps, dimMeta, { mapAvailable });
 
     // keyFigure requires single-cell data; fall back to table otherwise
-    const effectiveType: ChartType = resolvedType === 'keyFigure' && !isKeyFigureCompatible(ds)
+    const activeCategoryCodes = getActiveSelectableCategoryCodes(ds, cfg, currentSelectableSelections);
+    const selectableOptions = resolveSelectableDatasetOptions(ds, cfg, currentSelectableSelections);
+    const activeDataset = hasSelectableDatasetOptions(selectableOptions)
+      ? rebuildDataset(ds, selectableOptions).dataset
+      : ds;
+    const hasExplicitType = chartTypeOverride !== null || cfg.chartType !== undefined;
+    const effectiveType: ChartType = !hasExplicitType && resolvedType === 'keyFigure' && !isKeyFigureCompatible(ds, activeCategoryCodes)
       ? 'table'
       : resolvedType;
+    if (!hasExplicitType) validateRendererSelectableDimensions(ds, cfg, currentSelectableSelections, effectiveType);
 
     // Set container height if specified
     if (cfg.height) {
@@ -696,11 +933,13 @@ export function createChart(
 
     // Auto header building
     const resolvedConfig = { ...cfg };
+    resolvedConfig.accessibilityMode = accessibilityMode;
     resolvedConfig.locale = resolvedLocale;
     if (resolvedConfig.showHeader === undefined) resolvedConfig.showHeader = true;
     if (resolvedConfig.showHeader && resolvedConfig.title === undefined) {
       if (resolvedConfig.autoTitle !== false) {
-        const headerResult = buildHeader(dimMeta, { locale: resolvedLocale });
+        const titleDimensions = getAutoTitleDimensions(ds, cfg, currentSelectableSelections, dimMeta);
+        const headerResult = buildHeader(titleDimensions, { locale: resolvedLocale });
         const autoTitle = headerResult.header.trim();
         resolvedConfig.title = autoTitle || ds.label || '';
       } else if (ds.label) {
@@ -711,13 +950,13 @@ export function createChart(
     // Auto-populate footer from dataset metadata
     const strings = getLocaleStrings(resolvedLocale);
 
-    // Auto-populate unit from content dimension (skip for keyFigure which shows unit inline)
+    // Auto-populate unit from content dimension only when explicitly requested.
     const hasUnit = resolvedConfig.footerItems?.some(f => f.type === 'unit');
-    if (!hasUnit && effectiveType !== 'keyFigure') {
-      const metricDimId = ds.role?.metric?.[0] ??
-        ds.id.find(dimId => ds.dimension[dimId].category.unit != null);
+    if (resolvedConfig.showUnit && !hasUnit && effectiveType !== 'keyFigure') {
+      const metricDimId = activeDataset.role?.metric?.[0] ??
+        activeDataset.id.find(dimId => activeDataset.dimension[dimId].category.unit != null);
       if (metricDimId) {
-        const metricDim = ds.dimension[metricDimId];
+        const metricDim = activeDataset.dimension[metricDimId];
         const codes = getOrderedCodes(metricDim.category.index);
         const unitEntries: { valueName: string; unitLabel: string }[] = [];
         for (const code of codes) {
@@ -744,11 +983,12 @@ export function createChart(
       }
     }
 
+    const resolvedSource = resolveDatasetSource(activeDataset);
     const hasSource = resolvedConfig.footerItems?.some(f => f.type === 'source');
-    if (ds.source && !hasSource) {
+    if (resolvedSource && !hasSource) {
       resolvedConfig.footerItems = [
         ...(resolvedConfig.footerItems ?? []),
-        { type: 'source' as const, label: `${strings.source}:`, value: ds.source },
+        { type: 'source' as const, label: `${strings.source}:`, value: resolvedSource },
       ];
     }
 
@@ -773,17 +1013,69 @@ export function createChart(
     }
 
     // Create renderer
-    const timeSeriesLabels = computeTimeSeriesLabels(dimMeta, ds, resolvedConfig.xDimension);
-    currentRenderer = createRenderer(effectiveType, container, ds, resolvedConfig, timeSeriesLabels, resolvedMapGeometry ?? undefined);
+    const timeSeriesLabels = computeTimeSeriesLabels(dimMeta, ds, resolvedConfig.layout?.columns[0]);
+    currentRenderer = createRenderer(
+      effectiveType,
+      container,
+      activeDataset,
+      resolvedConfig,
+      selectableOptions,
+      cfg.showBurgerMenu !== false,
+      timeSeriesLabels,
+      resolvedMapGeometry ?? undefined,
+    );
 
     // Store state
     currentChartType = effectiveType;
+    if (isChartVisualizationType(effectiveType)) {
+      chartModeType = effectiveType;
+    }
+
+    const canToggleTableMode = isChartVisualizationType(effectiveType) || (effectiveType === 'table' && chartModeType !== null);
+    const tableToggle = canToggleTableMode
+      ? {
+          tableMode: effectiveType === 'table',
+          toggleHandler: () => {
+            if (currentChartType === 'table') {
+              if (chartModeType !== null) {
+                applyChartTypeOverride(chartModeType);
+              }
+              return;
+            }
+            applyChartTypeOverride('table');
+          },
+        }
+      : undefined;
+
+    const canToggleAccessibilityMode = isChartVisualizationType(effectiveType) && effectiveType !== 'scatterPlot' && effectiveType !== 'map';
+
+    if (cfg.showBurgerMenu !== false) {
+      burgerMenu = new BurgerMenu({
+        container,
+        dataset: activeDataset,
+        chartType: effectiveType,
+        locale: resolvedLocale,
+        theme,
+        accessibilityMode,
+        toggleAccessibilityMode: canToggleAccessibilityMode
+          ? () => {
+              accessibilityMode = !accessibilityMode;
+              currentConfig = { ...currentConfig, accessibilityMode };
+              rebuildPipeline(currentDataset, currentConfig);
+            }
+          : undefined,
+        menuItemDefinitions: cfg.menuItemDefinitions,
+        menuIconInheritColor: cfg.menuIconInheritColor,
+        layout: selectableOptions.layout,
+        tableToggle,
+      });
+    }
   }
 
   try {
     rebuildPipeline(dataset, currentConfig);
   } catch (err) {
-    console.warn('[JsonStatChart]', err);
+    console.warn('[Jsonstatgraphs]', err);
     const theme = resolveTheme(container, currentConfig.theme);
     renderError(
       container,
@@ -793,19 +1085,25 @@ export function createChart(
   }
 
   return {
-    update(newDataset: JsonStatDataset, newConfig?: ChartConfig): void {
+    update(newDataset: JsonStatDataset, newConfig?: ChartConfig, newSelectableSelections?: SelectableSelections): void {
       if (destroyed) return;
       currentDataset = newDataset;
       if (newConfig !== undefined) {
         currentConfig = newConfig;
+        if (newConfig.accessibilityMode !== undefined) {
+          accessibilityMode = newConfig.accessibilityMode;
+        }
         if (newConfig.chartType !== undefined) {
           chartTypeOverride = newConfig.chartType;
         }
       }
+      if (newSelectableSelections !== undefined) {
+        currentSelectableSelections = newSelectableSelections;
+      }
       try {
         rebuildPipeline(currentDataset, currentConfig);
       } catch (err) {
-        console.warn('[JsonStatChart]', err);
+        console.warn('[Jsonstatgraphs]', err);
         const theme = resolveTheme(container, currentConfig.theme);
         renderError(
           container,
@@ -827,27 +1125,20 @@ export function createChart(
         cancelAnimationFrame(pendingSpinnerRaf);
         pendingSpinnerRaf = null;
       }
+      clearPendingAnnouncement();
       if (currentRenderer) {
         currentRenderer.destroy();
         currentRenderer = null;
+      }
+      if (burgerMenu) {
+        burgerMenu.destroy();
+        burgerMenu = null;
       }
       container.innerHTML = '';
     },
 
     setChartType(type: ChartType): void {
-      if (destroyed) return;
-      chartTypeOverride = type;
-      try {
-        rebuildPipeline(currentDataset, currentConfig);
-      } catch (err) {
-        console.warn('[JsonStatChart]', err);
-        const theme = resolveTheme(container, currentConfig.theme);
-        renderError(
-          container,
-          err instanceof Error ? err.message : 'An unexpected error occurred',
-          theme,
-        );
-      }
+      applyChartTypeOverride(type);
     },
 
     getChartType(): ChartType {

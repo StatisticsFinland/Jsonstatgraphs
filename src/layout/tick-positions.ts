@@ -86,13 +86,22 @@ export function getDivisibilityScore(input: number): number {
 
 /**
  * Given a data range and max number of segments, returns a "nice" interval length.
+ *
+ * `forceZeroBaseline` mirrors the axis's own zero-anchoring: when true (default), a
+ * non-zero-spanning range is treated as if measured from 0 (matching the always-zero
+ * Y axis used by bar charts and the default line/scatter axis). When false, the true
+ * span (`dataMax - dataMin`) is used instead, for axes allowed to omit zero (`cutValueAxis`).
  */
-export function getInterval(dataMin: number, dataMax: number, maxNumberOfSegments: number, precision: number = 0): number {
+export function getInterval(dataMin: number, dataMax: number, maxNumberOfSegments: number, precision: number = 0, forceZeroBaseline: boolean = true): number {
     if (dataMin > dataMax) throw new Error('dataMin must be <= dataMax');
 
-    const delta = (dataMin < 0 && dataMax > 0)
-        ? dataMax - dataMin
-        : Math.max(Math.abs(dataMin), Math.abs(dataMax));
+    const spansZero = dataMin < 0 && dataMax > 0;
+    let delta: number;
+    if (spansZero || !forceZeroBaseline) {
+        delta = dataMax - dataMin;
+    } else {
+        delta = Math.max(Math.abs(dataMin), Math.abs(dataMax));
+    }
 
     if (delta / maxNumberOfSegments <= precision) return precision;
 
@@ -124,17 +133,22 @@ export function getInterval(dataMin: number, dataMax: number, maxNumberOfSegment
 
 /**
  * Main entry point. Returns evenly-spaced tick positions for the given data range and axis size.
+ *
+ * `forceZeroBaseline` (default true) anchors the lower/upper bound at 0 whenever the data doesn't
+ * cross zero, matching the always-zero axis used by bar charts and the default line/scatter axis.
+ * Pass false to let the axis start/end at a "nice" bound near the actual data range instead,
+ * for axes allowed to omit zero (`cutValueAxis`).
  */
-export function getTickPositions(dataMin: number, dataMax: number, axisLengthPx: number, precision?: number, fontSizeTick?: string): number[] {
+export function getTickPositions(dataMin: number, dataMax: number, axisLengthPx: number, precision?: number, fontSizeTick?: string, forceZeroBaseline: boolean = true): number[] {
     if (dataMin === dataMax) return [dataMin];
 
     const maxSegments = getMaxNumberOfSegments(axisLengthPx, dataMin, dataMax, fontSizeTick);
-    const interval = getInterval(dataMin, dataMax, maxSegments, precision);
+    const interval = getInterval(dataMin, dataMax, maxSegments, precision, forceZeroBaseline);
 
     if (!interval || Number.isNaN(interval)) return [dataMin, dataMax];
 
-    const lowerBound = dataMin >= 0 ? 0 : Math.floor(dataMin / interval) * interval;
-    const upperBound = dataMax <= 0 ? 0 : Math.ceil(dataMax / interval) * interval;
+    const lowerBound = forceZeroBaseline && dataMin >= 0 ? 0 : Math.floor(dataMin / interval) * interval;
+    const upperBound = forceZeroBaseline && dataMax <= 0 ? 0 : Math.ceil(dataMax / interval) * interval;
 
     const ticks: number[] = [];
     // Use a counter-based loop to avoid floating-point accumulation

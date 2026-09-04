@@ -1,12 +1,14 @@
 import type { Meta, StoryObj } from '@storybook/html-vite';
-import { renderChart } from './helpers/renderChart';
+import { renderChart, storeChartInstance } from './helpers/renderChart';
 import { buildConfig } from './helpers/buildConfig';
 import { themeArgTypes, themeArgs } from './helpers/sharedArgs';
+import { getSelectableStoryInputs } from './helpers/selectables';
 import { createChart } from '../src';
 import type { GeoJsonFeatureCollection, ChartInstance, ClassificationMethod } from '../src/types';
 
 // Import fixture data
 import maakuntaData from './fixtures/map-maakunta-establishments.json';
+import selectableMaakuntaData from './fixtures/map-maakunta-establishments-selectable.json';
 import maakuntaGeo from './fixtures/geo-maakunta4500k.geojson';
 import kuntaData from './fixtures/map-kunta-population.json';
 import kuntaGeo from './fixtures/geo-kunta4500k.geojson';
@@ -20,7 +22,12 @@ function instantProvider(geo: GeoJsonFeatureCollection) {
 
 const meta: Meta = {
   title: 'Charts/Map',
-  argTypes: { ...themeArgTypes },
+  argTypes: {
+    ...themeArgTypes,
+    // Map has no chart value axis or category ordering — sorting/cutValueAxis have no effect here.
+    sorting: { table: { disable: true } },
+    cutValueAxis: { table: { disable: true } },
+  },
   args: { ...themeArgs, width: '600px' },
 };
 export default meta;
@@ -38,6 +45,41 @@ export const Regions: StoryObj = {
     }),
     width: args.width as string,
     height: args.height as string | undefined,
+  }),
+};
+
+export const TitleHiddenWhenHeaderDisabled: StoryObj = {
+  render: () => renderChart({
+    dataset: maakuntaData,
+    config: {
+      chartType: 'map',
+      title: 'This title should not be rendered',
+      showHeader: false,
+      mapProvider: instantProvider(maakuntaGeo),
+      map: {
+        geoIdProperty: 'maakunta',
+        geoCodeMapper: (code: string) => code.replace(/^MK/, ''),
+      },
+    },
+    width: '600px',
+  }),
+};
+
+export const SelectableYear: StoryObj = {
+  render: (args) => renderChart({
+    dataset: selectableMaakuntaData,
+    config: buildConfig(args, {
+      chartType: 'map' as const,
+      mapProvider: instantProvider(maakuntaGeo),
+      map: {
+        geoIdProperty: 'maakunta',
+        geoCodeMapper: (code: string) => code.replace(/^MK/, ''),
+      },
+    }),
+    selectableSelections: { vuosi: ['2025'] },
+    width: args.width as string,
+    height: args.height as string | undefined,
+    ...getSelectableStoryInputs(args),
   }),
 };
 
@@ -167,7 +209,7 @@ export const ClassificationSwitcher: StoryObj = {
             map: { ...mapConfig, classificationMethod: 'jenks-nice' },
           },
         );
-        (wrapper as any).__jscInstance = instance;
+        storeChartInstance(wrapper, instance);
 
         select.addEventListener('change', () => {
           const method = select.value as ClassificationMethod;

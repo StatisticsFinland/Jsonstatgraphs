@@ -1,0 +1,16 @@
+{
+  "version": "2.0",
+  "class": "dataset",
+  "id": ["vuosi", "ika", "tiedot"],
+  "label": "Participation in adult education by age group",
+  "source": "Example Institute, participation in adult education",
+  "updated": "2023-10-06T08:00:00",
+  "dimension": {
+    "vuosi": { "label": "Year", "category": { "index": ["2022", "2023"], "label": { "2022": "2022", "2023": "2023" } } },
+    "ika": { "label": "Age", "category": { "index": ["18-24", "25-34", "35-44", "45-54", "55-64"], "label": { "18-24": "18 - 24", "25-34": "25 - 34", "35-44": "35 - 44", "45-54": "45 - 54", "55-64": "55 - 64" } } },
+    "tiedot": { "label": "Information", "category": { "index": ["akuo_pros"], "label": { "akuo_pros": "Participants in adult education and training, %" }, "unit": { "akuo_pros": { "label": "%", "decimals": 0 } } } }
+  },
+  "value": [44, 48, 53, 54, 38, 46, 50, 55, 56, 40],
+  "size": [2, 5, 1],
+  "role": { "time": ["vuosi"], "metric": ["tiedot"] }
+}

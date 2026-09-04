@@ -6,6 +6,34 @@ export interface JsonStatCategory {
   unit?: Record<string, { decimals?: number; label?: string; position?: string }>;
 }
 
+/** Dimension code to selected value code(s) filter. */
+export type SelectableSelections = Record<string, string[]>;
+
+/** Selectable-dimension settings supplied with a JSON-stat dataset. */
+export interface SelectableConfig {
+  selectableSelections?: SelectableSelections;
+  defaultSelectableSelections?: SelectableSelections;
+  multiSelectableDimensionCode?: string;
+}
+
+export interface JsonStatSourceExtension {
+  dimension?: Record<string, string>;
+  category?: Record<string, Record<string, string>>;
+}
+
+export interface JsonStatChartExtension {
+  sources?: JsonStatSourceExtension;
+}
+
+/** Known JSON-stat extension fields while preserving extension fields outside this library's scope. */
+export interface JsonStatDatasetExtension {
+  selectableConfig?: SelectableConfig;
+  jsonstatChart?: JsonStatChartExtension;
+  /** Status code to human-readable missing-value description. */
+  missingValueDescriptions?: Record<string, string>;
+  [key: string]: unknown;
+}
+
 export interface JsonStatDimension {
   label?: string;
   category: JsonStatCategory;
@@ -22,7 +50,9 @@ export interface JsonStatDataset {
   size: number[];
   dimension: Record<string, JsonStatDimension>;
   value: (number | null | string)[];
-  extension?: Record<string, unknown>;
+  /** JSON-stat observation status codes keyed by flat observation index. */
+  status?: Record<string, string>;
+  extension?: JsonStatDatasetExtension;
   role?: {
     time?: string[];
     geo?: string[];
@@ -102,6 +132,24 @@ export interface FooterItem {
   value: string;
 }
 
+export interface FunctionalMenuItem {
+  text: string;
+  prefixIcon?: string;
+  suffixIcon?: string;
+  onClick: () => void;
+}
+
+export interface LinkMenuItem {
+  text: string;
+  prefixIcon?: string;
+  suffixIcon?: string;
+  url: string;
+  isExternal?: boolean;
+  openNewTab?: boolean;
+}
+
+export type BurgerMenuItemDefinition = FunctionalMenuItem | LinkMenuItem;
+
 export interface ThemeConfig {
   fontFamily?: string;
   fontSizeTick?: string;
@@ -122,12 +170,20 @@ export interface ThemeConfig {
   gridOpacity?: number;
   tooltipPadding?: string;
   tooltipBoxShadow?: string;
+  burgerMenuBackground?: string;
+  burgerMenuBorderColor?: string;
+  burgerMenuBorderRadius?: string;
+  burgerMenuShadow?: string;
+  burgerMenuItemHoverBackground?: string;
+  burgerMenuItemActiveBackground?: string;
+  burgerMenuItemSeparatorColor?: string;
   seriesColors?: string[];
   mapColors?: string[];
 }
 
 export interface ChartConfig {
   chartType?: ChartType;
+  accessibilityMode?: boolean;
   theme?: ThemeConfig;
   locale?: string;
   title?: string;
@@ -136,9 +192,9 @@ export interface ChartConfig {
   sourceLink?: string;
   ariaLabel?: string;
   height?: number;
-  xDimension?: string;
-  yDimension?: string;
-  tableLayout?: TableLayout;
+  layout?: Layout;
+  defaultSelectableSelections?: SelectableSelections;
+  multiSelectableDimensionCode?: string;
   map?: MapConfig;
   /** Async function that resolves geographic boundaries for a given dimension.
    *  Receives the geo dimension ID, geo codes, an AbortSignal, and optionally
@@ -146,8 +202,21 @@ export interface ChartConfig {
    *  Return `null` if no geometry is available. */
   mapProvider?: MapProvider;
   showHeader?: boolean;
+  /** Add the dataset unit to the footer. Units are shown on the y-axis by default. */
+  showUnit?: boolean;
   showLegend?: boolean;
   autoTitle?: boolean;
+  showBurgerMenu?: boolean;
+  /** Internal layout state set by the chart pipeline when the menu is rendered. */
+  burgerMenuVisible?: boolean;
+  menuItemDefinitions?: BurgerMenuItemDefinition[];
+  menuIconInheritColor?: boolean;
+  /** Allow the line chart / scatter plot value axis to omit the zero baseline (default: always includes 0). No effect on other chart types. */
+  cutValueAxis?: boolean;
+  /** Sorting for horizontal bar, grouped/stacked/percent horizontal bar, and pie charts:
+   *  `no_sorting` | `reversed` | `sum` | `ascending` | `descending`. Matching series codes are supported
+   *  for grouped, stacked, and percent horizontal bars; grouped horizontal bars prioritize that series. */
+  sorting?: string;
 }
 
 // --- Resolved theme (all values present) ---
@@ -172,6 +241,13 @@ export interface ResolvedTheme {
   gridOpacity: number;
   tooltipPadding: string;
   tooltipBoxShadow: string;
+  burgerMenuBackground: string;
+  burgerMenuBorderColor: string;
+  burgerMenuBorderRadius: string;
+  burgerMenuShadow: string;
+  burgerMenuItemHoverBackground: string;
+  burgerMenuItemActiveBackground: string;
+  burgerMenuItemSeparatorColor: string;
   seriesColors: string[];
   mapColors: string[];
 }
@@ -224,11 +300,12 @@ export interface PyramidChartData {
   categoryLabels: string[];
   splitDimensionLabel?: string;
   categoryDimensionLabel?: string;
+  yLabel?: string;
 }
 
 // Table chart data (N-dimensional pivot table)
 
-export interface TableLayout {
+export interface Layout {
   rows: string[];
   columns: string[];
 }
@@ -286,6 +363,8 @@ export interface TableData {
   columnDimensions: TableDimension[];
   /** 2D values array: values[rowIndex][colIndex]. Row index is the Cartesian product of row dimensions, col index is the Cartesian product of column dimensions. */
   values: (number | null)[][];
+  /** Missing-value descriptions parallel to `values`; null means use the fallback marker. */
+  missingValueDescriptions?: (string | null)[][];
   /** Dimensions with only 1 value that were hidden from the table structure. Useful for metadata display. */
   hiddenDimensions: { code: string; label: string; value: string }[];
 }
@@ -374,7 +453,7 @@ export interface LayoutResult {
 // --- Chart instance (public API return type) ---
 
 export interface ChartInstance {
-  update(dataset: JsonStatDataset, config?: ChartConfig): void;
+  update(dataset: JsonStatDataset, config?: ChartConfig, selectableSelections?: SelectableSelections): void;
   destroy(): void;
   setChartType(type: ChartType): void;
   getChartType(): ChartType;

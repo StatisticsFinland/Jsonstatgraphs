@@ -121,6 +121,13 @@ describe('getInterval', () => {
         const interval = getInterval(0, 100, 10, 20);
         expect(interval).toBeGreaterThanOrEqual(20);
     });
+
+    it('forceZeroBaseline=false uses the true span instead of distance-from-zero', () => {
+        // Forced-zero treats this as a 0–340 range (interval sized for ~340); the true span is only 40.
+        const forced = getInterval(300, 340, 5, 0, true);
+        const notForced = getInterval(300, 340, 5, 0, false);
+        expect(notForced).toBeLessThan(forced);
+    });
 });
 
 describe('getTickPositions', () => {
@@ -205,6 +212,31 @@ describe('getTickPositions', () => {
     it('exact ticks for 50–200 with 400px axis', () => {
         const ticks = getTickPositions(50, 200, 400);
         expect(ticks).toEqual([0, 30, 60, 90, 120, 150, 180, 210]);
+    });
+
+    it('forceZeroBaseline=false: does not anchor at 0 for all-positive data', () => {
+        const ticks = getTickPositions(300, 340, 400, undefined, undefined, false);
+        expect(ticks[0]).toBeGreaterThan(0);
+        expect(ticks[0]).toBeLessThanOrEqual(300);
+        expect(ticks[ticks.length - 1]).toBeGreaterThanOrEqual(340);
+    });
+
+    it('forceZeroBaseline=false: 50–200 with 400px axis stays near the data range', () => {
+        const ticks = getTickPositions(50, 200, 400, undefined, undefined, false);
+        expect(ticks[0]).toBeGreaterThan(0);
+        expect(ticks[0]).toBeLessThanOrEqual(50);
+        expect(ticks[ticks.length - 1]).toBeGreaterThanOrEqual(200);
+    });
+
+    it('forceZeroBaseline=false: does not anchor at 0 for all-negative data', () => {
+        const ticks = getTickPositions(-200, -50, 400, undefined, undefined, false);
+        expect(ticks[ticks.length - 1]).toBeLessThan(0);
+        expect(ticks[ticks.length - 1]).toBeGreaterThanOrEqual(-50);
+    });
+
+    it('forceZeroBaseline=false: still crosses zero when data spans it', () => {
+        const ticks = getTickPositions(-50, 100, 400, undefined, undefined, false);
+        expect(ticks.some(t => t === 0)).toBe(true);
     });
 
     it('tick count for a 300px axis with typical data is between 4 and 9', () => {

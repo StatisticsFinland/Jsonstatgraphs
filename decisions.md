@@ -242,7 +242,7 @@ Decisions are numbered sequentially. Once recorded, a decision is not deleted �
 
 ### ADR-020: N-dimensional table via dedicated TableData type and table-transform module
 
-**Status:** accepted
+**Status:** superseded by ADR-035
 **Date:** 2026-05-18
 
 **Context:** The table chart received `ChartData` (a 2D category+series structure shared with bar/line charts). This limited it to two dimensions and prevented multi-level row/column headers needed for N-dimensional JSON-stat datasets.
@@ -453,3 +453,71 @@ The initial premise — that `.jsc-bar { fill: blue }` has no effect — was inc
 - Story variants are derived from real API data via `sliceDataset`, keeping data structures authentic without maintaining dozens of separate fixture files.
 - Edge case and interactive stories remain as-is — they use custom DOM patterns that don't benefit from shared controls.
 - Autodocs (`tags: ['autodocs']`) generates documentation pages automatically for all story files.
+
+### ADR-034: Preserve N-dimensional datasets through selectable rebuilding
+
+**Status:** accepted
+**Date:** 2026-07-30
+
+**Context:** Selectable rebuilding previously combined category filtering, layout interpretation, chart compatibility checks, and projection into a synthetic two-dimensional JSON-stat dataset. This erased original dimensions and roles before chart-specific transforms ran, made table projection depend on synthetic axes, and placed visualization concerns in the data-preparation layer.
+
+**Decision:** `rebuildDataset()` now performs only JSON-stat operations: resolve active selectable categories, preserve their source metadata order, permute dimensions according to an explicit layout, and copy the filtered N-dimensional value cube. Explicit layout order is rows followed by columns followed by omitted dimensions in original order. Every source dimension, role, and applicable metadata entry remains present. Composite axis codes and labels are created only by categorical transformation; table, map, scatter, pyramid, and key-figure transforms project the rebuilt cube according to their own requirements. Explicit chart choices bypass compatibility fallback and selectable-dimension rejection after structural dataset validation.
+
+**Consequences:** Rebuilt data remains valid N-dimensional JSON-stat and can be consumed by specialized transforms without recovering lost metadata. Omitted multi-value dimensions no longer make rebuilding fail; individual transforms define how they are projected or fixed. A configured multi-select dimension omitted from layout is still projected as categorical series, but that promotion belongs to `transform.ts`, not rebuilding. Automatic chart selection remains compatibility-aware, while explicit chart choices may produce ordinary transformation or rendering errors if the supplied data cannot satisfy the chosen renderer. No new dependency or public chart-data type is required.
+
+### ADR-035: Unified chart dimension layout
+
+**Status:** accepted
+**Date:** 2026-07-31
+
+**Context:** Table orientation originally used the table-specific `ChartConfig.tableLayout` property. Selectable rebuilding and categorical projection now use the same row and column dimension ordering, so retaining a separate table-only property duplicates configuration and terminology.
+
+**Decision:** `ChartConfig.layout` with `{ rows, columns }` is the sole dimension-layout API for every chart type. Table transformation accepts only `layout`; the deprecated `tableLayout` alias is removed.
+
+**Consequences:** Consumers use one layout shape consistently across table and non-table charts. Passing `tableLayout` is no longer supported. ADR-020 remains the historical record of the original table-specific API and is superseded by this decision.
+
+### ADR-036: Hide singleton dimensions in table orientation
+
+**Status:** accepted
+**Date:** 2026-08-13
+
+**Context:** Selectable filtering can reduce a dimension named in `layout` to one active category. Rendering that dimension as a row or column adds a redundant header, and promoting an arbitrary dimension in an all-singleton dataset does not represent a meaningful table direction.
+
+**Decision:** `table-transform.ts` removes every size-1 dimension from visible rows and columns after rebuilding, regardless of whether it was named in `layout`. Singleton and otherwise unplaced dimensions remain in `hiddenDimensions`. An all-singleton dataset produces no visible dimensions and a one-cell values grid; hidden coordinates continue to use category index 0.
+
+**Consequences:** Table orientation depends on active rebuilt sizes, while dimension metadata remains available to headers, exports, and consumers of normalized `TableData`. Manual layout validation still rejects unknown, duplicate, and overlapping dimension codes.
+
+### ADR-037: Automatic uniform scatter point sizing
+
+**Status:** accepted
+**Date:** 2026-08-18
+
+**Context:** Scatter points previously used a fixed 5 px radius, but point size still needs to adapt to chart dimensions and point density.
+
+**Decision:** Every valid point in a scatter chart uses one automatically calculated radius. Plots with at most eight valid points use the responsive maximum radius so sparse observations remain visible and navigable. Larger plots use projected screen-space coordinates: global spacing comes from plot area and point count, while a bucketed nearest-neighbor search captures local clustering. The lower-quartile local spacing and global spacing are combined, scaled from 0.25 for small datasets toward 0.15 as point count reaches 100, and then clamped between a fixed 0.75% and 1.5% of the shorter plot dimension. A 1 px minimum fallback applies when the relative minimum would be subpixel. The calculation runs during every scaffold render, so resizing and data updates recalculate it. No public configuration or theme token is added.
+
+**Consequences:** Sparse plots receive larger points and dense or clustered plots receive smaller points without introducing a third visual data encoding. Invalid points do not affect density. Screen-space calculation keeps behavior independent of raw data units and naturally accounts for the available plot size, from mobile canvases to large displays. The radius policy is exported as a pure helper for focused tests.
+
+### ADR-038: Named chart regions and host-owned alternate tables
+
+**Status:** accepted
+**Date:** 2026-09-01
+
+**Context:** Screen-reader testing found that `role="figure"` and nested SVG image semantics produced an incorrect illustration announcement, chart titles were not announced reliably, cyclic chart-level arrow handling transferred focus from unrelated controls, redraws reset the visible tab stop, and implicit hidden tables created an unexpected navigation target after each chart. Hard-coded English role descriptions also leaked into Finnish and Swedish interfaces.
+
+**Decision:** Every visual chart exposes one localized, named `region`; nested noninteractive SVG image semantics are removed. Focusable datapoints use localized list semantics and chart-orientation-aware roving `tabindex`. Only a registered datapoint owns arrow events, navigation stops at boundaries, and Tab/Shift+Tab leave the chart. Stable logical datapoint coordinates preserve the active tab stop and DOM focus when a redraw replaces SVG nodes. The library no longer creates hidden data tables. Host applications own visible alternate data presentations, and the explicit chart/table menu mode remains supported.
+
+Maps remain nonfocusable because geographic regions have no meaningful linear keyboard order. The map region provides a localized summary; a host application must provide a visible table when users need access to all region values.
+
+**Consequences:** This decision supersedes ADR-029 and the screen-reader-table consequence in ADR-007. Consumers no longer encounter duplicate figure/image announcements or an implicit table after a chart. Applications embedding maps must deliberately provide an alternate data view. Accessibility acceptance is tested primarily with NVDA in Chromium and Firefox, with automated coverage for semantics, localization, focus ownership, boundaries, and redraw restoration.
+
+### ADR-039: Map regions become keyboard-focusable via shared bindInteractions
+
+**Status:** accepted (supersedes the map-exclusion clause of ADR-038, and ADR-029)
+**Date:** 2026-09-01
+
+**Context:** ADR-038 and ADR-029 kept map regions nonfocusable, and the map's root `<svg>` was also marked `aria-hidden="true"`. Together this meant screen reader users had no way to reach any per-region data — not even the localized chart summary reached individual values. The stated rationale (no natural geographic navigation order) does not justify withholding keyboard access entirely.
+
+**Decision:** Map regions now use the same `bindInteractions()` / `KeyboardNavigator` infrastructure as bar, pie, and scatter datapoints: each region `<path>` gets a roving `tabindex`, arrow-key navigation, a `role="listitem"` with localized `aria-label`, and a focus-triggered tooltip, grouped under a `role="list"` region group inside the chart's named `role="region"` container. `KeyboardNavigator` handles arrow-key navigation among the registered datapoints. Because maps have no directional sequence, Right/Down move forward and Left/Up move backward through `data.regions` array order. The root map `<svg>` is no longer `aria-hidden`.
+
+**Consequences:** Keyboard and screen reader users can now Tab into the map and arrow through every region, reading its name and value, matching the level of access already available for other chart types. Applications that need a host-owned alternate table (per ADR-038) may still provide one; this is unaffected. Automated coverage in `tests/charts/map.test.ts` verifies tabindex rove-ing, list/listitem semantics, aria-labels, and focus-triggered tooltips.

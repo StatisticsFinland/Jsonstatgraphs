@@ -6,6 +6,8 @@ export interface CreateZonesOptions {
   showLegend: boolean;
   seriesCount: number;
   hasFooterContent?: boolean;
+  hasBurgerMenu?: boolean;
+  hasHeaderContent?: boolean;
 }
 
 export const ZONE_PRIORITIES: Record<ZoneType, number> = {
@@ -30,6 +32,13 @@ const HORIZONTAL_CHART_TYPES = new Set<ChartType>([
   'pyramid',
 ]);
 
+const HORIZONTAL_BAR_CHART_TYPES = new Set<ChartType>([
+  'horizontalBar',
+  'groupedHorizontalBar',
+  'stackedHorizontalBar',
+  'percentHorizontalBar',
+]);
+
 export function applyMeasuredSizes(
   zones: ZoneConfig[],
   measurements: Partial<Record<ZoneType, number>>
@@ -44,7 +53,7 @@ export function applyMeasuredSizes(
 }
 
 export function createZones(options: CreateZonesOptions): ZoneConfig[] {
-  const { chartType, showHeader, showLegend, seriesCount } = options;
+  const { chartType, showHeader, showLegend, seriesCount, hasBurgerMenu, hasHeaderContent } = options;
 
   const isPie = chartType === 'pie';
   const isMap = chartType === 'map';
@@ -56,14 +65,14 @@ export function createZones(options: CreateZonesOptions): ZoneConfig[] {
   return [
     {
       type: ZoneType.Header,
-      visible: showHeader,
+      visible: showHeader || Boolean(hasBurgerMenu),
       minSize: 0,
-      preferredSize: showHeader ? 40 : 0,
+      preferredSize: hasBurgerMenu && (!showHeader || !hasHeaderContent) ? 48 : (showHeader ? 40 : 0),
       priority: ZONE_PRIORITIES[ZoneType.Header],
     },
     {
       type: ZoneType.YAxisTitle,
-      visible: !isPie && !isMap,
+      visible: !isPie && !isMap && !HORIZONTAL_BAR_CHART_TYPES.has(chartType),
       minSize: 0,
       preferredSize: 25,
       priority: ZONE_PRIORITIES[ZoneType.YAxisTitle],

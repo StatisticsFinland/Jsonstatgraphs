@@ -44,6 +44,19 @@ export const WithFooter: StoryObj = {
     }),
 };
 
+export const WithUnitFooter: StoryObj = {
+  render: (args) =>
+    renderChart({
+      dataset: categoricalData,
+      config: buildConfig(args, {
+        chartType: 'verticalBar',
+        showUnit: true,
+      }),
+      width: args.width as string,
+      height: args.height as string | undefined,
+    }),
+};
+
 export const FullConfiguration: StoryObj = {
   render: (args) =>
     renderChart({

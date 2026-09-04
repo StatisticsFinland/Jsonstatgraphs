@@ -6,6 +6,7 @@ import type { NiceSkipOptions } from '../layout/label-fitting';
 import { bindInteractions, DataElementInfo, BoundInteractions } from './bindInteractions';
 import { applyChartAriaAttributes, applySeriesGroupAttributes } from '../a11y/aria';
 import { getSeriesColor } from '../theme/palette';
+import { getMarkerPath } from '../a11y/patterns';
 
 export interface LineChartConfig {
   container: HTMLElement;
@@ -19,7 +20,7 @@ export interface LineChartInstance {
   destroy(): void;
 }
 
-function computeValueRange(data: ChartData): [number, number] {
+export function computeValueRange(data: ChartData, cutValueAxis?: boolean): [number, number] {
   const values: number[] = [];
   for (const series of data.series) {
     for (const point of series.points) {
@@ -31,8 +32,12 @@ function computeValueRange(data: ChartData): [number, number] {
   if (values.length === 0) return [0, 1];
   const min = Math.min(...values);
   const max = Math.max(...values);
-  if (min === max) return [min - 1, max + 1];
-  return [min, max];
+  if (cutValueAxis) {
+    if (min === max) return [min - 1, max + 1];
+    return [min, max];
+  }
+  // Default: always include 0 so the Y axis isn't misleadingly cut
+  return [Math.min(0, min), Math.max(0, max)];
 }
 
 export function createLineChart(chartConfig: LineChartConfig): LineChartInstance {
@@ -63,11 +68,12 @@ export function createLineChart(chartConfig: LineChartConfig): LineChartInstance
       chartData: data,
       ariaLabel: config.ariaLabel,
       caption: config.title ?? config.ariaLabel,
+      pointAxis: 'horizontal',
     });
   }
 
   const seriesNames = data.series.map(s => s.name);
-  const valueRange = computeValueRange(data);
+  const valueRange = computeValueRange(data, config.cutValueAxis);
 
   const scaffold = new ChartScaffold({
     mode: 'categorical' as const,
@@ -108,7 +114,7 @@ export function createLineChart(chartConfig: LineChartConfig): LineChartInstance
         .attr('class', `jsc-series jsc-series-${si}`) as unknown as import('d3-selection').Selection<SVGGElement, unknown, null, undefined>;
 
       const seriesGroupEl = seriesGroup.node() as SVGGElement;
-      applySeriesGroupAttributes(seriesGroupEl, series.name, si);
+      applySeriesGroupAttributes(seriesGroupEl, series.name, si, config.locale);
       seriesGroupElements.set(si, seriesGroupEl);
 
       // Build line generator
@@ -124,42 +130,58 @@ export function createLineChart(chartConfig: LineChartConfig): LineChartInstance
         .append('path')
         .datum(series.points)
         .attr('class', 'jsc-line')
+        .attr('aria-hidden', 'true')
         .attr('fill', 'none')
         .attr('stroke', color)
         .attr('stroke-width', '2')
         .attr('d', lineGen);
 
-      // Draw circle markers for non-null points
+      // Draw markers for non-null points
       const nonNullPoints = series.points.filter(p => p.value !== null);
 
-      seriesGroup
-        .selectAll<SVGCircleElement, LinePoint>('circle')
-        .data(nonNullPoints)
-        .join('circle')
-        .attr('class', 'jsc-marker')
-        .attr('cx', d => xScale(d.categoryCode)!)
-        .attr('cy', d => yScale(d.value as number)!)
-        .attr('r', '4')
-        .attr('fill', color)
-        .attr('stroke', theme.colorSurface)
-        .attr('stroke-width', '2')
-        .attr('tabindex', '0');
+      if (config.accessibilityMode) {
+        seriesGroup
+          .selectAll<SVGPathElement, LinePoint>('path.jsc-marker')
+          .data(nonNullPoints)
+          .join('path')
+          .attr('class', 'jsc-marker')
+          .attr('d', d => getMarkerPath(si, xScale(d.categoryCode)!, yScale(d.value as number)!, 5))
+          .attr('fill', color)
+          .attr('stroke', theme.colorSurface)
+          .attr('stroke-width', '2')
+          .attr('tabindex', '0');
+      } else {
+        seriesGroup
+          .selectAll<SVGCircleElement, LinePoint>('circle.jsc-line-hit-area')
+          .data(nonNullPoints)
+          .join('circle')
+          .attr('class', 'jsc-line-hit-area')
+          .attr('cx', d => xScale(d.categoryCode)!)
+          .attr('cy', d => yScale(d.value as number)!)
+          .attr('r', '8')
+          .attr('fill', 'transparent')
+          .attr('stroke', 'none')
+          .attr('tabindex', '0');
+      }
 
       // Collect elements for bindInteractions
-      const circles = seriesGroup.selectAll<SVGCircleElement, LinePoint>('circle').nodes();
+      const markers = seriesGroup
+        .selectAll<SVGElement, LinePoint>(config.accessibilityMode ? '.jsc-marker' : '.jsc-line-hit-area')
+        .nodes();
       for (let pi = 0; pi < nonNullPoints.length; pi++) {
         const point = nonNullPoints[pi];
-        const circleEl = circles[pi];
-        if (!circleEl) continue;
+        const markerEl = markers[pi];
+        if (!markerEl) continue;
 
         const formattedValue = point.value === null
           ? '–'
           : point.value.toLocaleString(config.locale);
 
         elements.push({
-          element: circleEl,
+          element: markerEl,
           seriesIndex: si,
           pointIndex: pi,
+          pointKey: point.categoryCode,
           category: point.label,
           seriesName: series.name,
           value: point.value,
@@ -192,7 +214,7 @@ export function createLineChart(chartConfig: LineChartConfig): LineChartInstance
 
   // Apply chart-level ARIA
   const ariaLabel = config.ariaLabel ?? (config.title ?? 'Line chart');
-  applyChartAriaAttributes(container, ariaLabel);
+  applyChartAriaAttributes(container, ariaLabel, 'line', config.locale);
 
   // Trigger initial render
   scaffold.render();
@@ -204,8 +226,8 @@ export function createLineChart(chartConfig: LineChartConfig): LineChartInstance
         config = newConfig;
       }
       const updatedAriaLabel = config.ariaLabel ?? (config.title ?? 'Line chart');
-      applyChartAriaAttributes(container, updatedAriaLabel);
-      const updatedValueRange = computeValueRange(data);
+      applyChartAriaAttributes(container, updatedAriaLabel, 'line', config.locale);
+      const updatedValueRange = computeValueRange(data, config.cutValueAxis);
       scaffold.update({
         mode: 'categorical' as const,
         container,
@@ -230,6 +252,7 @@ export function createLineChart(chartConfig: LineChartConfig): LineChartInstance
       scaffold.destroy();
       container.removeAttribute('role');
       container.removeAttribute('aria-label');
+      container.removeAttribute('aria-roledescription');
     },
   };
 }
