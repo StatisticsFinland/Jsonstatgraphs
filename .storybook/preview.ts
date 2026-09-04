@@ -1,4 +1,5 @@
 import type { Preview } from '@storybook/html-vite';
+import { destroyStoredChartInstance } from '../stories/helpers/renderChart';
 
 const preview: Preview = {
   parameters: {
@@ -11,7 +12,7 @@ const preview: Preview = {
     },
     options: {
       storySort: {
-        order: ['Charts', ['Overview', '*'], 'Customization', ['Theming', '*'], 'Other'],
+        order: ['Charts', ['Overview', '*'], 'Customization', ['Theming', 'Custom Burger Menu Items', '*'], 'Other'],
       },
     },
   },
@@ -19,7 +20,7 @@ const preview: Preview = {
     (storyFn) => {
       // Clean up previous chart instances before rendering the next story
       document.querySelectorAll('[data-jsc-story]').forEach((el) => {
-        (el as any).__jscInstance?.destroy();
+        destroyStoredChartInstance(el);
       });
       const result = storyFn();
       if (result instanceof HTMLElement) {

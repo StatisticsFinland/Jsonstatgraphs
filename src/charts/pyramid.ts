@@ -4,6 +4,7 @@ import { ChartScaffold, ScaffoldRenderContext } from './base';
 import { bindInteractions, DataElementInfo, BoundInteractions } from './bindInteractions';
 import { applyChartAriaAttributes, applySeriesGroupAttributes } from '../a11y/aria';
 import { getSeriesColor } from '../theme/palette';
+import { ensureDefs, getPatternFillUrl, injectPatternDefs } from '../a11y/patterns';
 
 export interface PyramidChartConfig {
   container: HTMLElement;
@@ -52,7 +53,9 @@ export function createPyramidChart(chartConfig: PyramidChartConfig): PyramidChar
         categoryLabels: data.categoryLabels,
         xLabel: data.categoryDimensionLabel,
         seriesLabel: data.splitDimensionLabel,
+        yLabel: data.yLabel,
       },
+      pointAxis: 'vertical',
       ariaLabel: config.ariaLabel,
       caption: config.title ?? config.ariaLabel,
     });
@@ -83,6 +86,11 @@ export function createPyramidChart(chartConfig: PyramidChartConfig): PyramidChar
     const plotAreaGroup = svg.select<SVGGElement>('.jsc-plot-area');
     const elements: DataElementInfo[] = [];
 
+    if (config.accessibilityMode) {
+      const defs = ensureDefs(svg);
+      injectPatternDefs(defs, theme, 2);
+    }
+
     const seriesList = [
       { series: data.leftSeries, index: 0, isLeft: true },
       { series: data.rightSeries, index: 1, isLeft: false },
@@ -96,7 +104,7 @@ export function createPyramidChart(chartConfig: PyramidChartConfig): PyramidChar
         .attr('class', `jsc-series jsc-series-${si}`) as unknown as import('d3-selection').Selection<SVGGElement, unknown, null, undefined>;
 
       const seriesGroupEl = seriesGroup.node() as SVGGElement;
-      applySeriesGroupAttributes(seriesGroupEl, series.name, si);
+      applySeriesGroupAttributes(seriesGroupEl, series.name, si, config.locale);
       seriesGroupElements.set(si, seriesGroupEl);
 
       type BarPoint = { value: number; label: string; categoryCode: string };
@@ -115,7 +123,7 @@ export function createPyramidChart(chartConfig: PyramidChartConfig): PyramidChar
           .attr('y', d => yScale(d.categoryCode)!)
           .attr('width', d => xScale(0) - xScale(-d.value))
           .attr('height', yScale.bandwidth())
-          .attr('fill', color)
+          .attr('fill', config.accessibilityMode ? getPatternFillUrl(si) : color)
           .attr('stroke', theme.colorBorder)
           .attr('stroke-width', '1')
           .attr('tabindex', '0');
@@ -130,7 +138,7 @@ export function createPyramidChart(chartConfig: PyramidChartConfig): PyramidChar
           .attr('y', d => yScale(d.categoryCode)!)
           .attr('width', d => xScale(d.value) - xScale(0))
           .attr('height', yScale.bandwidth())
-          .attr('fill', color)
+          .attr('fill', config.accessibilityMode ? getPatternFillUrl(si) : color)
           .attr('stroke', theme.colorBorder)
           .attr('stroke-width', '1')
           .attr('tabindex', '0');
@@ -146,6 +154,8 @@ export function createPyramidChart(chartConfig: PyramidChartConfig): PyramidChar
           element: rectEl,
           seriesIndex: si,
           pointIndex: pi,
+          navigationPointIndex: nonNullPoints.length - pi - 1,
+          pointKey: point.categoryCode,
           category: point.label,
           seriesName: series.name,
           value: point.value,
@@ -175,7 +185,7 @@ export function createPyramidChart(chartConfig: PyramidChartConfig): PyramidChar
   });
 
   const ariaLabel = config.ariaLabel ?? (config.title ?? 'Pyramid chart');
-  applyChartAriaAttributes(container, ariaLabel);
+  applyChartAriaAttributes(container, ariaLabel, 'pyramid', config.locale);
 
   scaffold.render();
 
@@ -186,7 +196,7 @@ export function createPyramidChart(chartConfig: PyramidChartConfig): PyramidChar
         config = newConfig;
       }
       const updatedAriaLabel = config.ariaLabel ?? (config.title ?? 'Pyramid chart');
-      applyChartAriaAttributes(container, updatedAriaLabel);
+      applyChartAriaAttributes(container, updatedAriaLabel, 'pyramid', config.locale);
       scaffold.update({
         mode: 'categorical' as const,
         container,
@@ -208,6 +218,7 @@ export function createPyramidChart(chartConfig: PyramidChartConfig): PyramidChar
       scaffold.destroy();
       container.removeAttribute('role');
       container.removeAttribute('aria-label');
+      container.removeAttribute('aria-roledescription');
     },
   };
 }

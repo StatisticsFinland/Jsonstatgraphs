@@ -1,20 +1,7 @@
 {
-  "name": "@statisticsfinland/jsonstat-chart",
-  "version": "0.1.0",
+  "name": "@statisticsfinland/jsonstatgraphs",
+  "version": "0.2.1",
   "description": "Render JSON-stat 2.0 datasets as interactive, accessible SVG charts",
-  "type": "module",
-  "main": "dist/index.js",
-  "module": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "author": "Statistics Finland",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/StatisticsFinland/Jsonstatgraphs.git"
-  },
-  "homepage": "https://github.com/StatisticsFinland/Jsonstatgraphs",
-  "bugs": {
-    "url": "https://github.com/StatisticsFinland/Jsonstatgraphs/issues"
-  },
   "keywords": [
     "json-stat",
     "charts",
@@ -24,6 +11,17 @@
     "svg",
     "accessible"
   ],
+  "homepage": "https://github.com/StatisticsFinland/Jsonstatgraphs",
+  "bugs": {
+    "url": "https://github.com/StatisticsFinland/Jsonstatgraphs/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/StatisticsFinland/Jsonstatgraphs.git"
+  },
+  "license": "Apache-2.0",
+  "author": "Statistics Finland",
+  "type": "module",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -31,18 +29,23 @@
       "default": "./dist/index.js"
     }
   },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "directories": {
+    "test": "tests"
+  },
   "files": [
     "dist"
   ],
-  "sideEffects": false,
-  "license": "Apache-2.0",
   "scripts": {
     "build": "vite build",
     "lint": "eslint src stories tests",
     "test": "jest",
+    "test:ci": "jest --ci --reporters=default",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
-    "pack": "npm run build && npm pack"
+    "pack": "npm run build && npm pack",
+    "version-helper": "node .github/scripts/version-helper.js"
   },
   "dependencies": {
     "d3-array": "^3.2.4",
@@ -74,6 +77,9 @@
     "ts-node": "^10.9.2",
     "typescript": "^6.0.3",
     "vite": "^8.0.16",
-    "vite-plugin-dts": "^5.0.2"
-  }
+    "vite-plugin-dts": "^5.0.2",
+    "semver": "^7.7.0"
+  },
+  "module": "dist/index.js",
+  "sideEffects": false
 }

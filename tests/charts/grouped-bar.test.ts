@@ -2,15 +2,6 @@ import { createGroupedBarChart } from '../../src/charts/grouped-bar';
 import { ChartData, ChartConfig } from '../../src/types';
 
 // Mock ResizeObserver
-beforeAll(() => {
-  (globalThis as any).ResizeObserver = class {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
-  };
-  (window as any).matchMedia = jest.fn().mockReturnValue({ matches: false });
-});
-
 const twoSeriesData: ChartData = {
   series: [
     {
@@ -119,14 +110,14 @@ describe('createGroupedBarChart', () => {
     createGroupedBarChart({ container, data: twoSeriesData, config: defaultConfig });
     // 2 series × 3 categories = 6 rects
     const rects = container.querySelectorAll('.jsc-bar');
-    expect(rects.length).toBe(6);
+    expect(rects).toHaveLength(6);
   });
 
   it('three series draws all rects', () => {
     createGroupedBarChart({ container, data: threeSeriesData, config: defaultConfig });
     // 3 series × 3 categories = 9 rects
     const rects = container.querySelectorAll('.jsc-bar');
-    expect(rects.length).toBe(9);
+    expect(rects).toHaveLength(9);
   });
 
   it('multi-series uses different fill colors per series', () => {
@@ -146,7 +137,7 @@ describe('createGroupedBarChart', () => {
     createGroupedBarChart({ container, data: dataWithNull, config: defaultConfig });
     // Series A: 2 non-null (cat1, cat3), Series B: 2 non-null (cat1, cat2) = 4 total
     const rects = container.querySelectorAll('.jsc-bar');
-    expect(rects.length).toBe(4);
+    expect(rects).toHaveLength(4);
   });
 
   it('horizontal grouped bar creates rects', () => {
@@ -157,12 +148,96 @@ describe('createGroupedBarChart', () => {
       chartType: 'groupedHorizontalBar',
     });
     const rects = container.querySelectorAll('.jsc-bar');
-    expect(rects.length).toBe(6);
+    expect(rects).toHaveLength(6);
   });
 
-  it('ARIA: container has role="figure"', () => {
+  it('navigates between series within a horizontal category group', () => {
+    createGroupedBarChart({
+      container,
+      data: twoSeriesData,
+      config: defaultConfig,
+      chartType: 'groupedHorizontalBar',
+    });
+    const firstSeriesCat1 = container.querySelector<SVGRectElement>('.jsc-series-0 .jsc-bar');
+    const secondSeriesCat1 = container.querySelector<SVGRectElement>('.jsc-series-1 .jsc-bar');
+
+    firstSeriesCat1?.focus();
+    firstSeriesCat1?.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'ArrowDown',
+      bubbles: true,
+      cancelable: true,
+    }));
+
+    expect(document.activeElement).toBe(secondSeriesCat1);
+  });
+
+  it('navigates between series within a vertical category group', () => {
     createGroupedBarChart({ container, data: twoSeriesData, config: defaultConfig });
-    expect(container.getAttribute('role')).toBe('figure');
+    const firstSeriesCat1 = container.querySelector<SVGRectElement>('.jsc-series-0 .jsc-bar');
+    const secondSeriesCat1 = container.querySelector<SVGRectElement>('.jsc-series-1 .jsc-bar');
+
+    firstSeriesCat1?.focus();
+    firstSeriesCat1?.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'ArrowRight',
+      bubbles: true,
+      cancelable: true,
+    }));
+
+    expect(document.activeElement).toBe(secondSeriesCat1);
+  });
+
+  it('keeps the category identity when a group has a missing series value', () => {
+    createGroupedBarChart({
+      container,
+      data: dataWithNull,
+      config: defaultConfig,
+      chartType: 'groupedHorizontalBar',
+    });
+    const seriesACat1 = container.querySelector<SVGRectElement>('.jsc-series-0 .jsc-bar');
+    const seriesBCat1 = container.querySelector<SVGRectElement>('.jsc-series-1 .jsc-bar');
+
+    seriesACat1?.focus();
+    seriesACat1?.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'ArrowDown',
+      bubbles: true,
+      cancelable: true,
+    }));
+
+    expect(document.activeElement).toBe(seriesBCat1);
+    expect(document.activeElement?.getAttribute('aria-label')).toContain('Cat1');
+  });
+
+  it('uses series order for top-to-bottom order in horizontal groups and legend', () => {
+    const prioritizedData: ChartData = {
+      ...twoSeriesData,
+      series: [twoSeriesData.series[1], twoSeriesData.series[0]],
+    };
+
+    createGroupedBarChart({
+      container,
+      data: prioritizedData,
+      config: defaultConfig,
+      chartType: 'groupedHorizontalBar',
+    });
+
+    const firstBarY = Number.parseFloat(
+      (container.querySelector('.jsc-series-0 .jsc-bar') as SVGRectElement).getAttribute('y') ?? '0'
+    );
+    const secondBarY = Number.parseFloat(
+      (container.querySelector('.jsc-series-1 .jsc-bar') as SVGRectElement).getAttribute('y') ?? '0'
+    );
+    expect(firstBarY).toBeLessThan(secondBarY);
+    expect(Array.from(container.querySelectorAll('.jsc-legend-item')).map(item => item.textContent?.trim())).toEqual([
+      'Series B',
+      'Series A',
+    ]);
+    expect(container.querySelector('.jsc-series-0 .jsc-bar')?.getAttribute('aria-label')).toContain('Series B');
+  });
+
+  it('ARIA: container has role="region"', () => {
+    createGroupedBarChart({ container, data: twoSeriesData, config: defaultConfig });
+    expect(container.getAttribute('role')).toBe('region');
+    expect(container.querySelector('[role="application"]')).toBeNull();
   });
 
   it('ARIA: rects have role="listitem" and aria-label', () => {
@@ -186,11 +261,11 @@ describe('createGroupedBarChart', () => {
 
   it('update() re-renders with new data', () => {
     const instance = createGroupedBarChart({ container, data: twoSeriesData, config: defaultConfig });
-    expect(container.querySelectorAll('.jsc-bar').length).toBe(6);
+    expect(container.querySelectorAll('.jsc-bar')).toHaveLength(6);
 
     instance.update(dataWithNull);
     // 4 non-null rects after update
-    expect(container.querySelectorAll('.jsc-bar').length).toBe(4);
+    expect(container.querySelectorAll('.jsc-bar')).toHaveLength(4);
   });
 
   it('update() with new title updates aria-label on container', () => {
@@ -212,7 +287,7 @@ describe('createGroupedBarChart', () => {
     (legendButtons[1] as HTMLElement).click();
 
     // Series 1 group should no longer exist in the DOM
-    expect(container.querySelectorAll('.jsc-series-1 .jsc-bar').length).toBe(0);
+    expect(container.querySelectorAll('.jsc-series-1 .jsc-bar')).toHaveLength(0);
 
     // Series 0 bars should be wider (inner scale has more room with only 1 series)
     const afterBars = container.querySelectorAll('.jsc-series-0 .jsc-bar');
@@ -233,8 +308,8 @@ describe('createGroupedBarChart', () => {
     (container.querySelectorAll('.jsc-legend-item')[1] as HTMLElement).click(); // toggle on (re-query after re-render)
 
     // After re-enabling, both series groups should be present
-    expect(container.querySelectorAll('.jsc-series-0 .jsc-bar').length).toBe(3);
-    expect(container.querySelectorAll('.jsc-series-1 .jsc-bar').length).toBe(3);
+    expect(container.querySelectorAll('.jsc-series-0 .jsc-bar')).toHaveLength(3);
+    expect(container.querySelectorAll('.jsc-series-1 .jsc-bar')).toHaveLength(3);
 
     // Width should return to original
     const restoredWidth = Number.parseFloat(
@@ -248,9 +323,9 @@ describe('createGroupedBarChart', () => {
 
     const legendButtons = container.querySelectorAll('.jsc-legend-item');
     (legendButtons[1] as HTMLElement).click(); // hide series 1
-    expect(container.querySelectorAll('.jsc-series-1 .jsc-bar').length).toBe(0);
+    expect(container.querySelectorAll('.jsc-series-1 .jsc-bar')).toHaveLength(0);
 
     instance.update(twoSeriesData);
-    expect(container.querySelectorAll('.jsc-bar').length).toBe(6);
+    expect(container.querySelectorAll('.jsc-bar')).toHaveLength(6);
   });
 });

@@ -10,7 +10,7 @@ import type {
   ClassificationMethod,
   MapClassification,
 } from '../types';
-import { getOrderedCodes } from './transform';
+import { computeFlatIndex, getOrderedCodes } from './dataset-utils';
 import { linearAxisIntervalStepFunction } from '../layout/tick-positions';
 import { ckmeans } from 'simple-statistics';
 import { scaleLinear } from 'd3-scale';
@@ -39,15 +39,6 @@ const NO_DATA_COLOR = '#e0e0e0';
 function resolveValue(v: number | null | string): number | null {
   if (v === null || typeof v === 'string') return null;
   return v;
-}
-
-/** Computes the flat (row-major) index from per-dimension indices and strides. */
-function computeFlatIndex(dimIndices: number[], strides: number[]): number {
-  let idx = 0;
-  for (let i = 0; i < strides.length; i++) {
-    idx += dimIndices[i] * strides[i];
-  }
-  return idx;
 }
 
 /** Returns the color for class i given the actual class count and available colors. */
@@ -464,22 +455,23 @@ export function transformMapData(
   geometry: GeoJsonFeatureCollection,
   mapConfig: MapConfig,
   theme: ResolvedTheme,
+  activeCategoryCodes?: Record<string, string[]>,
 ): MapChartData {
   const { id, size, dimension, value } = dataset;
 
   // --- 1. Find the geo dimension ---
   const geoDimId = mapConfig.geoDimensionId ?? dataset.role?.geo?.[0];
   if (!geoDimId) {
-    throw new Error('[JsonStatChart] transformMapData: dataset has no geo role dimension');
+    throw new Error('[Jsonstatgraphs] transformMapData: dataset has no geo role dimension');
   }
   const geoDimIdx = id.indexOf(geoDimId);
   if (geoDimIdx === -1) {
-    throw new Error(`[JsonStatChart] transformMapData: geo dimension "${geoDimId}" not found in dataset.id`);
+    throw new Error(`[Jsonstatgraphs] transformMapData: geo dimension "${geoDimId}" not found in dataset.id`);
   }
 
   // --- 2. Extract geo codes and labels ---
   const geoCatDef = dimension[geoDimId].category;
-  const geoCodes = getOrderedCodes(geoCatDef.index);
+  const geoCodes = activeCategoryCodes?.[geoDimId] ?? getOrderedCodes(geoCatDef.index);
   const geoLabels: Record<string, string> = {};
   for (const code of geoCodes) {
     geoLabels[code] = geoCatDef.label?.[code] ?? code;
@@ -499,7 +491,11 @@ export function transformMapData(
       ? geoCatDef.index.indexOf(code)
       : geoCatDef.index[code];
 
-    const dimIndices = id.map((_, i) => (i === geoDimIdx ? geoPos : 0));
+    const dimIndices = id.map((dimCode, i) => {
+      if (i === geoDimIdx) return geoPos;
+      const selectedCode = activeCategoryCodes?.[dimCode]?.[0];
+      return selectedCode ? getOrderedCodes(dimension[dimCode].category.index).indexOf(selectedCode) : 0;
+    });
     const flatIdx = computeFlatIndex(dimIndices, strides);
     values.set(code, resolveValue(value[flatIdx]));
   }
@@ -590,7 +586,7 @@ export function transformMapData(
   const metricDimId = dataset.role?.metric?.[0] ?? null;
   if (metricDimId && dimension[metricDimId]) {
     const metricCatDef = dimension[metricDimId].category;
-    const metricCodes = getOrderedCodes(metricCatDef.index);
+    const metricCodes = activeCategoryCodes?.[metricDimId] ?? getOrderedCodes(metricCatDef.index);
     const firstCode = metricCodes[0];
     valueDimensionLabel = metricCatDef.label?.[firstCode] ?? metricDimId;
     const unitInfo = metricCatDef.unit?.[firstCode];

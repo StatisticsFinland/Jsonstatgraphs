@@ -116,10 +116,13 @@ describe('createKeyFigureChart', () => {
     expect(container.getAttribute('aria-label')).toBe('Population count');
   });
 
-  it('uses title as fallback aria-label', () => {
+  it('uses the visible title to label the region', () => {
     const config: ChartConfig = { title: 'GDP' };
     createKeyFigureChart({ container, value: 42, unit: '', decimals: undefined, config });
-    expect(container.getAttribute('aria-label')).toBe('GDP');
+    const title = container.querySelector('.jsc-key-figure-title');
+    expect(container.getAttribute('aria-label')).toBeNull();
+    expect(container.getAttribute('aria-labelledby')).toBe(title?.id);
+    expect(title?.getAttribute('aria-hidden')).toBe('true');
   });
 
   it('destroy() removes role and aria-label from container', () => {

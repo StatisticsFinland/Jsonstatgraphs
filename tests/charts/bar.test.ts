@@ -2,15 +2,6 @@ import { createBarChart } from '../../src/charts/bar';
 import { ChartData, ChartConfig } from '../../src/types';
 
 // Mock ResizeObserver
-beforeAll(() => {
-  (globalThis as any).ResizeObserver = class {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
-  };
-  (window as any).matchMedia = jest.fn().mockReturnValue({ matches: false });
-});
-
 const singleSeriesData: ChartData = {
   series: [{
     name: 'Population',
@@ -77,14 +68,14 @@ describe('createBarChart', () => {
   it('draws correct number of rects — one per non-null value', () => {
     createBarChart({ container, data: singleSeriesData, config: defaultConfig });
     const rects = container.querySelectorAll('.jsc-bar');
-    expect(rects.length).toBe(3);
+    expect(rects).toHaveLength(3);
   });
 
   it('null values omit rects', () => {
     createBarChart({ container, data: dataWithNull, config: defaultConfig });
     const rects = container.querySelectorAll('.jsc-bar');
     // 2 non-null out of 4 points
-    expect(rects.length).toBe(2);
+    expect(rects).toHaveLength(2);
   });
 
   it('horizontal bar chart creates rects', () => {
@@ -95,12 +86,55 @@ describe('createBarChart', () => {
       chartType: 'horizontalBar',
     });
     const rects = container.querySelectorAll('.jsc-bar');
-    expect(rects.length).toBe(3);
+    expect(rects).toHaveLength(3);
+    expect(container.getAttribute('aria-roledescription')).toBe('Horizontal bar chart');
   });
 
-  it('ARIA: container has role="figure"', () => {
+  it('keeps vertical bar navigation inside the series list', () => {
     createBarChart({ container, data: singleSeriesData, config: defaultConfig });
-    expect(container.getAttribute('role')).toBe('figure');
+    const list = container.querySelector('[role="list"]');
+    const rects = container.querySelectorAll<SVGRectElement>('.jsc-bar');
+
+    expect(container.querySelector('[role="application"]')).toBeNull();
+    expect(list?.contains(rects[0])).toBe(true);
+
+    rects[0].focus();
+    rects[0].dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'ArrowRight',
+      bubbles: true,
+      cancelable: true,
+    }));
+
+    expect(document.activeElement).toBe(rects[1]);
+    expect(document.activeElement?.getAttribute('aria-label')).toBe('2021, 150');
+  });
+
+  it.each([
+    ['verticalBar', undefined],
+    ['horizontalBar', 'horizontalBar'],
+  ] as const)('does not repeat the series name in %s data-point labels', (_name, chartType) => {
+    const data: ChartData = {
+      ...singleSeriesData,
+      xLabel: 'Age',
+      yLabel: '%',
+      series: [{
+        name: 'Age',
+        code: 'age',
+        points: [{ value: 55, label: '35-44', categoryCode: '35-44' }],
+      }],
+      categories: ['35-44'],
+      categoryLabels: ['35-44'],
+    };
+
+    createBarChart({ container, data, config: defaultConfig, chartType });
+
+    expect(container.querySelector('.jsc-bar')?.getAttribute('aria-label')).toBe('Age: 35-44, 55 %');
+  });
+
+  it('ARIA: container has role="region"', () => {
+    createBarChart({ container, data: singleSeriesData, config: defaultConfig });
+    expect(container.getAttribute('role')).toBe('region');
+    expect(container.getAttribute('aria-roledescription')).toBe('Vertical bar chart');
   });
 
   it('ARIA: rects have role="listitem" and aria-label', () => {
@@ -124,18 +158,18 @@ describe('createBarChart', () => {
 
   it('update() re-renders with new data', () => {
     const instance = createBarChart({ container, data: singleSeriesData, config: defaultConfig });
-    expect(container.querySelectorAll('.jsc-bar').length).toBe(3);
+    expect(container.querySelectorAll('.jsc-bar')).toHaveLength(3);
 
     instance.update(dataWithNull);
     // 2 non-null points after update
-    expect(container.querySelectorAll('.jsc-bar').length).toBe(2);
+    expect(container.querySelectorAll('.jsc-bar')).toHaveLength(2);
   });
 
   it('negative values render bars correctly — bars present for all non-null points', () => {
     createBarChart({ container, data: negativeData, config: defaultConfig });
     const rects = container.querySelectorAll('.jsc-bar');
     // 3 non-null points (including negatives)
-    expect(rects.length).toBe(3);
+    expect(rects).toHaveLength(3);
   });
 
   it('only first series is rendered for multi-series data', () => {
@@ -164,7 +198,7 @@ describe('createBarChart', () => {
     createBarChart({ container, data: multiSeries, config: defaultConfig });
     // Only 2 bars from first series
     const rects = container.querySelectorAll('.jsc-bar');
-    expect(rects.length).toBe(2);
+    expect(rects).toHaveLength(2);
   });
 
   it('update() with new title updates aria-label on container', () => {

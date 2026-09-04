@@ -1,4 +1,5 @@
 import { transformDataset, transformScatterData, transformPyramidData } from '../../src/data/transform';
+import { rebuildDataset } from '../../src/data/rebuild-dataset';
 import { JsonStatDataset } from '../../src/types';
 
 // --- Fixture helpers ---
@@ -41,6 +42,70 @@ const twoDimDataset: JsonStatDataset = {
 // --- Tests ---
 
 describe('transformDataset', () => {
+  test('uses dataset.id rather than dimension dictionary order for configured layouts', () => {
+    const ds: JsonStatDataset = {
+      id: ['Region', 'Year', 'Metric'],
+      size: [2, 2, 1],
+      dimension: {
+        Metric: { category: { index: ['value'], label: { value: 'Value' } } },
+        Year: { category: { index: ['2023', '2024'], label: { '2023': '2023', '2024': '2024' } } },
+        Region: { category: { index: ['N', 'S'], label: { N: 'North', S: 'South' } } },
+      },
+      value: [10, 20, 30, 40],
+      role: { time: ['Year'], metric: ['Metric'] },
+    };
+
+    const layout = { rows: ['Region'], columns: ['Year'] };
+    const rebuilt = rebuildDataset(ds, {
+      layout,
+      selectableSelections: { Metric: ['value'] },
+    }).dataset;
+    const result = transformDataset(rebuilt, { layout });
+
+    expect(result.series.map(series => series.name)).toEqual(['North', 'South']);
+    expect(result.series.map(series => series.points.map(point => point.value))).toEqual([
+      [10, 20],
+      [30, 40],
+    ]);
+  });
+
+  test('projects an omitted multi-select dimension as series', () => {
+    const ds: JsonStatDataset = {
+      id: ['Region', 'Year'],
+      size: [3, 2],
+      dimension: {
+        Region: {
+          label: 'Region',
+          category: { index: ['N', 'C', 'S'], label: { N: 'North', C: 'Central', S: 'South' } },
+        },
+        Year: {
+          label: 'Year',
+          category: { index: ['2023', '2024'], label: { '2023': '2023', '2024': '2024' } },
+        },
+      },
+      value: [10, 11, 20, 21, 30, 31],
+      role: { time: ['Year'] },
+    };
+
+    const layout = { rows: [], columns: ['Year'] };
+    const rebuilt = rebuildDataset(ds, {
+      layout,
+      multiSelectableDimensionCode: 'Region',
+      selectableSelections: { Region: ['N', 'C', 'S'] },
+    }).dataset;
+    const result = transformDataset(rebuilt, {
+      layout,
+      multiSelectableDimensionCode: 'Region',
+    });
+
+    expect(result.series.map(series => series.name)).toEqual(['North', 'Central', 'South']);
+    expect(result.series.map(series => series.points.map(point => point.value))).toEqual([
+      [10, 11],
+      [20, 21],
+      [30, 31],
+    ]);
+  });
+
   // 1. Single dimension
   test('single dimension produces 1 series with correct values', () => {
     const result = transformDataset(singleDimDataset);
@@ -71,6 +136,34 @@ describe('transformDataset', () => {
 
     expect(helsinki!.points.map((p) => p.value)).toEqual([10, 20, 30]);
     expect(tampere!.points.map((p) => p.value)).toEqual([40, 50, 60]);
+  });
+
+  test('retains the metric unit label when resolving a layout view', () => {
+    const ds: JsonStatDataset = {
+      id: ['Region', 'Metric', 'Year'],
+      size: [1, 1, 2],
+      dimension: {
+        Region: { category: { index: ['FI'], label: { FI: 'Finland' } } },
+        Metric: {
+          category: {
+            index: ['population'],
+            label: { population: 'Population' },
+            unit: { population: { label: 'persons', decimals: 0 } },
+          },
+        },
+        Year: { category: { index: ['2023', '2024'], label: { '2023': '2023', '2024': '2024' } } },
+      },
+      value: [5_600_000, 5_610_000],
+      role: { metric: ['Metric'], time: ['Year'] },
+    };
+
+    expect(transformDataset(ds).yLabel).toBe('persons');
+    const layout = { rows: ['Region'], columns: ['Year'] };
+    const rebuilt = rebuildDataset(ds, {
+      layout,
+      selectableSelections: { Metric: ['population'] },
+    }).dataset;
+    expect(transformDataset(rebuilt, { layout }).yLabel).toBe('persons');
   });
 
   // 3. Null values preserved
@@ -106,6 +199,38 @@ describe('transformDataset', () => {
     // Region R1 (index 0) with Year 2020 (index 0) → value[0*3+0] = 10
     // Region R2 (index 1) with Year 2020 (index 0) → value[1*3+0] = 40
     expect(series2020!.points.map((p) => p.value)).toEqual([10, 40]);
+  });
+
+  test('seriesDimension option overrides auto-detection', () => {
+    const ds: JsonStatDataset = {
+      id: ['Sex', 'Region', 'Year'],
+      size: [2, 3, 2],
+      dimension: {
+        Sex: {
+          category: { index: ['M', 'F'], label: { M: 'Male', F: 'Female' } },
+        },
+        Region: {
+          category: {
+            index: ['N', 'C', 'S'],
+            label: { N: 'North', C: 'Central', S: 'South' },
+          },
+        },
+        Year: {
+          category: { index: ['2023', '2024'], label: { '2023': '2023', '2024': '2024' } },
+        },
+      },
+      value: Array.from({ length: 12 }, (_, index) => index),
+      role: { time: ['Year'] },
+    };
+
+    const result = transformDataset(ds, { seriesDimension: 'Region' });
+
+    expect(result.series.map(series => series.code)).toEqual(['N', 'C', 'S']);
+    expect(result.series.map(series => series.points.map(point => point.value))).toEqual([
+      [0, 1],
+      [2, 3],
+      [4, 5],
+    ]);
   });
 
   // 6. Category index as object form { code: position }
@@ -1103,8 +1228,7 @@ describe('transformScatterData', () => {
           index: ['price', 'cost'],
           label: { price: 'Price of apartments', cost: 'Maintenance costs' },
         },
-        role: undefined,
-      } as any,
+      },
       Year: {
         label: 'Year',
         category: {
@@ -1119,8 +1243,8 @@ describe('transformScatterData', () => {
 
   test('observationLabel is populated from observation dimension label', () => {
     const result = transformScatterData(scatterDataset, {
-      xContentValue: 'price',
-      yContentValue: 'cost',
+      xContentValue: 'cost',
+      yContentValue: 'price',
     });
     expect(result.observationLabel).toBe('Year');
   });
@@ -1136,20 +1260,20 @@ describe('transformScatterData', () => {
       },
     };
     const result = transformScatterData(datasetNoLabel, {
-      xContentValue: 'price',
-      yContentValue: 'cost',
+      xContentValue: 'cost',
+      yContentValue: 'price',
     });
     expect(result.observationLabel).toBeUndefined();
   });
 
   test('points are correctly extracted with x and y values', () => {
     const result = transformScatterData(scatterDataset, {
-      xContentValue: 'price',
-      yContentValue: 'cost',
+      xContentValue: 'cost',
+      yContentValue: 'price',
     });
     expect(result.points).toHaveLength(3);
-    expect(result.points[2].x).toBe(1513);
-    expect(result.points[2].y).toBe(423);
+    expect(result.points[2].x).toBe(423);
+    expect(result.points[2].y).toBe(1513);
     expect(result.points[2].label).toBe('2025');
   });
 
@@ -1167,12 +1291,12 @@ describe('transformScatterData', () => {
               cost: { label: '', decimals: 0 },
             },
           },
-        } as any,
+        },
       },
     };
     const result = transformScatterData(ds, {
-      xContentValue: 'price',
-      yContentValue: 'cost',
+      xContentValue: 'cost',
+      yContentValue: 'price',
     });
     expect(result.xUnit).toBeUndefined();
     expect(result.yUnit).toBeUndefined();
@@ -1192,12 +1316,12 @@ describe('transformScatterData', () => {
               cost: { label: '  ', decimals: 0 },
             },
           },
-        } as any,
+        },
       },
     };
     const result = transformScatterData(ds, {
-      xContentValue: 'price',
-      yContentValue: 'cost',
+      xContentValue: 'cost',
+      yContentValue: 'price',
     });
     expect(result.xUnit).toBeUndefined();
     expect(result.yUnit).toBeUndefined();

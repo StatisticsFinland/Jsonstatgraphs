@@ -43,6 +43,13 @@ const mockTheme: ResolvedTheme = {
   gridOpacity: 0.3,
   tooltipPadding: '8px',
   tooltipBoxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+  burgerMenuBackground: '#ffffff',
+  burgerMenuBorderColor: '#bdbdbd',
+  burgerMenuBorderRadius: '18px',
+  burgerMenuShadow: '0 4px 16px rgba(0, 0, 0, 0.12)',
+  burgerMenuItemHoverBackground: '#f5f5f5',
+  burgerMenuItemActiveBackground: '#eef5ff',
+  burgerMenuItemSeparatorColor: '#e3e3e3',
   seriesColors: ['#1f77b4'],
   mapColors: MOCK_COLORS,
 };

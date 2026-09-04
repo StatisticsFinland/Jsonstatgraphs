@@ -30,9 +30,27 @@ export const themeArgTypes: ArgTypes = {
   showHeader: { control: 'boolean', description: 'Show header', table: { category: 'Config' } },
   showLegend: { control: 'boolean', description: 'Show legend', table: { category: 'Config' } },
   autoTitle: { control: 'boolean', description: 'Auto-generate title from dataset', table: { category: 'Config' } },
+  defaultSelectableSelections: { control: 'object', description: 'Fallback dimension/category selections supplied through ChartConfig.', table: { category: 'Selectables' } },
+  multiSelectableDimensionCode: { control: 'text', description: 'Line-chart multi-select dimension supplied through ChartConfig.', table: { category: 'Selectables' } },
+  selectableSelections: { control: 'object', description: 'Current selections supplied to the chart renderer. Overrides dataset extension selections.', table: { category: 'Selectables' } },
+  extensionSelectableSelections: { control: 'object', description: 'Current selections supplied through dataset.extension.selectableConfig.', table: { category: 'Selectables' } },
+  extensionDefaultSelectableSelections: { control: 'object', description: 'Fallback selections supplied through dataset.extension.selectableConfig.', table: { category: 'Selectables' } },
+  extensionMultiSelectableDimensionCode: { control: 'text', description: 'Line-chart multi-select dimension supplied through dataset.extension.selectableConfig.', table: { category: 'Selectables' } },
 
   // Select control
   locale: { control: 'select', options: ['en', 'fi', 'sv'], description: 'Locale', table: { category: 'Config' } },
+
+  // Visualization settings
+  sorting: {
+    control: 'text',
+    description: 'Sorting keywords for supported horizontal/pie charts, or series codes for horizontal bar variants.',
+    table: { category: 'Config' },
+  },
+  cutValueAxis: {
+    control: 'boolean',
+    description: 'Allow the value axis to not start at 0 (line & scatter plot only).',
+    table: { category: 'Config' },
+  },
 };
 
 export const themeArgs = {
@@ -45,7 +63,7 @@ export const themeArgs = {
   colorTextSecondary: '#666666',
   colorBorder: '#cccccc',
   colorTick: '#767676',
-  seriesColors: ['#4e79a7', '#e15759', '#76b7b2', '#59a14f', '#edc949', '#af7aa1', '#ff9da7', '#9c755f'],
+  seriesColors: ['#1A56EC', '#F2644C', '#1B3160', '#9C8D87', '#26625D', '#7791E8', '#8C1131', '#878EAF', '#C73268', '#288C72'],
   mapColors: ['#c6dbef', '#9ecae1', '#6baed6', '#3182bd', '#08519c'],
   classificationMethod: 'jenks-nice',
   classCount: 5,
@@ -54,5 +72,13 @@ export const themeArgs = {
   showHeader: undefined,
   showLegend: undefined,
   autoTitle: undefined,
+  defaultSelectableSelections: undefined,
+  multiSelectableDimensionCode: undefined,
+  selectableSelections: undefined,
+  extensionSelectableSelections: undefined,
+  extensionDefaultSelectableSelections: undefined,
+  extensionMultiSelectableDimensionCode: undefined,
   locale: 'en',
+  sorting: undefined,
+  cutValueAxis: undefined,
 };

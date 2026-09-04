@@ -1,0 +1,18 @@
+{
+  "version": "2.0",
+  "class": "dataset",
+  "id": ["vuosi", "ehdokkaan-sukupuoli", "hyvinvointialue", "ika-vaalipaivana", "tiedot"],
+  "label": "Candidates by age group, wellbeing services county and sex",
+  "source": "County elections, Example Institute",
+  "updated": "2023-01-14T08:00:00",
+  "dimension": {
+    "vuosi": { "label": "Year", "category": { "index": ["2022", "2023"], "label": { "2022": "2022", "2023": "2023" } } },
+    "ehdokkaan-sukupuoli": { "label": "Sex of candidate", "category": { "index": ["1", "2"], "label": { "1": "Males", "2": "Females" } } },
+    "hyvinvointialue": { "label": "Wellbeing services county", "category": { "index": ["00"], "label": { "00": "Total" } } },
+    "ika-vaalipaivana": { "label": "Age on election day", "category": { "index": ["20-24", "25-29", "30-34", "35-39", "40-44", "45-49", "50-54", "55-59", "60-64", "65-"], "label": { "20-24": "20 - 24", "25-29": "25 - 29", "30-34": "30 - 34", "35-39": "35 - 39", "40-44": "40 - 44", "45-49": "45 - 49", "50-54": "50 - 54", "55-59": "55 - 59", "60-64": "60 - 64", "65-": "65 -" } } },
+    "tiedot": { "label": "Information", "category": { "index": ["lkm_ehd"], "label": { "lkm_ehd": "Number of candidates" }, "unit": { "lkm_ehd": { "label": "number", "decimals": 0 } } } }
+  },
+  "value": [141, 231, 306, 503, 633, 659, 676, 696, 661, 1222, 144, 210, 304, 556, 644, 643, 612, 549, 449, 664, 150, 240, 315, 510, 640, 670, 685, 705, 670, 1240, 152, 220, 310, 565, 655, 650, 620, 560, 460, 680],
+  "size": [2, 2, 1, 10, 1],
+  "role": { "time": ["vuosi"], "metric": ["tiedot"] }
+}

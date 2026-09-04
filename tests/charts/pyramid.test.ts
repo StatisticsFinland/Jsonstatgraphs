@@ -2,15 +2,6 @@ import { createPyramidChart } from '../../src/charts/pyramid';
 import { PyramidChartData, ChartConfig } from '../../src/types';
 import * as bindInteractionsModule from '../../src/charts/bindInteractions';
 
-beforeAll(() => {
-  (globalThis as any).ResizeObserver = class {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
-  };
-  (window as any).matchMedia = jest.fn().mockReturnValue({ matches: false });
-});
-
 const pyramidData: PyramidChartData = {
   leftSeries: {
     name: 'Male',
@@ -59,8 +50,8 @@ describe('createPyramidChart', () => {
     const leftRects = container.querySelectorAll('.jsc-bar-left');
     const rightRects = container.querySelectorAll('.jsc-bar-right');
     // 3 non-null left, 2 non-null right
-    expect(leftRects.length).toBe(3);
-    expect(rightRects.length).toBe(2);
+    expect(leftRects).toHaveLength(3);
+    expect(rightRects).toHaveLength(2);
   });
 
   it('left series bars extend leftward from center (x < center, positive width)', () => {
@@ -109,12 +100,25 @@ describe('createPyramidChart', () => {
     createPyramidChart({ container, data: pyramidData, config: defaultConfig });
     // right series has 1 null → 2 rects; left has 0 nulls → 3 rects
     const allBars = container.querySelectorAll('.jsc-bar');
-    expect(allBars.length).toBe(5);
+    expect(allBars).toHaveLength(5);
   });
 
-  it('ARIA: container has role="figure"', () => {
+  it('uses up and down arrows to move focus in the visual vertical direction', () => {
     createPyramidChart({ container, data: pyramidData, config: defaultConfig });
-    expect(container.getAttribute('role')).toBe('figure');
+    const bars = Array.from(container.querySelectorAll<SVGRectElement>('.jsc-bar-left'));
+    const middleBar = bars[1];
+
+    middleBar.focus();
+    middleBar.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    expect(document.activeElement).toBe(bars[0]);
+
+    bars[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
+    expect(document.activeElement).toBe(middleBar);
+  });
+
+  it('ARIA: container has role="region"', () => {
+    createPyramidChart({ container, data: pyramidData, config: defaultConfig });
+    expect(container.getAttribute('role')).toBe('region');
   });
 
   it('ARIA: container has aria-label', () => {
@@ -133,7 +137,7 @@ describe('createPyramidChart', () => {
 
   it('update() re-renders with new data', () => {
     const instance = createPyramidChart({ container, data: pyramidData, config: defaultConfig });
-    expect(container.querySelectorAll('.jsc-bar').length).toBe(5);
+    expect(container.querySelectorAll('.jsc-bar')).toHaveLength(5);
 
     const updatedData: PyramidChartData = {
       leftSeries: {
@@ -155,7 +159,7 @@ describe('createPyramidChart', () => {
     };
 
     instance.update(updatedData);
-    expect(container.querySelectorAll('.jsc-bar').length).toBe(2);
+    expect(container.querySelectorAll('.jsc-bar')).toHaveLength(2);
   });
 
   it('passes xLabel and seriesLabel to bindInteractions when dimension labels are set', () => {
@@ -204,5 +208,89 @@ describe('createPyramidChart', () => {
     // At least the value 0 and 200 (the boundary) should be present.
     expect(positiveLabels).toContain(0);
     expect(Math.max(...positiveLabels)).toBeGreaterThanOrEqual(100);
+  });
+
+  it('keeps boundary labels and omits interior labels in a dense layout', () => {
+    const categories = Array.from({ length: 30 }, (_, index) => `age-${index}`);
+    const points = categories.map((categoryCode, index) => ({
+      value: index + 1,
+      label: categoryCode,
+      categoryCode,
+    }));
+    const denseData: PyramidChartData = {
+      leftSeries: { name: 'Left', code: 'left', points },
+      rightSeries: { name: 'Right', code: 'right', points },
+      categories,
+      categoryLabels: categories,
+    };
+
+    createPyramidChart({ container, data: denseData, config: defaultConfig });
+
+    const visibleLabels = Array.from(container.querySelectorAll<SVGGElement>('.jsc-axis-y .tick'))
+      .filter(tick => tick.style.display !== 'none')
+      .map(tick => tick.textContent);
+    expect(visibleLabels).toContain(categories[0]);
+    expect(visibleLabels).toContain(categories.at(-1));
+    expect(visibleLabels.length).toBeGreaterThan(2);
+    expect(visibleLabels.length).toBeLessThan(categories.length / 2);
+  });
+
+  it('keeps 0 and 100 clear of adjacent labels and plot boundaries', () => {
+    const categories = Array.from({ length: 101 }, (_, index) => String(index));
+    const points = categories.map((categoryCode, index) => ({
+      value: index + 1,
+      label: categoryCode,
+      categoryCode,
+    }));
+    const denseData: PyramidChartData = {
+      leftSeries: { name: 'Left', code: 'left', points },
+      rightSeries: { name: 'Right', code: 'right', points },
+      categories,
+      categoryLabels: categories,
+    };
+
+    createPyramidChart({ container, data: denseData, config: defaultConfig });
+
+    const visibleTicks = Array.from(container.querySelectorAll<SVGGElement>('.jsc-axis-y .tick'))
+      .filter(tick => tick.style.display !== 'none');
+    const tickByLabel = new Map(visibleTicks.map(tick => [tick.textContent, tick]));
+    const getY = (tick: SVGGElement): number => {
+      const match = tick.getAttribute('transform')?.match(/translate\([^,]+,\s*([^)]+)\)/);
+      return Number(match?.[1]);
+    };
+
+    expect(tickByLabel.has('0')).toBe(true);
+    expect(tickByLabel.has('100')).toBe(true);
+    expect(tickByLabel.has('1')).toBe(false);
+
+    const ticksByDescendingY = visibleTicks.sort((a, b) => getY(b) - getY(a));
+    expect(getY(ticksByDescendingY[0]) - getY(ticksByDescendingY[1])).toBeGreaterThan(12);
+    expect(getY(tickByLabel.get('100')!)).toBeGreaterThan(6);
+
+    const visibleYPositions = visibleTicks.map(getY).sort((a, b) => a - b);
+    const pixelGaps = visibleYPositions.slice(1)
+      .map((position, index) => position - visibleYPositions[index]);
+    expect(Math.max(...pixelGaps) / Math.min(...pixelGaps)).toBeLessThanOrEqual(1.25);
+
+    const leftBars = container.querySelectorAll<SVGRectElement>('.jsc-bar-left');
+    visibleTicks.forEach(tick => {
+      const categoryIndex = Number(tick.textContent);
+      const matchingBar = leftBars[categoryIndex];
+      const barCenter = Number(matchingBar.getAttribute('y'))
+        + Number(matchingBar.getAttribute('height')) / 2;
+      expect(getY(tick)).toBeCloseTo(barCenter, 0);
+    });
+  });
+
+  it('accessibility mode applies patterned fills to bars', () => {
+    createPyramidChart({
+      container,
+      data: pyramidData,
+      config: { ...defaultConfig, accessibilityMode: true },
+    });
+
+    const firstBar = container.querySelector('.jsc-bar') as SVGRectElement;
+    expect(firstBar).not.toBeNull();
+    expect(firstBar.getAttribute('fill')).toContain('url(#jsc-pattern-');
   });
 });

@@ -13,7 +13,6 @@ export class Tooltip {
   private static idCounter = 0;
   private readonly element: HTMLDivElement;
   private readonly container: HTMLElement;
-  private visible: boolean = false;
 
   constructor(container: HTMLElement, theme: ResolvedTheme) {
     this.container = container;
@@ -28,7 +27,6 @@ export class Tooltip {
     el.className = 'jsc-tooltip';
     el.setAttribute('role', 'tooltip');
     el.id = `jsc-tooltip-${++Tooltip.idCounter}`;
-    el.setAttribute('aria-live', 'polite');
     el.style.position = 'absolute';
     el.style.pointerEvents = 'none';
     el.style.opacity = '0';
@@ -84,8 +82,8 @@ export class Tooltip {
     // Initial position with 10px offset
     el.style.left = `${x + 10}px`;
     el.style.top = `${y + 10}px`;
+    el.style.pointerEvents = 'auto';
     el.style.opacity = '1';
-    this.visible = true;
 
     // Clamp to container boundaries after element is visible so dimensions are known
     const containerWidth = this.container.offsetWidth;
@@ -112,15 +110,16 @@ export class Tooltip {
 
   hide(): void {
     this.element.style.opacity = '0';
-    this.visible = false;
+    this.element.style.pointerEvents = 'none';
     this.element.setAttribute('aria-hidden', 'true');
-    while (this.element.firstChild) {
-      this.element.firstChild.remove();
-    }
   }
 
   getId(): string {
     return this.element.id;
+  }
+
+  getElement(): HTMLDivElement {
+    return this.element;
   }
 
   destroy(): void {

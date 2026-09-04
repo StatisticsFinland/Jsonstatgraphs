@@ -5,8 +5,14 @@ import { ChartConfig, MapChartData, MapClassBreak, ResolvedTheme, ZoneType, Zone
 import { resolveTheme } from '../theme/theme';
 import { createZones, applyMeasuredSizes } from '../layout/zones';
 import { computeLayout } from '../layout/layout-engine';
-import { renderSvgFooter } from './footer';
-import { Tooltip, TooltipData } from '../interaction/tooltip';
+import { measureSvgFooterHeight, renderSvgFooter } from './footer';
+import { createSvgTextMeasurement, wrapMeasuredText } from '../layout/text-measurement';
+import { bindInteractions, DataElementInfo, BoundInteractions } from './bindInteractions';
+import { applyChartAriaAttributes, applySeriesGroupAttributes } from '../a11y/aria';
+import { captureChartFocusBeforeRedraw } from '../interaction/keyboard';
+import { BURGER_MENU_CLEARANCE } from './base';
+import { formatNumber } from '../locale/number';
+import { getLocaleStrings } from '../locale/strings';
 
 
 export interface MapChartConfig {
@@ -20,6 +26,20 @@ export interface MapChartInstance {
   destroy(): void;
 }
 
+interface MapHeaderLayout {
+  titleLines: string[];
+  subtitleLines: string[];
+  titleLineHeight: number;
+  subtitleLineHeight: number;
+  height: number;
+}
+
+const MAP_HEADER_HORIZONTAL_PADDING = 20;
+const MAP_HEADER_VERTICAL_PADDING = 12;
+const MAP_HEADER_CONTENT_GAP = 4;
+const MAP_MENU_ONLY_HEADER_HEIGHT = 48;
+const MAP_FOOTER_HORIZONTAL_PADDING = 8;
+
 function getClassificationBreaks(data: MapChartData): MapClassBreak[] {
   return data.classification.method === 'linear' ? [] : data.classification.breaks;
 }
@@ -29,9 +49,8 @@ function renderMap(
   data: MapChartData,
   plotArea: ZoneRect,
   theme: ResolvedTheme,
-  tooltip: Tooltip,
-  touchState: { activeRegion: string | null },
-): void {
+  locale?: string,
+): DataElementInfo[] {
   const featureCollection = {
     type: 'FeatureCollection' as const,
     features: data.regions.map(r => r.feature),
@@ -43,165 +62,116 @@ function renderMap(
 
   const pathGenerator = geoPath(projection);
 
-  const mapGroup = svg.append('g')
+  const interactionGroup = svg.append('g');
+
+  const mapGroup = interactionGroup.append('g')
     .attr('class', 'jsc-map-regions')
     .attr('transform', `translate(${plotArea.x},${plotArea.y})`);
+  applySeriesGroupAttributes(mapGroup.node() as SVGGElement, data.geoDimensionLabel, 0, locale);
 
-  for (const region of data.regions) {
+  function formatValue(value: number | null): string {
+    if (value === null) {
+      return '\u2013';
+    } else if (data.decimals !== undefined) {
+      return formatNumber(value, locale, {
+        minimumFractionDigits: data.decimals,
+        maximumFractionDigits: data.decimals,
+      });
+    } else {
+      return formatNumber(value, locale);
+    }
+  }
+
+  const elements: DataElementInfo[] = [];
+
+  data.regions.forEach((region, index) => {
     const path = mapGroup.append('path')
       .attr('class', region.classIndex >= 0 ? 'jsc-map-region' : 'jsc-map-region jsc-map-no-data')
       .attr('d', pathGenerator(region.feature as GeoPermissibleObjects) ?? '')
       .attr('fill', region.color)
       .attr('stroke', theme.colorBackground)
       .attr('stroke-width', 0.5)
-      .attr('data-code', region.code);
+      .attr('data-code', region.code)
+      .attr('tabindex', '0');
 
-    function formatValue(value: number | null): string {
-      if (value === null) {
-        return '\u2013';
-      } else if (data.decimals !== undefined) {
-        return value.toLocaleString(undefined, {
-          minimumFractionDigits: data.decimals,
-          maximumFractionDigits: data.decimals,
-        });
-      } else {
-        return value.toLocaleString();
-      }
-    }
+    const formattedValue = formatValue(region.value);
+    const formattedMeasurement = data.unit
+      ? `${formattedValue} ${data.unit}`
+      : formattedValue;
 
-    function buildTooltipData(): TooltipData {
-      const formattedValue = formatValue(region.value);
-      return {
-        category: region.label,
-        series: data.geoDimensionLabel,
-        value: region.value,
-        formattedValue,
-        dimensionLabels: [
-          { label: data.geoDimensionLabel, value: region.label },
-          ...(data.unit
-            ? [{ label: data.valueDimensionLabel, value: `${formattedValue} ${data.unit}` }]
-            : [{ label: data.valueDimensionLabel, value: formattedValue }]),
-        ],
-        hideValueLine: true,
-      };
-    }
-
-    path
-      .attr('aria-label', `${region.label}: ${formatValue(region.value)}`);
-
-    path.on('mouseenter', function (event: MouseEvent) {
-      const container = (svg.node() as SVGSVGElement).closest('.jsc-map-container');
-      if (!container) return;
-      const rect = container.getBoundingClientRect();
-      tooltip.show(buildTooltipData(), event.clientX - rect.left, event.clientY - rect.top);
+    elements.push({
+      element: path.node() as SVGElement,
+      seriesIndex: 0,
+      pointIndex: index,
+      pointKey: region.code,
+      category: region.label,
+      seriesName: data.valueDimensionLabel,
+      value: region.value,
+      formattedValue: formattedMeasurement,
+      ariaLabel: `${data.geoDimensionLabel}: ${region.label}, ${formattedMeasurement}`,
+      dimensionLabels: [
+        { label: data.geoDimensionLabel, value: region.label },
+      ],
     });
-
-    path.on('mousemove', function (event: MouseEvent) {
-      const container = (svg.node() as SVGSVGElement).closest('.jsc-map-container');
-      if (!container) return;
-      const rect = container.getBoundingClientRect();
-      tooltip.show(buildTooltipData(), event.clientX - rect.left, event.clientY - rect.top);
-    });
-
-    path.on('mouseleave', function () {
-      tooltip.hide();
-    });
-
-    path.on('touchstart', function (event: TouchEvent) {
-      event.preventDefault();
-      const code = region.code;
-      if (touchState.activeRegion === code) {
-        tooltip.hide();
-        touchState.activeRegion = null;
-        return;
-      }
-      touchState.activeRegion = code;
-      const container = (svg.node() as SVGSVGElement).closest('.jsc-map-container');
-      if (!container) return;
-      const touch = event.touches[0];
-      if (!touch) return;
-      const rect = container.getBoundingClientRect();
-      tooltip.show(buildTooltipData(), touch.clientX - rect.left, touch.clientY - rect.top);
-    });
-
-
-  }
-
-  svg.on('touchstart.dismiss', function (event: TouchEvent) {
-    const target = event.target as Element;
-    if (!target.classList.contains('jsc-map-region')) {
-      tooltip.hide();
-      touchState.activeRegion = null;
-    }
   });
+
+  return elements;
 }
 
-function renderScreenReaderTable(
-  container: HTMLElement,
-  data: MapChartData,
-): HTMLTableElement {
-  const table = document.createElement('table');
-  table.className = 'jsc-sr-only';
-  table.setAttribute('role', 'table');
-
-  table.style.position = 'absolute';
-  table.style.width = '1px';
-  table.style.height = '1px';
-  table.style.padding = '0';
-  table.style.margin = '-1px';
-  table.style.overflow = 'hidden';
-  table.style.clipPath = 'inset(50%)';
-  table.style.whiteSpace = 'nowrap';
-  table.style.border = '0';
-
-  const caption = document.createElement('caption');
-  let captionText = `Data table: ${data.valueDimensionLabel} by ${data.geoDimensionLabel}`;
-  if (data.classification.method === 'linear') {
-    captionText += ' (continuous scale)';
-  } else {
-    captionText += ` (${data.classification.breaks.length} classes)`;
-  }
-  caption.textContent = captionText;
-  table.appendChild(caption);
-
-  const thead = document.createElement('thead');
-  const headerRow = document.createElement('tr');
-  const th1 = document.createElement('th');
-  th1.textContent = data.geoDimensionLabel;
-  th1.setAttribute('scope', 'col');
-  const th2 = document.createElement('th');
-  th2.textContent = data.valueDimensionLabel;
-  th2.setAttribute('scope', 'col');
-  headerRow.appendChild(th1);
-  headerRow.appendChild(th2);
-  thead.appendChild(headerRow);
-  table.appendChild(thead);
-
-  const tbody = document.createElement('tbody');
-  for (const region of data.regions) {
-    const row = document.createElement('tr');
-    const nameCell = document.createElement('th');
-    nameCell.textContent = region.label;
-    nameCell.setAttribute('scope', 'row');
-    const valueCell = document.createElement('td');
-    if (region.value === null) {
-      valueCell.textContent = '\u2013';
-      valueCell.setAttribute('aria-label', 'No data');
-    } else if (data.decimals !== undefined) {
-      valueCell.textContent = region.value.toLocaleString(undefined, {
-        minimumFractionDigits: data.decimals,
-        maximumFractionDigits: data.decimals,
-      });
-    } else {
-      valueCell.textContent = region.value.toLocaleString();
-    }
-    row.appendChild(nameCell);
-    row.appendChild(valueCell);
-    tbody.appendChild(row);
-  }
-  table.appendChild(tbody);
-  container.appendChild(table);
-  return table;
+function measureMapHeader(
+  svg: Selection<SVGSVGElement, unknown, null, undefined>,
+  config: ChartConfig,
+  theme: ResolvedTheme,
+  containerWidth: number,
+): MapHeaderLayout {
+  const titleFontSize = Number.parseFloat(theme.fontSizeTitle) || 16;
+  const subtitleFontSize = Number.parseFloat(theme.fontSizeLabel) || 14;
+  const titleMeasurement = createSvgTextMeasurement(svg, {
+    parentClass: 'jsc-header',
+    textClass: 'jsc-title',
+    fontFamily: theme.fontFamily,
+    fontSize: theme.fontSizeTitle,
+    fontWeight: theme.fontWeightBold,
+    fallbackCharWidth: 8,
+    fallbackLineHeight: titleFontSize * 1.25,
+  });
+  const subtitleMeasurement = createSvgTextMeasurement(svg, {
+    parentClass: 'jsc-header',
+    textClass: 'jsc-subtitle',
+    fontFamily: theme.fontFamily,
+    fontSize: theme.fontSizeLabel,
+    fontWeight: theme.fontWeightNormal,
+    fallbackCharWidth: 8,
+    fallbackLineHeight: subtitleFontSize * 1.25,
+  });
+  const maxWidth = Math.max(1, containerWidth - MAP_HEADER_HORIZONTAL_PADDING * 2 - (
+    config.burgerMenuVisible ? BURGER_MENU_CLEARANCE : 0
+  ));
+  const titleLines = config.title
+    ? wrapMeasuredText(config.title, maxWidth, titleMeasurement.measureText)
+    : [];
+  const subtitleLines = config.subtitle
+    ? wrapMeasuredText(config.subtitle, maxWidth, subtitleMeasurement.measureText)
+    : [];
+  titleMeasurement.destroy();
+  subtitleMeasurement.destroy();
+  const hasContent = titleLines.length > 0 || subtitleLines.length > 0;
+  const gap = titleLines.length > 0 && subtitleLines.length > 0 ? MAP_HEADER_CONTENT_GAP : 0;
+  const contentHeight = titleLines.length * titleMeasurement.lineHeight
+    + subtitleLines.length * subtitleMeasurement.lineHeight
+    + gap;
+  const height = config.showHeader === false
+    ? (config.burgerMenuVisible ? MAP_MENU_ONLY_HEADER_HEIGHT : 0)
+    : hasContent
+      ? contentHeight + MAP_HEADER_VERTICAL_PADDING
+      : (config.burgerMenuVisible ? MAP_MENU_ONLY_HEADER_HEIGHT : 0);
+  return {
+    titleLines,
+    subtitleLines,
+    titleLineHeight: titleMeasurement.lineHeight,
+    subtitleLineHeight: subtitleMeasurement.lineHeight,
+    height,
+  };
 }
 
 function renderHeader(
@@ -209,57 +179,26 @@ function renderHeader(
   layout: LayoutResult,
   config: ChartConfig,
   theme: ResolvedTheme,
+  headerLayout: MapHeaderLayout,
 ): void {
   const headerRect = layout.zones.get(ZoneType.Header);
-  if (!headerRect || (!config.title && !config.subtitle)) return;
-
+  if (!headerRect || config.showHeader === false) return;
+  const { titleLines, subtitleLines, titleLineHeight, subtitleLineHeight } = headerLayout;
+  if (titleLines.length === 0 && subtitleLines.length === 0) return;
   const headerGroup = svg.append('g').attr('class', 'jsc-header').attr('aria-hidden', 'true');
-
-  const CHAR_WIDTH = 8;
-  const LINE_HEIGHT = 1.25;
-  const PADDING = 20;
-  const maxWidth = headerRect.width - PADDING * 2;
-
-  const titleFontSize = Number.parseFloat(theme.fontSizeTitle) || 16;
-  const subtitleFontSize = Number.parseFloat(theme.fontSizeLabel) || 14;
-  const titleLineHeight = titleFontSize * LINE_HEIGHT;
-  const centerX = headerRect.x + headerRect.width / 2;
-
-  function wrapText(text: string, charWidth: number): string[] {
-    const fullWidth = text.length * charWidth;
-    if (fullWidth <= maxWidth) return [text];
-    const words = text.split(/\s+/);
-    const lines: string[] = [];
-    let currentLine = '';
-    for (const word of words) {
-      const candidate = currentLine ? `${currentLine} ${word}` : word;
-      if (candidate.length * charWidth > maxWidth && currentLine) {
-        lines.push(currentLine);
-        currentLine = word;
-      } else {
-        currentLine = candidate;
-      }
-    }
-    if (currentLine) lines.push(currentLine);
-    return lines.length > 0 ? lines : [text];
-  }
-
-  let titleLines: string[] = [];
-  if (config.title) {
-    titleLines = wrapText(config.title, CHAR_WIDTH);
-  }
-
+  const contentStartX = headerRect.x + MAP_HEADER_HORIZONTAL_PADDING;
   const titleBlockHeight = titleLines.length * titleLineHeight;
-  const subtitleBlockHeight = config.subtitle ? subtitleFontSize * LINE_HEIGHT : 0;
-  const gap = (config.title && config.subtitle) ? 4 : 0;
+  const subtitleBlockHeight = subtitleLines.length * subtitleLineHeight;
+  const gap = titleLines.length > 0 && subtitleLines.length > 0 ? MAP_HEADER_CONTENT_GAP : 0;
   const totalContentHeight = titleBlockHeight + gap + subtitleBlockHeight;
   const contentStartY = headerRect.y + (headerRect.height - totalContentHeight) / 2;
 
   if (titleLines.length > 0) {
     const titleEl = headerGroup.append('text')
       .attr('class', 'jsc-title')
-      .attr('x', centerX)
-      .attr('text-anchor', 'middle')
+      .attr('x', contentStartX)
+      .attr('text-anchor', 'start')
+      .attr('dominant-baseline', 'middle')
       .attr('font-size', theme.fontSizeTitle)
       .attr('font-family', theme.fontFamily)
       .attr('font-weight', theme.fontWeightBold)
@@ -267,23 +206,26 @@ function renderHeader(
 
     for (let i = 0; i < titleLines.length; i++) {
       const y = contentStartY + (i + 0.5) * titleLineHeight;
-      titleEl.append('tspan').attr('x', centerX).attr('y', y).text(titleLines[i]);
+      titleEl.append('tspan').attr('x', contentStartX).attr('y', y).text(titleLines[i]);
     }
   }
 
-  if (config.subtitle) {
-    const subtitleY = contentStartY + titleBlockHeight + gap + subtitleFontSize * 0.5 * LINE_HEIGHT;
-    headerGroup.append('text')
+  if (subtitleLines.length > 0) {
+    const subtitleEl = headerGroup.append('text')
       .attr('class', 'jsc-subtitle')
-      .attr('x', centerX)
-      .attr('y', subtitleY)
-      .attr('text-anchor', 'middle')
+      .attr('x', contentStartX)
+      .attr('text-anchor', 'start')
       .attr('dominant-baseline', 'middle')
       .attr('font-size', theme.fontSizeLabel)
       .attr('font-family', theme.fontFamily)
       .attr('font-weight', theme.fontWeightNormal)
-      .attr('fill', theme.colorTextSecondary)
-      .text(config.subtitle);
+      .attr('fill', theme.colorTextSecondary);
+    subtitleLines.forEach((line, index) => {
+      subtitleEl.append('tspan')
+        .attr('x', contentStartX)
+        .attr('y', contentStartY + titleBlockHeight + gap + (index + 0.5) * subtitleLineHeight)
+        .text(line);
+    });
   }
 }
 
@@ -293,7 +235,9 @@ function renderLegend(
   data: MapChartData,
   theme: ResolvedTheme,
   mapRightEdge?: number,
+  locale?: string,
 ): void {
+  const strings = getLocaleStrings(locale);
   // Check if we should render in the right margin (vertical) or bottom (horizontal)
   const rightMarginRect = layout.zones.get(ZoneType.RightMargin);
   const legendRect = layout.zones.get(ZoneType.Legend);
@@ -313,7 +257,7 @@ function renderLegend(
     .attr('transform', `translate(${legendX},${targetRect.y})`);
 
   if (data.classification.method === 'linear') {
-    renderGradientLegend(legendGroup, targetRect, data, theme, useRightSide);
+    renderGradientLegend(legendGroup, targetRect, data, theme, useRightSide, locale);
     return;
   }
 
@@ -326,20 +270,20 @@ function renderLegend(
   const breaks = getClassificationBreaks(data);
   for (const brk of breaks) {
     const fmtMin = data.decimals !== undefined
-      ? brk.min.toLocaleString(undefined, { minimumFractionDigits: data.decimals, maximumFractionDigits: data.decimals })
-      : brk.min.toLocaleString();
+      ? formatNumber(brk.min, locale, { minimumFractionDigits: data.decimals, maximumFractionDigits: data.decimals })
+      : formatNumber(brk.min, locale);
     if (brk.openEnded) {
       items.push({ color: brk.color, label: `\u2265\u2009${fmtMin}` });
     } else {
       const fmtMax = data.decimals !== undefined
-        ? brk.max.toLocaleString(undefined, { minimumFractionDigits: data.decimals, maximumFractionDigits: data.decimals })
-        : brk.max.toLocaleString();
+        ? formatNumber(brk.max, locale, { minimumFractionDigits: data.decimals, maximumFractionDigits: data.decimals })
+        : formatNumber(brk.max, locale);
       items.push({ color: brk.color, label: `${fmtMin}\u2013${fmtMax}` });
     }
   }
 
   if (data.hasNoData) {
-    items.push({ color: data.noDataColor, label: 'No data' });
+    items.push({ color: data.noDataColor, label: strings.noData });
   }
 
   if (useRightSide) {
@@ -415,17 +359,19 @@ function renderGradientLegend(
   data: MapChartData,
   theme: ResolvedTheme,
   useRightSide: boolean,
+  locale?: string,
 ): void {
   if (data.classification.method !== 'linear') return;
+  const strings = getLocaleStrings(locale);
   const { scaleMin, scaleMax, colors } = data.classification;
   const fontSize = Number.parseFloat(theme.fontSizeTick) || 12;
 
   const fmtMin = data.decimals !== undefined
-    ? scaleMin.toLocaleString(undefined, { minimumFractionDigits: data.decimals, maximumFractionDigits: data.decimals })
-    : scaleMin.toLocaleString();
+    ? formatNumber(scaleMin, locale, { minimumFractionDigits: data.decimals, maximumFractionDigits: data.decimals })
+    : formatNumber(scaleMin, locale);
   const fmtMax = data.decimals !== undefined
-    ? scaleMax.toLocaleString(undefined, { minimumFractionDigits: data.decimals, maximumFractionDigits: data.decimals })
-    : scaleMax.toLocaleString();
+    ? formatNumber(scaleMax, locale, { minimumFractionDigits: data.decimals, maximumFractionDigits: data.decimals })
+    : formatNumber(scaleMax, locale);
 
   // Degenerate data: render a single solid swatch instead of a gradient
   if (scaleMin === scaleMax) {
@@ -538,7 +484,7 @@ function renderGradientLegend(
         .attr('font-size', theme.fontSizeTick)
         .attr('font-family', theme.fontFamily)
         .attr('fill', theme.colorTextSecondary)
-        .text('No data');
+        .text(strings.noData);
     }
   } else {
     gradient.attr('x1', '0').attr('y1', '0').attr('x2', '1').attr('y2', '0');
@@ -607,7 +553,7 @@ function renderGradientLegend(
         .attr('font-size', theme.fontSizeTick)
         .attr('font-family', theme.fontFamily)
         .attr('fill', theme.colorTextSecondary)
-        .text('No data');
+        .text(strings.noData);
     }
   }
 }
@@ -656,31 +602,13 @@ function measureMapZoneSizes(
   config: ChartConfig,
   data: MapChartData,
   theme: ResolvedTheme,
-  containerWidth: number,
   isPortrait: boolean,
+  headerHeight: number,
+  footerHeight: number,
 ): Partial<Record<ZoneType, number>> {
   const measurements: Partial<Record<ZoneType, number>> = {};
-  const CHAR_WIDTH = 8;
-  const titleFontSize = Number.parseFloat(theme.fontSizeTitle) || 16;
-  const subtitleFontSize = Number.parseFloat(theme.fontSizeLabel) || 14;
   const tickFontSize = Number.parseFloat(theme.fontSizeTick) || 12;
-
-  const TITLE_LINE_HEIGHT = titleFontSize * 1.25;
-  const SUBTITLE_LINE_HEIGHT = subtitleFontSize * 1.25;
-  const HEADER_PADDING = 12;
-
-  if (config.title) {
-    const titleMaxWidth = containerWidth - 40;
-    const titleWidth = config.title.length * CHAR_WIDTH;
-    const titleLineCount = titleMaxWidth > 0 ? Math.max(1, Math.ceil(titleWidth / titleMaxWidth)) : 1;
-    let headerHeight = titleLineCount * TITLE_LINE_HEIGHT + HEADER_PADDING;
-    if (config.subtitle) headerHeight += SUBTITLE_LINE_HEIGHT;
-    measurements[ZoneType.Header] = headerHeight;
-  } else if (config.subtitle) {
-    measurements[ZoneType.Header] = SUBTITLE_LINE_HEIGHT + HEADER_PADDING;
-  } else {
-    measurements[ZoneType.Header] = 0;
-  }
+  measurements[ZoneType.Header] = headerHeight;
 
   const showLegend = config.showLegend ?? true;
   const breaks = getClassificationBreaks(data);
@@ -696,11 +624,11 @@ function measureMapZoneSizes(
     if (data.classification.method === 'linear') {
       const { scaleMin, scaleMax } = data.classification;
       const fmtMin = data.decimals !== undefined
-        ? scaleMin.toLocaleString(undefined, { minimumFractionDigits: data.decimals, maximumFractionDigits: data.decimals })
-        : scaleMin.toLocaleString();
+        ? formatNumber(scaleMin, config.locale, { minimumFractionDigits: data.decimals, maximumFractionDigits: data.decimals })
+        : formatNumber(scaleMin, config.locale);
       const fmtMax = data.decimals !== undefined
-        ? scaleMax.toLocaleString(undefined, { minimumFractionDigits: data.decimals, maximumFractionDigits: data.decimals })
-        : scaleMax.toLocaleString();
+        ? formatNumber(scaleMax, config.locale, { minimumFractionDigits: data.decimals, maximumFractionDigits: data.decimals })
+        : formatNumber(scaleMax, config.locale);
       maxLabelWidth = Math.max(fmtMin.length, fmtMax.length) * CHAR_WIDTH_ESTIMATE;
     }
     measurements[ZoneType.RightMargin] = SWATCH_SIZE + 4 + maxLabelWidth + LEGEND_PADDING;
@@ -717,11 +645,11 @@ function measureMapZoneSizes(
     let maxLabelWidth = 0;
     for (const brk of breaks) {
       const fmtMin = data.decimals !== undefined
-        ? brk.min.toLocaleString(undefined, { minimumFractionDigits: data.decimals, maximumFractionDigits: data.decimals })
-        : brk.min.toLocaleString();
+        ? formatNumber(brk.min, config.locale, { minimumFractionDigits: data.decimals, maximumFractionDigits: data.decimals })
+        : formatNumber(brk.min, config.locale);
       const fmtMax = data.decimals !== undefined
-        ? brk.max.toLocaleString(undefined, { minimumFractionDigits: data.decimals, maximumFractionDigits: data.decimals })
-        : brk.max.toLocaleString();
+        ? formatNumber(brk.max, config.locale, { minimumFractionDigits: data.decimals, maximumFractionDigits: data.decimals })
+        : formatNumber(brk.max, config.locale);
       const label = `${fmtMin}\u2013${fmtMax}`;
       const labelWidth = label.length * CHAR_WIDTH_ESTIMATE;
       if (labelWidth > maxLabelWidth) maxLabelWidth = labelWidth;
@@ -741,12 +669,7 @@ function measureMapZoneSizes(
     measurements[ZoneType.RightMargin] = 0;
   }
 
-  if (config.footerItems && config.footerItems.length > 0) {
-    const FOOTER_LINE_HEIGHT = Math.ceil(tickFontSize * 1.4);
-    measurements[ZoneType.FooterText] = config.footerItems.length * FOOTER_LINE_HEIGHT + FOOTER_LINE_HEIGHT;
-  } else {
-    measurements[ZoneType.FooterText] = 0;
-  }
+  measurements[ZoneType.FooterText] = footerHeight;
 
   measurements[ZoneType.YAxisTitle] = 0;
   measurements[ZoneType.YAxisLabels] = 0;
@@ -756,21 +679,19 @@ function measureMapZoneSizes(
   return measurements;
 }
 
-let mapInstanceCounter = 0;
-
 export function createMapChart(chartConfig: MapChartConfig): MapChartInstance {
   const { container } = chartConfig;
-  const instanceId = ++mapInstanceCounter;
   let data = chartConfig.data;
   let config = chartConfig.config;
 
-  let tooltip: Tooltip | null = null;
-  let srTable: HTMLTableElement | null = null;
+  let boundInteractions: BoundInteractions | null = null;
   let resizeObserver: ResizeObserver | null = null;
+  let textStyleObserver: MutationObserver | null = null;
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+  let textMetricTimer: ReturnType<typeof setTimeout> | null = null;
+  let textMetricFingerprint: string | null = null;
   let cachedAspectRatio: number | null = null;
   const originalOverflow = container.style.overflow;
-  const touchState = { activeRegion: null as string | null };
 
   const containerPosition = getComputedStyle(container).position;
   if (containerPosition === 'static') {
@@ -782,26 +703,74 @@ export function createMapChart(chartConfig: MapChartConfig): MapChartInstance {
   const svgEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   container.appendChild(svgEl);
   const svg = select(svgEl) as Selection<SVGSVGElement, unknown, null, undefined>;
-  svg.attr('class', 'jsc-chart').attr('width', '100%').attr('height', '100%');
+  svg.attr('class', 'jsc-chart').attr('role', 'none').attr('width', '100%').attr('height', '100%');
+
+  function createFooterMeasurement(theme: ResolvedTheme) {
+    return createSvgTextMeasurement(svg, {
+      parentClass: 'jsc-footer',
+      textClass: 'jsc-footer-text',
+      fontFamily: theme.fontFamily,
+      fontSize: theme.fontSizeTick,
+      fallbackCharWidth: 8,
+      fallbackLineHeight: Math.ceil((Number.parseFloat(theme.fontSizeTick) || 12) * 1.4),
+    });
+  }
+
+  function captureTextMetricFingerprint(): string {
+    const theme = resolveTheme(container, config.theme);
+    const sample = 'Accessibility labels 0123456789';
+    const measurements = [
+      createSvgTextMeasurement(svg, {
+        parentClass: 'jsc-header',
+        textClass: 'jsc-title',
+        fontFamily: theme.fontFamily,
+        fontSize: theme.fontSizeTitle,
+        fontWeight: theme.fontWeightBold,
+      }),
+      createFooterMeasurement(theme),
+    ];
+    const fingerprint = JSON.stringify(measurements.map(measurement => [
+      Math.round(measurement.measureText(sample) * 100) / 100,
+      Math.round(measurement.lineHeight * 100) / 100,
+    ]));
+    measurements.forEach(measurement => measurement.destroy());
+    return fingerprint;
+  }
+
+  function scheduleTextMetricCheck(): void {
+    if (textMetricTimer !== null) clearTimeout(textMetricTimer);
+    textMetricTimer = setTimeout(() => {
+      textMetricTimer = null;
+      const nextFingerprint = captureTextMetricFingerprint();
+      if (textMetricFingerprint !== null && nextFingerprint !== textMetricFingerprint) {
+        render();
+      } else {
+        textMetricFingerprint = nextFingerprint;
+      }
+    }, 50);
+  }
 
   function render(): void {
     const theme = resolveTheme(container, config.theme);
 
-    if (tooltip) {
-      tooltip.destroy();
-      tooltip = null;
-    }
-
-    if (srTable) {
-      srTable.remove();
-      srTable = null;
-    }
+    captureChartFocusBeforeRedraw(container);
 
     const width = container.clientWidth;
     const height = container.clientHeight;
 
     cachedAspectRatio ??= computeGeoBboxAspectRatio(data);
     const isPortrait = cachedAspectRatio > 1.2;
+    const headerLayout = measureMapHeader(svg, config, theme, width);
+    let footerHeight = 0;
+    if (config.footerItems && config.footerItems.length > 0) {
+      const footerMeasurement = createFooterMeasurement(theme);
+      footerHeight = measureSvgFooterHeight(
+        config.footerItems,
+        Math.max(1, width - MAP_FOOTER_HORIZONTAL_PADDING * 2),
+        footerMeasurement,
+      );
+      footerMeasurement.destroy();
+    }
 
     const zones = createZones({
       chartType: 'map',
@@ -809,25 +778,30 @@ export function createMapChart(chartConfig: MapChartConfig): MapChartInstance {
       showLegend: config.showLegend ?? true,
       seriesCount: data.classification.method === 'linear' ? 1 : data.classification.breaks.length,
       hasFooterContent: (config.footerItems && config.footerItems.length > 0),
+      hasBurgerMenu: config.burgerMenuVisible,
+      hasHeaderContent: config.showHeader !== false && Boolean(config.title?.trim() || config.subtitle?.trim()),
     });
 
-    const measurements = measureMapZoneSizes(config, data, theme, width, isPortrait);
+    const measurements = measureMapZoneSizes(
+      config,
+      data,
+      theme,
+      isPortrait,
+      headerLayout.height,
+      footerHeight,
+    );
     const measuredZones = applyMeasuredSizes(zones, measurements);
     const layout = computeLayout(width, height, measuredZones);
 
     const regionCount = data.regions.filter(r => r.classIndex >= 0).length;
-    const ariaLabel = config.ariaLabel ??
-      `Choropleth map showing ${data.valueDimensionLabel} by ${data.geoDimensionLabel}, ${regionCount} regions`;
-    const titleId = `jsc-map-title-${instanceId}`;
-
-    container.setAttribute('role', 'figure');
-    container.setAttribute('aria-label', ariaLabel);
+    const strings = getLocaleStrings(config.locale);
+    const ariaLabel = config.ariaLabel
+      ?? config.title
+      ?? `${data.valueDimensionLabel} ${strings.titleVariable} ${data.geoDimensionLabel} (${regionCount} ${strings.regions})`;
+    applyChartAriaAttributes(container, ariaLabel, 'map', config.locale);
 
     svg.attr('viewBox', `0 0 ${width} ${height}`);
     svg.selectAll('*').remove();
-
-    svg.append('title').attr('id', titleId).text(ariaLabel);
-    svg.attr('aria-labelledby', titleId);
 
     const plotArea = layout.zones.get(ZoneType.PlotArea) ?? {
       x: 0, y: 0, width: Math.max(0, width), height: Math.max(0, height),
@@ -868,34 +842,48 @@ export function createMapChart(chartConfig: MapChartConfig): MapChartInstance {
       }
     }
 
-    tooltip = new Tooltip(container, theme);
-    touchState.activeRegion = null;
+    renderHeader(svg, layout, config, theme, headerLayout);
+    const elements = renderMap(
+      svg,
+      data,
+      mapContentRect,
+      theme,
+      config.locale,
+    );
 
-    renderHeader(svg, layout, config, theme);
-    renderMap(svg, data, mapContentRect, theme, tooltip, touchState);
+    boundInteractions?.destroy();
+    boundInteractions = bindInteractions({
+      container,
+      elements,
+      theme,
+      locale: config.locale,
+      ariaLabel,
+      pointAxis: 'both',
+    });
+
     if (config.showLegend !== false) {
       const mapRightEdge = mapContentRect.x + mapContentRect.width;
-      renderLegend(svg, layout, data, theme, mapRightEdge);
+      renderLegend(svg, layout, data, theme, mapRightEdge, config.locale);
     }
 
     if (footerRect && config.footerItems && config.footerItems.length > 0) {
-      const footerFontSize = Number.parseFloat(theme.fontSizeTick) || 12;
-      const footerLineHeight = Math.ceil(footerFontSize * 1.4);
+      const footerMeasurement = createFooterMeasurement(theme);
       renderSvgFooter({
         parent: svg,
         footerItems: config.footerItems,
         sourceLink: config.sourceLink,
         theme,
-        x: footerRect.x + 8,
-        y: footerRect.y + footerLineHeight,
-        lineHeight: footerLineHeight,
+        x: footerRect.x + MAP_FOOTER_HORIZONTAL_PADDING,
+        y: footerRect.y,
+        lineHeight: footerMeasurement.lineHeight,
+        maxWidth: Math.max(1, footerRect.width - MAP_FOOTER_HORIZONTAL_PADDING * 2),
+        textMetrics: footerMeasurement,
       });
+      footerMeasurement.destroy();
     }
 
-    svg.attr('role', 'img');
-    svg.attr('aria-label', ariaLabel);
+    textMetricFingerprint = captureTextMetricFingerprint();
 
-    srTable = renderScreenReaderTable(container, data);
   }
 
   render();
@@ -908,6 +896,21 @@ export function createMapChart(chartConfig: MapChartConfig): MapChartInstance {
     }, 150);
   });
   resizeObserver.observe(container);
+  textStyleObserver = new MutationObserver(() => scheduleTextMetricCheck());
+  textStyleObserver.observe(document.head, {
+    attributes: true,
+    childList: true,
+    characterData: true,
+    subtree: true,
+  });
+  let ancestor: HTMLElement | null = container;
+  while (ancestor !== null) {
+    textStyleObserver.observe(ancestor, {
+      attributes: true,
+      attributeFilter: ['class', 'style'],
+    });
+    ancestor = ancestor.parentElement;
+  }
 
   return {
     update(newData: MapChartData, newConfig?: ChartConfig): void {
@@ -921,23 +924,26 @@ export function createMapChart(chartConfig: MapChartConfig): MapChartInstance {
         resizeObserver.disconnect();
         resizeObserver = null;
       }
+      if (textStyleObserver) {
+        textStyleObserver.disconnect();
+        textStyleObserver = null;
+      }
       if (debounceTimer !== null) {
         clearTimeout(debounceTimer);
         debounceTimer = null;
       }
-      if (tooltip) {
-        tooltip.destroy();
-        tooltip = null;
+      if (textMetricTimer !== null) {
+        clearTimeout(textMetricTimer);
+        textMetricTimer = null;
       }
-      if (srTable) {
-        srTable.remove();
-        srTable = null;
-      }
+      boundInteractions?.destroy();
+      boundInteractions = null;
       svg.node()?.remove();
       container.style.overflow = originalOverflow;
       container.classList.remove('jsc-map-container');
       container.removeAttribute('role');
       container.removeAttribute('aria-label');
+      container.removeAttribute('aria-roledescription');
     },
   };
 }

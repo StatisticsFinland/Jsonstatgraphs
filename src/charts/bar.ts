@@ -5,6 +5,7 @@ import type { NiceSkipOptions } from '../layout/label-fitting';
 import { bindInteractions, DataElementInfo, BoundInteractions } from './bindInteractions';
 import { applyChartAriaAttributes, applySeriesGroupAttributes } from '../a11y/aria';
 import { getSeriesColor } from '../theme/palette';
+import { ensureDefs, getPatternFillUrl, injectPatternDefs } from '../a11y/patterns';
 
 export interface BarChartConfig {
   container: HTMLElement;
@@ -69,6 +70,7 @@ export function createBarChart(chartConfig: BarChartConfig): BarChartInstance {
       theme: lastTheme!,
       locale: config.locale,
       chartData: renderData,
+      pointAxis: resolvedChartType === 'horizontalBar' ? 'vertical' : 'horizontal',
       ariaLabel: config.ariaLabel,
       caption: config.title ?? config.ariaLabel,
     });
@@ -97,7 +99,13 @@ export function createBarChart(chartConfig: BarChartConfig): BarChartInstance {
 
     const { svg, theme } = ctx;
     const plotAreaGroup = svg.select<SVGGElement>('.jsc-plot-area');
+    const interactionGroup = plotAreaGroup.append('g');
     const elements: DataElementInfo[] = [];
+
+    if (config.accessibilityMode) {
+      const defs = ensureDefs(svg);
+      injectPatternDefs(defs, theme, data.series.length);
+    }
 
     if (data.series.length === 0) {
       lastAllElements = elements;
@@ -111,12 +119,12 @@ export function createBarChart(chartConfig: BarChartConfig): BarChartInstance {
     const series = data.series[si];
     const color = getSeriesColor(theme, si);
 
-    const seriesGroup = plotAreaGroup
+    const seriesGroup = interactionGroup
       .append('g')
       .attr('class', `jsc-series jsc-series-${si}`) as unknown as import('d3-selection').Selection<SVGGElement, unknown, null, undefined>;
 
     const seriesGroupEl = seriesGroup.node() as SVGGElement;
-    applySeriesGroupAttributes(seriesGroupEl, series.name, si);
+    applySeriesGroupAttributes(seriesGroupEl, series.name, si, config.locale);
     seriesGroupElements.set(si, seriesGroupEl);
 
     type BarPoint = { value: number; categoryCode: string; label: string };
@@ -137,7 +145,7 @@ export function createBarChart(chartConfig: BarChartConfig): BarChartInstance {
         .attr('y', d => yScale(d.categoryCode)!)
         .attr('width', d => Math.abs(xScale(d.value) - xScale(0)))
         .attr('height', yScale.bandwidth())
-        .attr('fill', color)
+        .attr('fill', config.accessibilityMode ? getPatternFillUrl(si) : color)
         .attr('stroke', theme.colorBorder)
         .attr('stroke-width', '1')
         .attr('tabindex', '0');
@@ -154,7 +162,7 @@ export function createBarChart(chartConfig: BarChartConfig): BarChartInstance {
         .attr('y', d => d.value >= 0 ? yScale(d.value) : yScale(0))
         .attr('width', xScale.bandwidth())
         .attr('height', d => Math.abs(yScale(0) - yScale(d.value)))
-        .attr('fill', color)
+        .attr('fill', config.accessibilityMode ? getPatternFillUrl(si) : color)
         .attr('stroke', theme.colorBorder)
         .attr('stroke-width', '1')
         .attr('tabindex', '0');
@@ -171,10 +179,12 @@ export function createBarChart(chartConfig: BarChartConfig): BarChartInstance {
         element: rectEl,
         seriesIndex: si,
         pointIndex: pi,
+        pointKey: point.categoryCode,
         category: point.label,
         seriesName: series.name,
         value: point.value,
         formattedValue: point.value.toLocaleString(config.locale),
+        omitSeriesNameFromAriaLabel: true,
       });
     }
 
@@ -199,7 +209,7 @@ export function createBarChart(chartConfig: BarChartConfig): BarChartInstance {
   });
 
   const ariaLabel = config.ariaLabel ?? (config.title ?? 'Bar chart');
-  applyChartAriaAttributes(container, ariaLabel);
+  applyChartAriaAttributes(container, ariaLabel, resolvedChartType, config.locale);
 
   scaffold.render();
 
@@ -211,7 +221,7 @@ export function createBarChart(chartConfig: BarChartConfig): BarChartInstance {
       }
       renderData = buildRenderData();
       const updatedAriaLabel = config.ariaLabel ?? (config.title ?? 'Bar chart');
-      applyChartAriaAttributes(container, updatedAriaLabel);
+      applyChartAriaAttributes(container, updatedAriaLabel, resolvedChartType, config.locale);
       scaffold.update({
         mode: 'categorical' as const,
         container,
@@ -236,6 +246,7 @@ export function createBarChart(chartConfig: BarChartConfig): BarChartInstance {
       scaffold.destroy();
       container.removeAttribute('role');
       container.removeAttribute('aria-label');
+      container.removeAttribute('aria-roledescription');
     },
   };
 }

@@ -30,6 +30,13 @@ const mockTheme: ResolvedTheme = {
   gridOpacity: 0.2,
   tooltipPadding: '8px 12px',
   tooltipBoxShadow: '0 2px 4px rgba(0,0,0,0.15)',
+  burgerMenuBackground: '#ffffff',
+  burgerMenuBorderColor: '#bdbdbd',
+  burgerMenuBorderRadius: '18px',
+  burgerMenuShadow: '0 4px 16px rgba(0, 0, 0, 0.12)',
+  burgerMenuItemHoverBackground: '#f5f5f5',
+  burgerMenuItemActiveBackground: '#eef5ff',
+  burgerMenuItemSeparatorColor: '#e3e3e3',
   seriesColors: ['#4e79a7', '#e15759'],
   mapColors: ['#c6dbef', '#9ecae1', '#6baed6', '#3182bd', '#08519c'],
 };
@@ -56,7 +63,7 @@ describe('Legend', () => {
     const legend = new Legend(container, seriesNames, mockTheme);
     legend.render();
     const buttons = container.querySelectorAll('.jsc-legend-item');
-    expect(buttons.length).toBe(3);
+    expect(buttons).toHaveLength(3);
   });
 
   it('each button shows series name', () => {
@@ -170,8 +177,33 @@ describe('Legend', () => {
     legend.render();
 
     const buttons = container.querySelectorAll('.jsc-legend-item') as NodeListOf<HTMLButtonElement>;
-    expect(buttons[0].getAttribute('aria-label')).toBe('Toggle series Series A');
-    expect(buttons[1].getAttribute('aria-label')).toBe('Toggle series Series B');
+    expect(buttons[0].tagName).toBe('BUTTON');
+    expect(buttons[0].getAttribute('aria-label')).toBe('Series A, Toggle series');
+    expect(buttons[1].getAttribute('aria-label')).toBe('Series B, Toggle series');
+  });
+
+  it('localizes button aria-labels and keeps the visible name first', () => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    const legend = new Legend(container, seriesNames, mockTheme, { locale: 'fi' });
+    legend.render();
+
+    const button = container.querySelector('.jsc-legend-item') as HTMLButtonElement;
+    expect(button.getAttribute('aria-label')).toBe('Series A, Näytä tai piilota sarja');
+  });
+
+  it.each([
+    ['en', 'Series A, Toggle series'],
+    ['fi', 'Series A, Näytä tai piilota sarja'],
+    ['sv', 'Series A, Visa eller dölj serie'],
+  ])('uses a fully localized action text for %s', (locale, expectedLabel) => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    const legend = new Legend(container, seriesNames, mockTheme, { locale });
+    legend.render();
+
+    const button = container.querySelector('.jsc-legend-item') as HTMLButtonElement;
+    expect(button.getAttribute('aria-label')).toBe(expectedLabel);
   });
 
   it('injects focus-visible CSS style into document head', () => {
@@ -190,7 +222,7 @@ describe('Legend', () => {
     new Legend(container, seriesNames, mockTheme);
     new Legend(container, seriesNames, mockTheme);
     const styles = document.querySelectorAll('#jsc-legend-styles');
-    expect(styles.length).toBe(1);
+    expect(styles).toHaveLength(1);
   });
 
   it('destroy() removes element from container', () => {
@@ -215,5 +247,37 @@ describe('Legend', () => {
     const focusedEl = document.activeElement as HTMLElement;
     const buttons = container.querySelectorAll('.jsc-legend-item');
     expect(focusedEl).toBe(buttons[1]);
+  });
+
+  it('renders line marker symbol in swatch when accessibility mode is enabled for line chart', () => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+
+    const legend = new Legend(container, seriesNames, mockTheme, {
+      accessibilityMode: true,
+      chartType: 'line',
+    });
+    legend.render();
+
+    const firstSwatch = container.querySelector('.jsc-legend-swatch') as HTMLSpanElement;
+    const markerPath = firstSwatch.querySelector('svg path');
+    expect(markerPath).not.toBeNull();
+    expect(firstSwatch.style.border).toBe('');
+  });
+
+  it('renders patterned swatch when accessibility mode is enabled for pattern-based chart', () => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+
+    const legend = new Legend(container, seriesNames, mockTheme, {
+      accessibilityMode: true,
+      chartType: 'stackedVerticalBar',
+    });
+    legend.render();
+
+    const firstSwatch = container.querySelector('.jsc-legend-swatch') as HTMLSpanElement;
+    expect(firstSwatch.classList.contains('jsc-legend-swatch--pattern')).toBe(true);
+    const patternPath = firstSwatch.querySelector('svg path');
+    expect(patternPath).not.toBeNull();
   });
 });

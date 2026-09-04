@@ -21,6 +21,13 @@ const mockTheme: ResolvedTheme = {
   gridOpacity: 0.2,
   tooltipPadding: '8px 12px',
   tooltipBoxShadow: '0 2px 4px rgba(0,0,0,0.15)',
+  burgerMenuBackground: '#ffffff',
+  burgerMenuBorderColor: '#bdbdbd',
+  burgerMenuBorderRadius: '18px',
+  burgerMenuShadow: '0 4px 16px rgba(0, 0, 0, 0.12)',
+  burgerMenuItemHoverBackground: '#f5f5f5',
+  burgerMenuItemActiveBackground: '#eef5ff',
+  burgerMenuItemSeparatorColor: '#e3e3e3',
   seriesColors: ['#4e79a7', '#e15759'],
   mapColors: ['#c6dbef', '#9ecae1', '#6baed6', '#3182bd', '#08519c'],
 };
@@ -73,6 +80,7 @@ describe('Tooltip', () => {
     tooltip.show(sampleData, 100, 100);
     const el = container.querySelector('.jsc-tooltip') as HTMLDivElement;
     expect(el.style.opacity).toBe('1');
+    expect(el.style.pointerEvents).toBe('auto');
     expect(el.textContent).toContain('Population');
     expect(el.textContent).toContain('5,000,000');
   });
@@ -100,6 +108,16 @@ describe('Tooltip', () => {
     tooltip.hide();
     const el = container.querySelector('.jsc-tooltip') as HTMLDivElement;
     expect(el.style.opacity).toBe('0');
+  });
+
+  it('hide() preserves content during the closing transition', () => {
+    container = createContainer();
+    const tooltip = new Tooltip(container, mockTheme);
+    tooltip.show(sampleData, 100, 100);
+    tooltip.hide();
+    const el = container.querySelector('.jsc-tooltip') as HTMLDivElement;
+    expect(el.textContent).toContain('Population');
+    expect(el.textContent).toContain('5,000,000');
   });
 
   it('show() clamps tooltip to container right edge', () => {
@@ -181,11 +199,11 @@ describe('Tooltip', () => {
     c2.remove();
   });
 
-  it('tooltip element has aria-live="polite"', () => {
+  it('tooltip element is not a live region', () => {
     container = createContainer();
     new Tooltip(container, mockTheme);
     const el = container.querySelector('.jsc-tooltip') as HTMLDivElement;
-    expect(el.getAttribute('aria-live')).toBe('polite');
+    expect(el.getAttribute('aria-live')).toBeNull();
   });
 
   it('getId() returns the tooltip element id', () => {
