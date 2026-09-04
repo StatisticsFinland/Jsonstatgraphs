@@ -1,5 +1,5 @@
 {
-  "name": "@statisticsfinland/jsonstat-chart",
+  "name": "@statisticsfinland/jsonstatgraphs",
   "version": "0.2.1",
   "description": "Render JSON-stat 2.0 datasets as interactive, accessible SVG charts",
   "type": "module",
@@ -40,9 +40,11 @@
     "build": "vite build",
     "lint": "eslint src stories tests",
     "test": "jest",
+    "test:ci": "jest --ci --reporters=default",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
-    "pack": "npm run build && npm pack"
+    "pack": "npm run build && npm pack",
+    "version-helper": "node .github/scripts/version-helper.js"
   },
   "dependencies": {
     "d3-array": "^3.2.4",
@@ -74,6 +76,7 @@
     "ts-node": "^10.9.2",
     "typescript": "^6.0.3",
     "vite": "^8.0.16",
-    "vite-plugin-dts": "^5.0.2"
+    "vite-plugin-dts": "^5.0.2",
+    "semver": "^7.7.0"
   }
 }

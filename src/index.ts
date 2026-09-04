@@ -386,7 +386,7 @@ function validateRendererSelectableDimensions(
   if (requiredDimensionCode && selectableDimensionCodes.has(requiredDimensionCode)) {
     const rendererDimension = type === 'scatterPlot' ? 'metric/content' : 'split';
     throw new Error(
-      `[JsonStatChart] Dimension "${requiredDimensionCode}" cannot be selectable for ${type}: it defines the ${rendererDimension} dimension`,
+      `[Jsonstatgraphs] Dimension "${requiredDimensionCode}" cannot be selectable for ${type}: it defines the ${rendererDimension} dimension`,
     );
   }
 }
@@ -646,7 +646,7 @@ function createRenderer(
       });
     case 'map': {
       if (!mapGeometry) {
-        throw new Error('[JsonStatChart] Map chart requires mapProvider to supply geometry');
+        throw new Error('[Jsonstatgraphs] Map chart requires mapProvider to supply geometry');
       }
       const theme = resolveTheme(container, cfg.theme);
       const mapData = transformMapData(activeDataset, mapGeometry, cfg.map ?? {}, theme);
@@ -668,7 +668,7 @@ export function createChart(
   selectableSelections?: SelectableSelections,
 ): ChartInstance {
   if (!(container instanceof HTMLElement)) {
-    throw new TypeError('[JsonStatChart] container must be an HTMLElement');
+    throw new TypeError('[Jsonstatgraphs] container must be an HTMLElement');
   }
 
   let currentDataset = dataset;
@@ -713,7 +713,7 @@ export function createChart(
     try {
       rebuildPipeline(currentDataset, currentConfig);
     } catch (err) {
-      console.warn('[JsonStatChart]', err);
+      console.warn('[Jsonstatgraphs]', err);
       const theme = resolveTheme(container, currentConfig.theme);
       renderError(
         container,
@@ -793,7 +793,7 @@ export function createChart(
     // Early validation: explicit map type without provider
     if ((cfg.chartType === 'map' || chartTypeOverride === 'map') && !hasMapProvider) {
       container.innerHTML = '';
-      throw new Error('[JsonStatChart] Map chart requires config.mapProvider');
+      throw new Error('[Jsonstatgraphs] Map chart requires config.mapProvider');
     }
 
     const explicitType = chartTypeOverride ?? cfg.chartType;
@@ -853,7 +853,7 @@ export function createChart(
             mapAvailable = true;
           } else if (cfg.chartType === 'map' || chartTypeOverride === 'map') {
             // Provider returned null but map was explicitly requested — fall back
-            console.warn('[JsonStatChart] mapProvider returned null for explicit map chart type, falling back');
+            console.warn('[Jsonstatgraphs] mapProvider returned null for explicit map chart type, falling back');
             if (chartTypeOverride === 'map') chartTypeOverride = null;
             effectiveCfg = { ...cfg, chartType: undefined };
           }
@@ -864,7 +864,7 @@ export function createChart(
             finishRebuild(ds, effectiveCfg, dataProps, dimMeta, resolvedLocale, theme, mapAvailable);
             announceChartLoaded(resolvedLocale);
           } catch (err) {
-            console.warn('[JsonStatChart]', err);
+            console.warn('[Jsonstatgraphs]', err);
             renderError(container, err instanceof Error ? err.message : 'An unexpected error occurred', theme);
           }
         })
@@ -875,7 +875,7 @@ export function createChart(
             cancelAnimationFrame(pendingSpinnerRaf);
             pendingSpinnerRaf = null;
           }
-          console.warn('[JsonStatChart] mapProvider failed:', err);
+          console.warn('[Jsonstatgraphs] mapProvider failed:', err);
 
           if (chartTypeOverride === 'map') chartTypeOverride = null;
           const catchCfg = (cfg.chartType === 'map') ? { ...cfg, chartType: undefined } : cfg;
@@ -885,7 +885,7 @@ export function createChart(
             finishRebuild(ds, catchCfg, dataProps, dimMeta, resolvedLocale, theme, false);
             announceChartLoaded(resolvedLocale);
           } catch (finishErr) {
-            console.warn('[JsonStatChart]', finishErr);
+            console.warn('[Jsonstatgraphs]', finishErr);
             renderError(container, finishErr instanceof Error ? finishErr.message : 'An unexpected error occurred', theme);
           }
         });
@@ -1075,7 +1075,7 @@ export function createChart(
   try {
     rebuildPipeline(dataset, currentConfig);
   } catch (err) {
-    console.warn('[JsonStatChart]', err);
+    console.warn('[Jsonstatgraphs]', err);
     const theme = resolveTheme(container, currentConfig.theme);
     renderError(
       container,
@@ -1103,7 +1103,7 @@ export function createChart(
       try {
         rebuildPipeline(currentDataset, currentConfig);
       } catch (err) {
-        console.warn('[JsonStatChart]', err);
+        console.warn('[Jsonstatgraphs]', err);
         const theme = resolveTheme(container, currentConfig.theme);
         renderError(
           container,

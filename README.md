@@ -1,4 +1,4 @@
-# @statisticsfinland/jsonstat-chart
+# @statisticsfinland/jsonstatgraphs
 
 Render JSON-stat 2.0 datasets as interactive, accessible SVG charts.
 
@@ -11,7 +11,7 @@ This package is not yet published to npm. Install it locally:
 npm run pack
 
 # In your consuming project, install the .tgz:
-npm install ../jsonstatchart/statisticsfinland-jsonstat-chart-0.1.0.tgz
+npm install ../jsonstatgraphs/statisticsfinland-jsonstatgraphs-0.2.1.tgz
 ```
 
 Or link for development:
@@ -22,7 +22,7 @@ npm run build
 npm link
 
 # In your consuming project:
-npm link @statisticsfinland/jsonstat-chart
+npm link @statisticsfinland/jsonstatgraphs
 ```
 
 > **Note:** Rebuild with `npm run build` after source changes when using `npm link`.
@@ -30,8 +30,8 @@ npm link @statisticsfinland/jsonstat-chart
 ## Quick Start
 
 ```typescript
-import { createChart } from '@statisticsfinland/jsonstat-chart';
-import type { JsonStatDataset } from '@statisticsfinland/jsonstat-chart';
+import { createChart } from '@statisticsfinland/jsonstatgraphs';
+import type { JsonStatDataset } from '@statisticsfinland/jsonstatgraphs';
 
 // Fetch a JSON-stat 2.0 dataset
 const response = await fetch('https://example.com/api/dataset');
@@ -126,8 +126,8 @@ const chart = createChart(container, dataset, {
 The chart can render selected and pivoted data without mutating the caller's JSON-stat dataset. Current selections are passed separately as the fourth argument to `createChart()` and the third argument to `chart.update()`:
 
 ```typescript
-import { createChart } from '@statisticsfinland/jsonstat-chart';
-import type { SelectableSelections } from '@statisticsfinland/jsonstat-chart';
+import { createChart } from '@statisticsfinland/jsonstatgraphs';
+import type { SelectableSelections } from '@statisticsfinland/jsonstatgraphs';
 
 const selections: SelectableSelections = {
   scenario: ['current'],
@@ -555,7 +555,7 @@ when the export should reflect selectable or pivoted data.
 Query which chart types are valid for a dataset **without creating a chart**. Useful for building chart-type picker UIs:
 
 ```typescript
-import { getChartTypesForDataset, selectChartTypeForDataset } from '@statisticsfinland/jsonstat-chart';
+import { getChartTypesForDataset, selectChartTypeForDataset } from '@statisticsfinland/jsonstatgraphs';
 
 // Get all chart types with validity status and rejection reasons
 const results = getChartTypesForDataset(dataset);
@@ -615,7 +615,7 @@ const results = getChartTypesForDataset(dataset, { mapAvailable: true });
 
 ```bash
 git clone <repository-url>
-cd jsonstatchart
+cd jsonstatgraphs
 npm install
 ```
 

@@ -303,7 +303,7 @@ describe('createChart', () => {
   it('throws TypeError when container is not an HTMLElement', () => {
     expect(() => createChart(null as unknown as HTMLElement, validDataset)).toThrow(TypeError);
     expect(() => createChart(null as unknown as HTMLElement, validDataset)).toThrow(
-      '[JsonStatChart] container must be an HTMLElement',
+      '[Jsonstatgraphs] container must be an HTMLElement',
     );
   });
 

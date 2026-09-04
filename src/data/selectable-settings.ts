@@ -9,7 +9,7 @@ export interface SelectableDatasetOptions {
 }
 
 function fail(message: string): never {
-  throw new Error(`[JsonStatChart] ${message}`);
+  throw new Error(`[Jsonstatgraphs] ${message}`);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

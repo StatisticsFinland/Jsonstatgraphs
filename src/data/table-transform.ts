@@ -36,12 +36,12 @@ function validateManualLayout(
 ): string[] {
   for (const code of layout.rows) {
     if (!sizeMap.has(code)) {
-      throw new Error(`[JsonStatChart] Unknown dimension code in layout: "${code}"`);
+      throw new Error(`[Jsonstatgraphs] Unknown dimension code in layout: "${code}"`);
     }
   }
   for (const code of layout.columns) {
     if (!sizeMap.has(code)) {
-      throw new Error(`[JsonStatChart] Unknown dimension code in layout: "${code}"`);
+      throw new Error(`[Jsonstatgraphs] Unknown dimension code in layout: "${code}"`);
     }
   }
 
@@ -49,7 +49,7 @@ function validateManualLayout(
   for (const code of layout.columns) {
     if (rowSet.has(code)) {
       throw new Error(
-        `[JsonStatChart] Dimension "${code}" appears in both rows and columns of layout`
+        `[Jsonstatgraphs] Dimension "${code}" appears in both rows and columns of layout`
       );
     }
   }
@@ -57,7 +57,7 @@ function validateManualLayout(
   const seenRows = new Set<string>();
   for (const code of layout.rows) {
     if (seenRows.has(code)) {
-      throw new Error(`[JsonStatChart] Duplicate dimension code in layout.rows: "${code}"`);
+      throw new Error(`[Jsonstatgraphs] Duplicate dimension code in layout.rows: "${code}"`);
     }
     seenRows.add(code);
   }
@@ -65,7 +65,7 @@ function validateManualLayout(
   const seenCols = new Set<string>();
   for (const code of layout.columns) {
     if (seenCols.has(code)) {
-      throw new Error(`[JsonStatChart] Duplicate dimension code in layout.columns: "${code}"`);
+      throw new Error(`[Jsonstatgraphs] Duplicate dimension code in layout.columns: "${code}"`);
     }
     seenCols.add(code);
   }

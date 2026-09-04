@@ -462,11 +462,11 @@ export function transformMapData(
   // --- 1. Find the geo dimension ---
   const geoDimId = mapConfig.geoDimensionId ?? dataset.role?.geo?.[0];
   if (!geoDimId) {
-    throw new Error('[JsonStatChart] transformMapData: dataset has no geo role dimension');
+    throw new Error('[Jsonstatgraphs] transformMapData: dataset has no geo role dimension');
   }
   const geoDimIdx = id.indexOf(geoDimId);
   if (geoDimIdx === -1) {
-    throw new Error(`[JsonStatChart] transformMapData: geo dimension "${geoDimId}" not found in dataset.id`);
+    throw new Error(`[Jsonstatgraphs] transformMapData: geo dimension "${geoDimId}" not found in dataset.id`);
   }
 
   // --- 2. Extract geo codes and labels ---
