@@ -2,10 +2,11 @@ import { select, Selection } from 'd3-selection';
 import { scaleLinear, ScaleLinear, ScaleBand, ScalePoint } from 'd3-scale';
 import { axisBottom, axisLeft } from 'd3-axis';
 import { ChartType, ChartConfig, ResolvedTheme, ZoneType, ZoneRect, LayoutResult } from '../types';
-import { renderSvgFooter } from './footer';
+import { measureSvgFooterHeight, renderSvgFooter } from './footer';
 import { Legend } from '../interaction/legend';
 import { getTickPositions } from '../layout/tick-positions';
-import { fitLabels, LabelFitResult, NiceSkipOptions, truncateLabel } from '../layout/label-fitting';
+import { fitLabels, LabelFitResult, LabelTextMetrics, NiceSkipOptions, truncateLabel } from '../layout/label-fitting';
+import { createSvgTextMeasurement } from '../layout/text-measurement';
 import { resolveTheme } from '../theme/theme';
 import { createZones, applyMeasuredSizes } from '../layout/zones';
 import { computeLayout } from '../layout/layout-engine';
@@ -25,7 +26,6 @@ import {
   measureCategoricalRightMargin,
   measureCategoricalXAxisLabels,
   measureCategoricalYAxisLabels,
-  measureFooterZone,
   measureHeaderZone,
 } from '../layout/zone-measurement';
 import { captureChartFocusBeforeRedraw } from '../interaction/keyboard';
@@ -41,6 +41,8 @@ const X_AXIS_TICK_LABEL_GAP = 4;
 const AXIS_LABEL_CHAR_WIDTH = 8;
 /** Fallback width (px) available to horizontal category labels when their zone is absent. */
 const HORIZONTAL_LABEL_FALLBACK_WIDTH = 100;
+/** Space between horizontal category text and the plot axis. */
+const HORIZONTAL_LABEL_TICK_MARGIN = 16;
 /** Line-height multiplier used to estimate wrapped horizontal label height. */
 const HORIZONTAL_LABEL_LINE_HEIGHT = 1.4;
 /** Maximum number of wrapped lines shown for a horizontal category label. */
@@ -106,15 +108,24 @@ interface RenderedScales {
   yScale: YScale;
 }
 
+interface AxisRenderOptions {
+  tickValues: number[];
+  fittedLabels: LabelFitResult;
+  textMetrics: LabelTextMetrics;
+}
+
 export class ChartScaffold {
   private container: HTMLElement;
   private readonly svg: Selection<SVGSVGElement, unknown, null, undefined>;
   private theme: ResolvedTheme;
   private resizeObserver: ResizeObserver | null = null;
+  private textStyleObserver: MutationObserver | null = null;
   private config: ChartConfig;
   private chartType: ChartType;
   private scaffoldConfig: ChartScaffoldConfig;
   private debounceTimer: ReturnType<typeof setTimeout> | null = null;
+  private textMetricTimer: ReturnType<typeof setTimeout> | null = null;
+  private textMetricFingerprint: string | null = null;
   private legend: Legend | null = null;
   private renderCallback: ((ctx: ScaffoldRenderContext) => void) | null = null;
   private readonly reducedMotion: boolean;
@@ -162,6 +173,70 @@ export class ChartScaffold {
       }, 150);
     });
     this.resizeObserver.observe(this.container);
+
+    this.textStyleObserver = new MutationObserver(() => this.scheduleTextMetricCheck());
+    this.textStyleObserver.observe(document.head, {
+      attributes: true,
+      childList: true,
+      characterData: true,
+      subtree: true,
+    });
+    let ancestor: HTMLElement | null = this.container;
+    while (ancestor !== null) {
+      this.textStyleObserver.observe(ancestor, {
+        attributes: true,
+        attributeFilter: ['class', 'style'],
+      });
+      ancestor = ancestor.parentElement;
+    }
+  }
+
+  private captureTextMetricFingerprint(): string {
+    const sample = 'Accessibility labels 0123456789';
+    const measurements = ['jsc-axis-x', 'jsc-axis-y'].map(parentClass => {
+      const measurement = createSvgTextMeasurement(this.svg, {
+        parentClass,
+        fontFamily: this.theme.fontFamily,
+        fontSize: this.theme.fontSizeTick,
+        fallbackCharWidth: AXIS_LABEL_CHAR_WIDTH,
+        fallbackLineHeight: (Number.parseFloat(this.theme.fontSizeTick) || 12) * 1.2,
+      });
+      const result = [
+        Math.round(measurement.measureText(sample) * 100) / 100,
+        Math.round(measurement.lineHeight * 100) / 100,
+      ];
+      measurement.destroy();
+      return result;
+    });
+    return JSON.stringify(measurements);
+  }
+
+  private scheduleTextMetricCheck(): void {
+    if (this.textMetricTimer !== null) clearTimeout(this.textMetricTimer);
+    this.textMetricTimer = setTimeout(() => {
+      this.textMetricTimer = null;
+      const previousTheme = this.theme;
+      this.theme = resolveTheme(this.container, this.config.theme);
+      const textThemeKeys: Array<keyof ResolvedTheme> = [
+        'fontFamily',
+        'fontSizeTitle',
+        'fontSizeLabel',
+        'fontSizeTick',
+        'fontWeightNormal',
+        'fontWeightBold',
+      ];
+      const textThemeChanged = textThemeKeys.some(
+        key => this.theme[key] !== previousTheme[key],
+      );
+      const nextFingerprint = this.captureTextMetricFingerprint();
+      if (textThemeChanged || (
+        this.textMetricFingerprint !== null && nextFingerprint !== this.textMetricFingerprint
+      )) {
+        this.render();
+      } else {
+        this.textMetricFingerprint = nextFingerprint;
+      }
+    }, 50);
   }
 
   private buildScales(
@@ -268,6 +343,7 @@ export class ChartScaffold {
         .attr('class', 'jsc-title')
         .attr('x', contentStartX)
         .attr('text-anchor', 'start')
+        .attr('dominant-baseline', 'middle')
         .attr('font-size', this.theme.fontSizeTitle)
         .attr('font-family', this.theme.fontFamily)
         .attr('font-weight', this.theme.fontWeightBold)
@@ -434,9 +510,10 @@ export class ChartScaffold {
     yScale: YScale,
     layout: LayoutResult,
     plotAreaRect: ZoneRect,
-    tickValues: number[],
-    fittedLabels: LabelFitResult
+    options: AxisRenderOptions,
   ): void {
+    const { tickValues, fittedLabels, textMetrics } = options;
+    const axisFontSize = Number.parseFloat(this.theme.fontSizeTick) || 12;
     const styleAxis = (g: Selection<SVGGElement, unknown, null, undefined>): void => {
       g.selectAll('text')
         .attr('font-size', this.theme.fontSizeTick)
@@ -465,7 +542,6 @@ export class ChartScaffold {
             return;
           }
           const text = select(this).append('text')
-            .attr('dx', '-9')
             .attr('text-anchor', 'end')
             .attr('dominant-baseline', 'middle')
             .attr('font-size', '')
@@ -473,10 +549,11 @@ export class ChartScaffold {
             .attr('fill', '');
           const totalLines = fitted.lines.length;
           for (let lineIdx = 0; lineIdx < totalLines; lineIdx++) {
-            const lineOffset = (lineIdx - (totalLines - 1) / 2) * 1.1;
+            const lineHeightEm = textMetrics.lineHeight / axisFontSize;
+            const lineOffset = (lineIdx - (totalLines - 1) / 2) * lineHeightEm;
             text.append('tspan')
               .attr('x', -9)
-              .attr('dy', lineIdx === 0 ? `${lineOffset}em` : '1.1em')
+              .attr('dy', lineIdx === 0 ? `${lineOffset}em` : `${lineHeightEm}em`)
               .text(fitted.lines[lineIdx]);
           }
         });
@@ -514,6 +591,12 @@ export class ChartScaffold {
           .call(axis as never)
           .call(styleAxis);
       } else {
+        const visibleLabelIndices = fittedLabels.labels
+          .map((label, index) => label.skip ? -1 : index)
+          .filter(index => index >= 0);
+        const firstVisibleIndex = visibleLabelIndices[0];
+        const lastVisibleIndex = visibleLabelIndices.at(-1);
+        const svgNode = this.svg.node();
         xAxisGroup.call(
           (axisBottom(xScale as ScaleBand<string>)
             .tickSizeInner(X_AXIS_TICK_SIZE)
@@ -535,10 +618,21 @@ export class ChartScaffold {
             .attr('font-family', '')
             .attr('fill', '');
           for (let lineIdx = 0; lineIdx < fitted.lines.length; lineIdx++) {
+            const lineHeightEm = textMetrics.lineHeight / axisFontSize;
             text.append('tspan')
               .attr('x', 0)
-              .attr('dy', lineIdx === 0 ? '0' : '1.1em')
+              .attr('dy', lineIdx === 0 ? '0' : `${lineHeightEm}em`)
               .text(fitted.lines[lineIdx]);
+          }
+          const textNode = text.node();
+          if (textNode && svgNode && (i === firstVisibleIndex || i === lastVisibleIndex)) {
+            const textRect = textNode.getBoundingClientRect();
+            const svgRect = svgNode.getBoundingClientRect();
+            if (textRect.width > 0 && i === firstVisibleIndex && textRect.left < svgRect.left) {
+              text.attr('text-anchor', 'start');
+            } else if (textRect.width > 0 && i === lastVisibleIndex && textRect.right > svgRect.right) {
+              text.attr('text-anchor', 'end');
+            }
           }
         });
         // Re-apply axis styles after custom text injection
@@ -602,11 +696,17 @@ export class ChartScaffold {
     const footerItems = this.scaffoldConfig.config.footerItems;
     if (!footerItems || footerItems.length === 0) return;
 
-    const tickFontSize = Number.parseFloat(this.theme.fontSizeTick) || 12;
-    const lineHeight = Math.ceil(tickFontSize * 1.4);
-
     const plotAreaRect = layout.zones.get(ZoneType.PlotArea);
     const footerX = plotAreaRect ? plotAreaRect.x : footerRect.x;
+    const footerMeasurement = createSvgTextMeasurement(this.svg, {
+      parentClass: 'jsc-footer',
+      textClass: 'jsc-footer-text',
+      fontFamily: this.theme.fontFamily,
+      fontSize: this.theme.fontSizeTick,
+      fallbackCharWidth: 8,
+      fallbackLineHeight: Math.ceil((Number.parseFloat(this.theme.fontSizeTick) || 12) * 1.4),
+    });
+    const maxWidth = footerRect.x + footerRect.width - footerX;
 
     renderSvgFooter({
       parent: this.svg,
@@ -615,8 +715,11 @@ export class ChartScaffold {
       theme: this.theme,
       x: footerX,
       y: footerRect.y,
-      lineHeight,
+      lineHeight: footerMeasurement.lineHeight,
+      maxWidth,
+      textMetrics: footerMeasurement,
     });
+    footerMeasurement.destroy();
   }
 
   private renderLegend(layout: LayoutResult): void {
@@ -696,8 +799,24 @@ export class ChartScaffold {
   }
 
   /** Measures the footer zone height in px. Returns 0 when there are no footer items. */
-  private measureFooterZone(): number {
-    return measureFooterZone(this.scaffoldConfig.config, this.theme);
+  private measureFooterZone(containerWidth: number, footerX: number): number {
+    const footerItems = this.scaffoldConfig.config.footerItems;
+    if (!footerItems || footerItems.length === 0) return 0;
+    const measurement = createSvgTextMeasurement(this.svg, {
+      parentClass: 'jsc-footer',
+      textClass: 'jsc-footer-text',
+      fontFamily: this.theme.fontFamily,
+      fontSize: this.theme.fontSizeTick,
+      fallbackCharWidth: 8,
+      fallbackLineHeight: Math.ceil((Number.parseFloat(this.theme.fontSizeTick) || 12) * 1.4),
+    });
+    const height = measureSvgFooterHeight(
+      footerItems,
+      Math.max(1, containerWidth - footerX),
+      measurement,
+    );
+    measurement.destroy();
+    return height;
   }
 
   private measureNumericZoneSizes(
@@ -705,7 +824,8 @@ export class ChartScaffold {
     containerHeight: number
   ): Partial<Record<ZoneType, number>> {
     const cfg = this.scaffoldConfig as NumericScaffoldConfig;
-    const CHAR_WIDTH = 8;
+    const tickFontSize = Number.parseFloat(this.theme.fontSizeTick) || 12;
+    const CHAR_WIDTH = Math.max(8, tickFontSize * 0.5);
     const measurements: Partial<Record<ZoneType, number>> = {};
 
     // Header zone — same logic as categorical
@@ -727,7 +847,7 @@ export class ChartScaffold {
     measurements[ZoneType.YAxisLabels] = maxYTickLen * CHAR_WIDTH + 16;
 
     // X-axis labels — single line of numeric ticks
-    measurements[ZoneType.XAxisLabels] = 24;
+    measurements[ZoneType.XAxisLabels] = Math.ceil(tickFontSize * 1.2 + 12);
 
     // Right margin — from last X tick label
     const yAxisWidth = measurements[ZoneType.YAxisLabels] ?? 60;
@@ -735,14 +855,17 @@ export class ChartScaffold {
     const xTicks = getTickPositions(xPadded[0], xPadded[1], estimatedPlotWidth, undefined, this.theme.fontSizeTick, true);
     if (xTicks.length > 0) {
       const lastTickStr = formatNumber(xTicks.at(-1)!, this.config.locale);
-      measurements[ZoneType.RightMargin] = Math.min(Math.ceil(lastTickStr.length * CHAR_WIDTH / 2), 40);
+      measurements[ZoneType.RightMargin] = Math.ceil(lastTickStr.length * CHAR_WIDTH / 2);
     } else {
       measurements[ZoneType.RightMargin] = 0;
     }
 
     // Axis title zones
-    measurements[ZoneType.YAxisTitle] = cfg.yLabel ? 25 : 0;
-    measurements[ZoneType.XAxisTitle] = cfg.xLabel ? 25 : 0;
+    const axisTitleHeight = Math.ceil(
+      (Number.parseFloat(this.theme.fontSizeLabel) || 14) * 1.5,
+    );
+    measurements[ZoneType.YAxisTitle] = cfg.yLabel ? axisTitleHeight : 0;
+    measurements[ZoneType.XAxisTitle] = cfg.xLabel ? axisTitleHeight : 0;
 
     // Legend zone — scatter can have multiple series
     const legendHeight = this.measureLegendZone(containerWidth);
@@ -751,7 +874,10 @@ export class ChartScaffold {
     }
 
     // Footer zone
-    measurements[ZoneType.FooterText] = this.measureFooterZone();
+    measurements[ZoneType.FooterText] = this.measureFooterZone(
+      containerWidth,
+      measurements[ZoneType.YAxisLabels] ?? 0,
+    );
 
     return measurements;
   }
@@ -776,7 +902,24 @@ export class ChartScaffold {
       isPercent,
     );
 
-    const measurementContext = createZoneMeasurementContext(this.svg, this.config, this.theme);
+    const xAxisMeasurement = createSvgTextMeasurement(this.svg, {
+      parentClass: 'jsc-axis-x',
+      fontFamily: this.theme.fontFamily,
+      fontSize: this.theme.fontSizeTick,
+      fallbackCharWidth: AXIS_LABEL_CHAR_WIDTH,
+      fallbackLineHeight: (Number.parseFloat(this.theme.fontSizeTick) || 12) * 1.2,
+    });
+    const yAxisMeasurement = createSvgTextMeasurement(this.svg, {
+      parentClass: 'jsc-axis-y',
+      fontFamily: this.theme.fontFamily,
+      fontSize: this.theme.fontSizeTick,
+      fallbackCharWidth: AXIS_LABEL_CHAR_WIDTH,
+      fallbackLineHeight: (Number.parseFloat(this.theme.fontSizeTick) || 12) * 1.2,
+    });
+    const measurementContext = createZoneMeasurementContext(this.svg, this.config, this.theme, {
+      xAxis: xAxisMeasurement,
+      yAxis: yAxisMeasurement,
+    });
     const measurementOptions = {
       chartType: this.scaffoldConfig.chartType,
       categories,
@@ -817,6 +960,7 @@ export class ChartScaffold {
 
     // X-axis labels zone
     measurements[ZoneType.XAxisLabels] = measureCategoricalXAxisLabels(
+      measurementContext,
       measurementOptions,
       containerWidth,
       measurements[ZoneType.YAxisLabels] ?? 60,
@@ -824,7 +968,7 @@ export class ChartScaffold {
     );
 
     // Axis title zones
-    const axisTitles = measureCategoricalAxisTitles(measurementOptions);
+    const axisTitles = measureCategoricalAxisTitles(measurementContext, measurementOptions);
     measurements[ZoneType.YAxisTitle] = axisTitles.yAxisTitle;
     measurements[ZoneType.XAxisTitle] = axisTitles.xAxisTitle;
 
@@ -835,7 +979,13 @@ export class ChartScaffold {
     }
 
     // Footer zone — always stacked
-    measurements[ZoneType.FooterText] = this.measureFooterZone();
+    measurements[ZoneType.FooterText] = this.measureFooterZone(
+      containerWidth,
+      measurements[ZoneType.YAxisLabels] ?? 0,
+    );
+
+    xAxisMeasurement.destroy();
+    yAxisMeasurement.destroy();
 
     return measurements;
   }
@@ -846,14 +996,18 @@ export class ChartScaffold {
     yScale: YScale,
     layout: LayoutResult,
     plotAreaRect: ZoneRect,
+    textMetrics: LabelTextMetrics,
   ): LabelFitResult {
-    const labelWidth = layout.zones.get(ZoneType.YAxisLabels)?.width
+    const labelZoneWidth = layout.zones.get(ZoneType.YAxisLabels)?.width
       ?? HORIZONTAL_LABEL_FALLBACK_WIDTH;
+    const labelWidth = Math.max(0, labelZoneWidth - HORIZONTAL_LABEL_TICK_MARGIN);
     let fittedLabels = fitLabels(
       labelTexts,
       labelWidth,
       labelWidth,
       AXIS_LABEL_CHAR_WIDTH,
+      undefined,
+      textMetrics,
     );
     const lineHeight = (Number.parseFloat(this.theme.fontSizeTick) || 12)
       * HORIZONTAL_LABEL_LINE_HEIGHT;
@@ -991,6 +1145,13 @@ export class ChartScaffold {
     );
 
     const labelTexts = this.scaffoldConfig.categoryLabels ?? categories;
+    const axisTextMeasurement = createSvgTextMeasurement(this.svg, {
+      parentClass: isHorizontal ? 'jsc-axis-y' : 'jsc-axis-x',
+      fontFamily: this.theme.fontFamily,
+      fontSize: this.theme.fontSizeTick,
+      fallbackCharWidth: AXIS_LABEL_CHAR_WIDTH,
+      fallbackLineHeight: (Number.parseFloat(this.theme.fontSizeTick) || 12) * 1.2,
+    });
     let fittedLabels: LabelFitResult;
     if (isHorizontal) {
       fittedLabels = this.fitHorizontalCategoryLabels(
@@ -999,6 +1160,7 @@ export class ChartScaffold {
         yScale,
         layout,
         plotAreaRect,
+        axisTextMeasurement,
       );
     } else {
       const slotDivisor = this.scaffoldConfig.chartType === 'line'
@@ -1010,6 +1172,7 @@ export class ChartScaffold {
         plotAreaRect.width / slotDivisor,
         AXIS_LABEL_CHAR_WIDTH,
         this.scaffoldConfig.timeSeriesLabels,
+        axisTextMeasurement,
       );
     }
 
@@ -1017,7 +1180,15 @@ export class ChartScaffold {
     if (this.scaffoldConfig.chartType !== 'pie') {
       this.renderGrid(isHorizontal, xScale, yScale, plotAreaRect, tickValues);
     }
-    this.renderAxes(isHorizontal, xScale, yScale, layout, plotAreaRect, tickValues, fittedLabels);
+    this.renderAxes(
+      isHorizontal,
+      xScale,
+      yScale,
+      layout,
+      plotAreaRect,
+      { tickValues, fittedLabels, textMetrics: axisTextMeasurement },
+    );
+    axisTextMeasurement.destroy();
     this.renderAxisTitles(isHorizontal, layout);
     this.renderFooter(layout);
     this.renderLegend(layout);
@@ -1151,6 +1322,8 @@ export class ChartScaffold {
       this.renderCallback(context);
     }
 
+    this.textMetricFingerprint = this.captureTextMetricFingerprint();
+
     return context;
   }
 
@@ -1172,9 +1345,17 @@ export class ChartScaffold {
       this.resizeObserver.disconnect();
       this.resizeObserver = null;
     }
+    if (this.textStyleObserver !== null) {
+      this.textStyleObserver.disconnect();
+      this.textStyleObserver = null;
+    }
     if (this.debounceTimer !== null) {
       clearTimeout(this.debounceTimer);
       this.debounceTimer = null;
+    }
+    if (this.textMetricTimer !== null) {
+      clearTimeout(this.textMetricTimer);
+      this.textMetricTimer = null;
     }
     this.legend?.destroy();
     this.legend = null;

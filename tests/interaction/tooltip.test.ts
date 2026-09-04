@@ -80,6 +80,7 @@ describe('Tooltip', () => {
     tooltip.show(sampleData, 100, 100);
     const el = container.querySelector('.jsc-tooltip') as HTMLDivElement;
     expect(el.style.opacity).toBe('1');
+    expect(el.style.pointerEvents).toBe('auto');
     expect(el.textContent).toContain('Population');
     expect(el.textContent).toContain('5,000,000');
   });
@@ -107,6 +108,16 @@ describe('Tooltip', () => {
     tooltip.hide();
     const el = container.querySelector('.jsc-tooltip') as HTMLDivElement;
     expect(el.style.opacity).toBe('0');
+  });
+
+  it('hide() preserves content during the closing transition', () => {
+    container = createContainer();
+    const tooltip = new Tooltip(container, mockTheme);
+    tooltip.show(sampleData, 100, 100);
+    tooltip.hide();
+    const el = container.querySelector('.jsc-tooltip') as HTMLDivElement;
+    expect(el.textContent).toContain('Population');
+    expect(el.textContent).toContain('5,000,000');
   });
 
   it('show() clamps tooltip to container right edge', () => {

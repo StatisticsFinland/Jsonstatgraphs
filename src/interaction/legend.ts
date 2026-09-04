@@ -101,7 +101,7 @@ export class Legend {
       btn.style.color = this.theme.colorText;
       btn.style.opacity = item.active ? '1' : '0.4';
       btn.setAttribute('aria-pressed', String(item.active));
-      btn.setAttribute('aria-label', `${strings.toggleSeries}: ${item.name}`);
+      btn.setAttribute('aria-label', `${item.name}, ${strings.toggleSeries}`);
 
       const swatch = document.createElement('span');
       swatch.className = 'jsc-legend-swatch';

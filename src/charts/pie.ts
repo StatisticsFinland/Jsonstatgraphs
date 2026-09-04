@@ -23,6 +23,7 @@ const PIE_MARGIN = 10;
 const PIE_LABEL_MAX_CHARS = 20;
 const PIE_LABEL_CHAR_WIDTH = 8;
 const PIE_LABEL_LINE_GAP = 12;
+const PIE_CALLOUT_MIN_PLOT_WIDTH = 480;
 
 function truncatePieLabel(label: string): string {
   if (label.length <= PIE_LABEL_MAX_CHARS) return label;
@@ -111,11 +112,14 @@ export function createPieChart(chartConfig: PieChartConfig): PieChartInstance {
 
     const cx = plotArea.width / 2;
     const cy = plotArea.height / 2;
-    const labelWidth = Math.min(
-      PIE_LABEL_MAX_CHARS * PIE_LABEL_CHAR_WIDTH,
-      Math.max(0, (plotArea.width - 120) / 2),
-    );
-    const labelGap = 16;
+    const renderCallouts = plotArea.width >= PIE_CALLOUT_MIN_PLOT_WIDTH;
+    const labelWidth = renderCallouts
+      ? Math.min(
+        PIE_LABEL_MAX_CHARS * PIE_LABEL_CHAR_WIDTH,
+        Math.max(0, (plotArea.width - 120) / 2),
+      )
+      : 0;
+    const labelGap = renderCallouts ? 16 : 0;
     const radius = Math.max(0, Math.min(
       plotArea.height / 2 - PIE_MARGIN,
       (plotArea.width - (labelWidth * 2) - (labelGap * 2)) / 2,
@@ -178,6 +182,9 @@ export function createPieChart(chartConfig: PieChartConfig): PieChartInstance {
 
     lastAllElements = elements;
     rebuildInteractions();
+
+  // On narrow plots the interactive legend provides labels without constraining the pie.
+  if (!renderCallouts) return;
 
     const calloutGroup = svg
       .append('g')

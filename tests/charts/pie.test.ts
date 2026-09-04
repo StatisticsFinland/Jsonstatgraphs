@@ -71,6 +71,18 @@ describe('createPieChart', () => {
     });
   });
 
+  it('uses the available plot width for a mobile pie without clipped callouts', () => {
+    Object.defineProperty(container, 'clientWidth', { value: 320, configurable: true });
+    createPieChart({ container, data: pieData, config: defaultConfig });
+
+    const firstSlicePath = container.querySelector<SVGPathElement>('.jsc-slice')?.getAttribute('d') ?? '';
+    const radius = Number(firstSlicePath.match(/^M0,-([\d.]+)A/)?.[1]);
+
+    expect(radius).toBeGreaterThan(100);
+    expect(container.querySelectorAll('.jsc-pie-callout-label')).toHaveLength(0);
+    expect(container.querySelectorAll('.jsc-legend-item')).toHaveLength(3);
+  });
+
   it('null values are excluded from slices', () => {
     const dataWithMoreNulls: ChartData = {
       series: [{

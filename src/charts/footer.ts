@@ -1,5 +1,7 @@
 import { Selection } from 'd3-selection';
 import { FooterItem, ResolvedTheme } from '../types';
+import type { LabelTextMetrics } from '../layout/label-fitting';
+import { wrapMeasuredText } from '../layout/text-measurement';
 
 /** Get the full display text from a footer item (used for aria-label). */
 function getFooterItemText(item: FooterItem): string {
@@ -23,11 +25,49 @@ interface SvgFooterParams {
   x: number;
   y: number;
   lineHeight: number;
+  maxWidth?: number;
+  textMetrics?: LabelTextMetrics;
+}
+
+interface FooterItemLayout {
+  singleLine: boolean;
+  labelLines: string[];
+  valueLines: string[];
+}
+
+function layoutFooterItem(
+  item: FooterItem,
+  maxWidth: number,
+  measureText: (text: string) => number,
+): FooterItemLayout {
+  if (measureText(getFooterItemText(item)) <= maxWidth) {
+    return { singleLine: true, labelLines: [item.label], valueLines: [item.value] };
+  }
+  return {
+    singleLine: false,
+    labelLines: wrapMeasuredText(item.label, maxWidth, measureText),
+    valueLines: wrapMeasuredText(item.value, maxWidth, measureText),
+  };
+}
+
+export function measureSvgFooterHeight(
+  footerItems: FooterItem[],
+  maxWidth: number,
+  textMetrics: LabelTextMetrics,
+): number {
+  const lineCount = footerItems.reduce((total, item) => {
+    const layout = layoutFooterItem(item, maxWidth, textMetrics.measureText);
+    return total + (layout.singleLine ? 1 : layout.labelLines.length + layout.valueLines.length);
+  }, 0);
+  return lineCount * textMetrics.lineHeight + 4;
 }
 
 export function renderSvgFooter(params: SvgFooterParams): void {
   const { parent, footerItems, sourceLink, theme, x, y, lineHeight } = params;
   const footerGroup = parent.append('g').attr('class', 'jsc-footer');
+  const measureText = params.textMetrics?.measureText ?? ((text: string) => text.length * 8);
+  const maxWidth = params.maxWidth ?? Number.POSITIVE_INFINITY;
+  let lineIndex = 0;
 
   for (let i = 0; i < footerItems.length; i++) {
     const item = footerItems[i];
@@ -46,11 +86,41 @@ export function renderSvgFooter(params: SvgFooterParams): void {
           .attr('aria-label', itemText + ' (opens in new tab)')
       : footerGroup;
 
+    const layout = layoutFooterItem(item, maxWidth, measureText);
+    const appendTextLine = (text: string, className: string, fill?: string): void => {
+      parentEl
+      .append('text')
+      .attr('class', 'jsc-footer-text')
+      .attr('x', x)
+      .attr('y', y + lineIndex * lineHeight + lineHeight / 2)
+      .attr('text-anchor', 'start')
+      .attr('dominant-baseline', 'middle')
+      .attr('font-size', theme.fontSizeTick)
+      .attr('font-family', theme.fontFamily)
+      .attr('fill', fill ?? theme.colorTextSecondary)
+      .append('tspan')
+      .attr('class', className)
+      .attr('pointer-events', useLink ? 'none' : null)
+      .attr('style', useLink && className === 'jsc-footer-value' ? 'cursor: pointer;' : null)
+      .text(text);
+      lineIndex++;
+    };
+
+    if (!layout.singleLine) {
+      layout.labelLines.forEach(line => appendTextLine(line, 'jsc-footer-label'));
+      layout.valueLines.forEach(line => appendTextLine(
+        line,
+        'jsc-footer-value',
+        useLink ? theme.colorLink : undefined,
+      ));
+      continue;
+    }
+
     const textEl = parentEl
       .append('text')
       .attr('class', 'jsc-footer-text')
       .attr('x', x)
-      .attr('y', y + i * lineHeight + lineHeight / 2)
+      .attr('y', y + lineIndex * lineHeight + lineHeight / 2)
       .attr('text-anchor', 'start')
       .attr('dominant-baseline', 'middle')
       .attr('font-size', theme.fontSizeTick)
@@ -67,6 +137,7 @@ export function renderSvgFooter(params: SvgFooterParams): void {
       .attr('fill', useLink ? theme.colorLink : null)
       .attr('style', useLink ? 'cursor: pointer;' : null)
       .text(item.value);
+    lineIndex++;
   }
 }
 

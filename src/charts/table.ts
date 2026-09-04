@@ -23,6 +23,7 @@ function applyHeaderStyle(el: HTMLElement, theme: ResolvedTheme): void {
   el.style.fontWeight = String(theme.fontWeightBold);
   el.style.background = theme.colorBackground;
   el.style.textAlign = 'center';
+  el.style.overflowWrap = 'anywhere';
 }
 
 function applyCellStyle(el: HTMLElement, theme: ResolvedTheme): void {
@@ -42,7 +43,7 @@ function appendCornerHeader(
   columnDimensionCount: number,
   theme: ResolvedTheme,
 ): void {
-  const cornerHeader = document.createElement('th');
+  const cornerHeader = document.createElement('td');
   if (rowDimensionCount > 1) {
     cornerHeader.colSpan = rowDimensionCount;
   }
@@ -130,7 +131,7 @@ function buildFallbackThead(
 ): string[][] {
   const tr = document.createElement('tr');
   if (data.rowDimensions.length > 0) {
-    const cornerTh = document.createElement('th');
+    const cornerTh = document.createElement('td');
     if (data.rowDimensions.length > 1) {
       cornerTh.setAttribute('colspan', String(data.rowDimensions.length));
     }
@@ -283,9 +284,7 @@ function renderTable(
     subtitleEl.style.fontWeight = String(theme.fontWeightNormal);
     subtitleEl.style.fontFamily = theme.fontFamily;
     subtitleEl.style.color = theme.colorTextSecondary;
-    subtitleEl.style.overflow = 'hidden';
-    subtitleEl.style.textOverflow = 'ellipsis';
-    subtitleEl.style.whiteSpace = 'nowrap';
+    subtitleEl.style.overflowWrap = 'break-word';
     subtitleEl.textContent = config.subtitle;
     headerEl.appendChild(subtitleEl);
   }

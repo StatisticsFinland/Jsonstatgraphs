@@ -19,6 +19,7 @@ export interface DataElementInfo {
   ariaLabel?: string;
   dimensionLabels?: { label: string; value: string }[];
   hideValueLine?: boolean;
+  omitSeriesNameFromAriaLabel?: boolean;
 }
 
 export interface BindInteractionsConfig {
@@ -136,6 +137,35 @@ export function bindInteractions(config: BindInteractionsConfig): BoundInteracti
 
   const isTouchDevice = 'ontouchstart' in globalThis;
   let activeTouch: SVGElement | null = null;
+  let hoveredElement: SVGElement | null = null;
+  let tooltipHovered = false;
+  let hideTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const cancelScheduledHide = (): void => {
+    if (hideTimer !== null) {
+      clearTimeout(hideTimer);
+      hideTimer = null;
+    }
+  };
+  const scheduleHide = (): void => {
+    cancelScheduledHide();
+    hideTimer = setTimeout(() => {
+      hideTimer = null;
+      if (hoveredElement === null && !tooltipHovered) {
+        tooltip.hide();
+      }
+    }, 0);
+  };
+
+  const tooltipElement = tooltip.getElement();
+  tooltipElement.addEventListener('mouseenter', () => {
+    tooltipHovered = true;
+    cancelScheduledHide();
+  }, { signal });
+  tooltipElement.addEventListener('mouseleave', () => {
+    tooltipHovered = false;
+    scheduleHide();
+  }, { signal });
 
   for (const info of elements) {
     const { element, seriesName, category, value, formattedValue } = info;
@@ -145,7 +175,9 @@ export function bindInteractions(config: BindInteractionsConfig): BoundInteracti
     const categoryName = chartData?.xLabel
       ? `${chartData.xLabel}: ${category}`
       : category;
-    const announcedValue = `${seriesName}: ${formattedMeasurement}`;
+    const announcedValue = info.omitSeriesNameFromAriaLabel
+      ? formattedMeasurement
+      : `${seriesName}: ${formattedMeasurement}`;
     applyDataPointAttributes(element, categoryName, announcedValue, locale);
     if (info.ariaLabel) {
       element.setAttribute('aria-label', info.ariaLabel);
@@ -176,14 +208,20 @@ export function bindInteractions(config: BindInteractionsConfig): BoundInteracti
           showAt(touch.clientX - rect.left, touch.clientY - rect.top);
         }
       }, { signal });
-    } else {
-      element.addEventListener('mouseenter', (e: Event) => {
-        const me = e as MouseEvent;
-        const rect = container.getBoundingClientRect();
-        showAt(me.clientX - rect.left, me.clientY - rect.top);
-      }, { signal });
-      element.addEventListener('mouseleave', () => tooltip.hide(), { signal });
     }
+    element.addEventListener('mouseenter', (e: Event) => {
+      hoveredElement = element;
+      cancelScheduledHide();
+      const me = e as MouseEvent;
+      const rect = container.getBoundingClientRect();
+      showAt(me.clientX - rect.left, me.clientY - rect.top);
+    }, { signal });
+    element.addEventListener('mouseleave', () => {
+      if (hoveredElement === element) {
+        hoveredElement = null;
+      }
+      scheduleHide();
+    }, { signal });
 
     // Focus/blur for keyboard navigation
     element.addEventListener('focus', (e: Event) => {
@@ -214,6 +252,15 @@ export function bindInteractions(config: BindInteractionsConfig): BoundInteracti
       }
     }, { signal });
   }
+
+  document.addEventListener('keydown', (e: KeyboardEvent) => {
+    if (
+      e.key === 'Escape'
+      && (hoveredElement !== null || tooltipHovered || container.contains(document.activeElement))
+    ) {
+      tooltip.hide();
+    }
+  }, { signal });
 
   // Group elements by series for keyboard navigator. Points are sorted (not
   // indexed) by pointIndex so gaps left by filtered-out values (e.g. null
@@ -248,6 +295,7 @@ export function bindInteractions(config: BindInteractionsConfig): BoundInteracti
     tooltip,
     keyboard,
     destroy() {
+      cancelScheduledHide();
       removeFocusIndicator(container);
       for (const info of elements) {
         info.element.classList.remove('jsc-keyboard-focus');

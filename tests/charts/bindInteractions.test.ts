@@ -122,6 +122,90 @@ describe('buildTooltipData via bindInteractions focus event', () => {
     interactions.destroy();
   });
 
+  it('dismisses a focused element tooltip with Escape without moving focus', () => {
+    const el = makeElement();
+    container.appendChild(el);
+    const interactions = bindInteractions({
+      container,
+      elements: [{
+        element: el,
+        seriesIndex: 0,
+        pointIndex: 0,
+        category: '2024',
+        seriesName: 'Total',
+        value: 5,
+        formattedValue: '5',
+      }],
+      theme: resolveTheme(container),
+    });
+
+    el.focus();
+    el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+
+    expect(container.querySelector('[role="tooltip"]')?.getAttribute('aria-hidden')).toBe('true');
+    expect(document.activeElement).toBe(el);
+    interactions.destroy();
+  });
+
+  it('dismisses a hover-visible tooltip with Escape when no data element has focus', () => {
+    const el = makeElement();
+    container.appendChild(el);
+    const interactions = bindInteractions({
+      container,
+      elements: [{
+        element: el,
+        seriesIndex: 0,
+        pointIndex: 0,
+        category: '2024',
+        seriesName: 'Total',
+        value: 5,
+        formattedValue: '5',
+      }],
+      theme: resolveTheme(container),
+    });
+
+    el.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true, clientX: 10, clientY: 10 }));
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+
+    expect(container.querySelector('[role="tooltip"]')?.getAttribute('aria-hidden')).toBe('true');
+    interactions.destroy();
+  });
+
+  it('keeps a tooltip visible while hovering its trigger or the tooltip', () => {
+    jest.useFakeTimers();
+    const el = makeElement();
+    container.appendChild(el);
+    const interactions = bindInteractions({
+      container,
+      elements: [{
+        element: el,
+        seriesIndex: 0,
+        pointIndex: 0,
+        category: '2024',
+        seriesName: 'Total',
+        value: 5,
+        formattedValue: '5',
+      }],
+      theme: resolveTheme(container),
+    });
+
+    try {
+      el.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true, clientX: 10, clientY: 10 }));
+      const tooltip = container.querySelector<HTMLDivElement>('[role="tooltip"]')!;
+      el.dispatchEvent(new MouseEvent('mouseleave', { bubbles: true }));
+      tooltip.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+      jest.runOnlyPendingTimers();
+      expect(tooltip.getAttribute('aria-hidden')).toBeNull();
+
+      tooltip.dispatchEvent(new MouseEvent('mouseleave', { bubbles: true }));
+      jest.runOnlyPendingTimers();
+      expect(tooltip.getAttribute('aria-hidden')).toBe('true');
+    } finally {
+      interactions.destroy();
+      jest.useRealTimers();
+    }
+  });
+
   it('shows seriesLabel dimension line even when xLabel is absent', () => {
     const el = makeElement();
     container.appendChild(el);
