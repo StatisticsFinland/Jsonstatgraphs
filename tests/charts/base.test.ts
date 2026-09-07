@@ -87,12 +87,25 @@ describe('ChartScaffold', () => {
     expect(svg?.getAttribute('viewBox')).toBe('0 0 800 400');
   });
 
-  it('SVG root does not have aria-hidden', () => {
+  it('exposes the SVG root as a named application inside the chart region', () => {
     const scaffold = new ChartScaffold(createScaffoldConfig());
     scaffold.render();
     const svg = document.querySelector('svg.jsc-chart');
     expect(svg?.getAttribute('aria-hidden')).toBeNull();
-    expect(svg?.getAttribute('role')).toBe('none');
+    expect(svg?.getAttribute('role')).toBe('application');
+    expect(svg?.getAttribute('aria-label')).toBe('Chart data');
+    expect(svg?.getAttribute('aria-description')).toBeNull();
+  });
+
+  it('updates the SVG application semantics when the locale changes', () => {
+    const container = createContainer();
+    const scaffold = new ChartScaffold(createScaffoldConfig({ container }));
+    scaffold.render();
+
+    scaffold.update(createScaffoldConfig({ container, config: { locale: 'fi' } }));
+
+    const svg = container.querySelector('svg.jsc-chart');
+    expect(svg?.getAttribute('aria-label')).toBe('Kuvion tiedot');
   });
 
   it('decorative SVG groups have aria-hidden="true"', () => {

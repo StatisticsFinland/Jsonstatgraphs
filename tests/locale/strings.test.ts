@@ -21,6 +21,7 @@ const EN_STRINGS = {
   dataPoint: 'Data point',
   noData: 'No data',
   chartLoaded: 'Chart loaded',
+  chartData: 'Chart data',
   toggleSeries: 'Toggle series',
   regions: 'regions',
   chartTypes: {
@@ -63,6 +64,7 @@ const FI_STRINGS = {
   dataPoint: 'Datapiste',
   noData: 'Ei tietoa',
   chartLoaded: 'Kuvio ladattu',
+  chartData: 'Kuvion tiedot',
   toggleSeries: 'Näytä tai piilota sarja',
   regions: 'aluetta',
   chartTypes: {
@@ -105,6 +107,7 @@ const SV_STRINGS = {
   dataPoint: 'Datapunkt',
   noData: 'Ingen uppgift',
   chartLoaded: 'Diagrammet har laddats',
+  chartData: 'Diagramdata',
   toggleSeries: 'Visa eller dölj serie',
   regions: 'regioner',
   chartTypes: {

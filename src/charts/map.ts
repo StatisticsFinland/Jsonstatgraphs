@@ -8,7 +8,7 @@ import { computeLayout } from '../layout/layout-engine';
 import { measureSvgFooterHeight, renderSvgFooter } from './footer';
 import { createSvgTextMeasurement, wrapMeasuredText } from '../layout/text-measurement';
 import { bindInteractions, DataElementInfo, BoundInteractions } from './bindInteractions';
-import { applyChartAriaAttributes, applySeriesGroupAttributes } from '../a11y/aria';
+import { applyChartAriaAttributes, applyInteractiveChartAriaAttributes, applySeriesGroupAttributes } from '../a11y/aria';
 import { captureChartFocusBeforeRedraw } from '../interaction/keyboard';
 import { BURGER_MENU_CLEARANCE } from './base';
 import { formatNumber } from '../locale/number';
@@ -702,8 +702,9 @@ export function createMapChart(chartConfig: MapChartConfig): MapChartInstance {
 
   const svgEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   container.appendChild(svgEl);
+  applyInteractiveChartAriaAttributes(svgEl, config.locale);
   const svg = select(svgEl) as Selection<SVGSVGElement, unknown, null, undefined>;
-  svg.attr('class', 'jsc-chart').attr('role', 'none').attr('width', '100%').attr('height', '100%');
+  svg.attr('class', 'jsc-chart').attr('width', '100%').attr('height', '100%');
 
   function createFooterMeasurement(theme: ResolvedTheme) {
     return createSvgTextMeasurement(svg, {
@@ -799,6 +800,7 @@ export function createMapChart(chartConfig: MapChartConfig): MapChartInstance {
       ?? config.title
       ?? `${data.valueDimensionLabel} ${strings.titleVariable} ${data.geoDimensionLabel} (${regionCount} ${strings.regions})`;
     applyChartAriaAttributes(container, ariaLabel, 'map', config.locale);
+    applyInteractiveChartAriaAttributes(svgEl, config.locale);
 
     svg.attr('viewBox', `0 0 ${width} ${height}`);
     svg.selectAll('*').remove();

@@ -29,6 +29,7 @@ import {
   measureHeaderZone,
 } from '../layout/zone-measurement';
 import { captureChartFocusBeforeRedraw } from '../interaction/keyboard';
+import { applyInteractiveChartAriaAttributes } from '../a11y/aria';
 
 type XScale = ScaleBand<string> | ScalePoint<string> | ScaleLinear<number, number>;
 type YScale = ScaleLinear<number, number> | ScaleBand<string> | ScalePoint<string>;
@@ -156,10 +157,10 @@ export class ChartScaffold {
 
     const svgEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     this.container.appendChild(svgEl);
+    applyInteractiveChartAriaAttributes(svgEl, config.config.locale);
     this.svg = select(svgEl) as Selection<SVGSVGElement, unknown, null, undefined>;
     this.svg
       .attr('class', 'jsc-chart')
-      .attr('role', 'none')
       .attr('width', '100%')
       .attr('height', '100%');
 
@@ -1277,6 +1278,8 @@ export class ChartScaffold {
     const measuredZones = applyMeasuredSizes(zones, measurements);
     const layout = computeLayout(width, height, measuredZones);
 
+    const svgElement = this.svg.node();
+    if (svgElement) applyInteractiveChartAriaAttributes(svgElement, this.config.locale);
     this.svg.attr('viewBox', `0 0 ${width} ${height}`);
     captureChartFocusBeforeRedraw(this.container);
     this.svg.selectAll('*').remove();

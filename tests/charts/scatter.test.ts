@@ -137,7 +137,7 @@ describe('createScatterChart', () => {
     expect(listGroup!.getAttribute('aria-label')).toBeTruthy();
   });
 
-  it('keeps screen-reader arrow navigation inside the data point list without an application role', () => {
+  it('keeps screen-reader arrow navigation inside the chart application', () => {
     createScatterChart({
       container,
       data: scatterData,
@@ -146,7 +146,7 @@ describe('createScatterChart', () => {
     const list = container.querySelector('[role="list"]');
     const circles = container.querySelectorAll<SVGCircleElement>('.jsc-scatter-point');
 
-    expect(container.querySelector('[role="application"]')).toBeNull();
+    expect(container.querySelector('[role="application"]')?.contains(list)).toBe(true);
     expect(list).not.toBeNull();
     expect(circles).toHaveLength(3);
 
