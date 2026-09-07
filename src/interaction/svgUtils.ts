@@ -15,6 +15,28 @@ function createSvgElement<K extends keyof SVGElementTagNameMap>(
   return document.createElementNS('http://www.w3.org/2000/svg', tagName);
 }
 
+function getExportAccessibleName(container: HTMLElement, sourceSvg: SVGSVGElement): string {
+  return container.getAttribute('aria-label')
+    ?? sourceSvg.getAttribute('aria-label')
+    ?? 'Chart';
+}
+
+function removeInteractiveAttributes(svg: SVGSVGElement): void {
+  svg.removeAttribute('role');
+  svg.removeAttribute('aria-label');
+  svg.removeAttribute('aria-description');
+  for (const element of svg.querySelectorAll('[tabindex]')) {
+    element.removeAttribute('tabindex');
+  }
+  for (const element of svg.querySelectorAll<SVGElement>('*')) {
+    for (const attribute of Array.from(element.attributes)) {
+      if (attribute.name.startsWith('data-jsc-')) {
+        element.removeAttribute(attribute.name);
+      }
+    }
+  }
+}
+
 function appendLegendToSvg(
   exportSvg: SVGSVGElement,
   legend: HTMLElement,
@@ -126,7 +148,11 @@ export function buildExportableSvg(container: HTMLElement): SVGSVGElement | null
     || 0;
 
   if (exportWidth <= 0 || exportHeight <= 0) {
-    return sourceSvg;
+    const exportSvg = sourceSvg.cloneNode(true) as SVGSVGElement;
+    removeInteractiveAttributes(exportSvg);
+    exportSvg.setAttribute('role', 'img');
+    exportSvg.setAttribute('aria-label', getExportAccessibleName(container, sourceSvg));
+    return exportSvg;
   }
 
   const exportSvg = createSvgElement('svg');
@@ -134,6 +160,8 @@ export function buildExportableSvg(container: HTMLElement): SVGSVGElement | null
   exportSvg.setAttribute('width', String(exportWidth));
   exportSvg.setAttribute('height', String(exportHeight));
   exportSvg.setAttribute('viewBox', `0 0 ${exportWidth} ${exportHeight}`);
+  exportSvg.setAttribute('role', 'img');
+  exportSvg.setAttribute('aria-label', getExportAccessibleName(container, sourceSvg));
 
   const chartGroup = createSvgElement('g');
   const chartOffsetX = sourceRect.left - containerRect.left;
@@ -141,6 +169,8 @@ export function buildExportableSvg(container: HTMLElement): SVGSVGElement | null
   chartGroup.setAttribute('transform', `translate(${chartOffsetX} ${chartOffsetY})`);
 
   const clonedSourceSvg = sourceSvg.cloneNode(true) as SVGSVGElement;
+  removeInteractiveAttributes(clonedSourceSvg);
+  clonedSourceSvg.setAttribute('aria-hidden', 'true');
   if (sourceRect.width > 0) {
     clonedSourceSvg.setAttribute('width', String(sourceRect.width));
   }

@@ -57,7 +57,7 @@ describe('svgUtils', () => {
 
   it('builds exportable SVG with legend content when legend exists', () => {
     container.innerHTML = [
-      '<svg width="120" height="90" viewBox="0 0 120 90"><rect width="120" height="90"/></svg>',
+      '<svg role="application" aria-label="Chart data" aria-description="Navigate with arrow keys" width="120" height="90" viewBox="0 0 120 90"><rect data-jsc-series-index="0" tabindex="0" width="120" height="90"/></svg>',
       '<div class="jsc-legend">',
       '  <button class="jsc-legend-item" style="opacity: 0.4; color: rgb(51, 51, 51);">',
       '    <span class="jsc-legend-swatch" style="display:inline-block;width:14px;height:14px;background: rgb(78, 121, 167);border-radius:2px;"></span>',
@@ -139,6 +139,43 @@ describe('svgUtils', () => {
     expect(exportableSvg?.getAttribute('height')).toBe('90');
     expect(exportableSvg?.getAttribute('width')).toBe('120');
     expect(exportableSvg?.querySelector('text')?.textContent).toBe('Series A');
+    expect(exportableSvg?.getAttribute('role')).toBe('img');
+    expect(exportableSvg?.getAttribute('aria-label')).toBe('Chart data');
+    const clonedSourceSvg = exportableSvg?.querySelector('svg');
+    expect(clonedSourceSvg?.getAttribute('role')).toBeNull();
+    expect(clonedSourceSvg?.getAttribute('aria-hidden')).toBe('true');
+    expect(clonedSourceSvg?.querySelector('[tabindex]')).toBeNull();
+    expect(clonedSourceSvg?.querySelector('[data-jsc-series-index]')).toBeNull();
+  });
+
+  it('uses the chart region name for the exported image', () => {
+    container.setAttribute('aria-label', 'Population by region');
+    container.innerHTML = '<svg width="120" height="90" viewBox="0 0 120 90"></svg>';
+    const svg = container.querySelector('svg') as SVGSVGElement;
+    Object.defineProperty(svg, 'clientWidth', { value: 120, configurable: true });
+    Object.defineProperty(svg, 'clientHeight', { value: 90, configurable: true });
+    jest.spyOn(svg, 'getBoundingClientRect').mockReturnValue({
+      x: 0, y: 0, width: 120, height: 90, top: 0, right: 120, bottom: 90, left: 0,
+      toJSON: () => ({}),
+    } as DOMRect);
+
+    const exportableSvg = buildExportableSvg(container);
+
+    expect(exportableSvg?.getAttribute('role')).toBe('img');
+    expect(exportableSvg?.getAttribute('aria-label')).toBe('Population by region');
+  });
+
+  it('returns a static clone when the source SVG has no measurable dimensions', () => {
+    container.innerHTML = '<svg role="application" aria-label="Chart data"><circle tabindex="0" data-jsc-point-index="0"/></svg>';
+
+    const sourceSvg = container.querySelector('svg') as SVGSVGElement;
+    const exportableSvg = buildExportableSvg(container);
+
+    expect(exportableSvg).not.toBe(sourceSvg);
+    expect(exportableSvg?.getAttribute('role')).toBe('img');
+    expect(exportableSvg?.getAttribute('aria-label')).toBe('Chart data');
+    expect(exportableSvg?.querySelector('[tabindex]')).toBeNull();
+    expect(exportableSvg?.querySelector('[data-jsc-point-index]')).toBeNull();
   });
 
   it('serializes SVG element using XMLSerializer', () => {
