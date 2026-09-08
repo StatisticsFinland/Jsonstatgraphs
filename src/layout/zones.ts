@@ -114,7 +114,7 @@ export function createZones(options: CreateZonesOptions): ZoneConfig[] {
     },
     {
       type: ZoneType.Legend,
-      visible: isMap ? showLegend : (showLegend && seriesCount > 1),
+      visible: !isPie && (isMap ? showLegend : (showLegend && seriesCount > 1)),
       minSize: 0,
       preferredSize: 30,
       priority: ZONE_PRIORITIES[ZoneType.Legend],

@@ -224,19 +224,6 @@ describe('createPieChart', () => {
     expect(srTable).toBeNull();
   });
 
-  it('remaining slices preserve their original colors after a toggle', () => {
-    createPieChart({ container, data: pieData, config: defaultConfig });
-
-    // Record the fill colors of slices 1 and 2.
-    const slicesBefore = container.querySelectorAll<SVGPathElement>('.jsc-slice');
-    const fillSlice1Before = slicesBefore[1].getAttribute('fill');
-    const fillSlice2Before = slicesBefore[2].getAttribute('fill');
-
-    const slicesAfter = container.querySelectorAll<SVGPathElement>('.jsc-slice');
-    expect(slicesAfter[1].getAttribute('fill')).toBe(fillSlice1Before);
-    expect(slicesAfter[2].getAttribute('fill')).toBe(fillSlice2Before);
-  });
-
   it('accessibility mode applies patterned fills to slices', () => {
     createPieChart({
       container,

@@ -197,8 +197,8 @@ describe('createZones', () => {
       expect(getZone(zones, ZoneType.Legend).visible).toBe(false);
     });
 
-    it('is hidden for pie chart with 1 series', () => {
-      const zones = createZones(makeOptions({ chartType: 'pie', showLegend: true, seriesCount: 1 }));
+    it('is hidden for pie charts regardless of series count', () => {
+      const zones = createZones(makeOptions({ chartType: 'pie', showLegend: true, seriesCount: 2 }));
       expect(getZone(zones, ZoneType.Legend).visible).toBe(false);
     });
 

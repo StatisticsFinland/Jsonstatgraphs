@@ -669,7 +669,9 @@ export class ChartScaffold {
 
     const xAxisTitleRect = layout.zones.get(ZoneType.XAxisTitle);
     if (xAxisTitleRect) {
-      const xAxisTitle = isHorizontal ? this.scaffoldConfig.yLabel : undefined;
+      const xAxisTitle = isHorizontal
+        ? this.scaffoldConfig.yLabel
+        : (this.scaffoldConfig.mode === 'numeric' ? this.scaffoldConfig.xLabel : undefined);
 
       if (xAxisTitle) {
         this.svg
