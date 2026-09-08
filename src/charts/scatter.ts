@@ -243,7 +243,6 @@ export function createScatterChart(chartConfig: ScatterChartConfig): ScatterChar
         theme,
         locale,
         chartData: chartDataForSR,
-        pointAxis: 'horizontal',
         caption: config.title ?? config.ariaLabel,
       });
     }

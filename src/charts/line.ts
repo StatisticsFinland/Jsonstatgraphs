@@ -68,7 +68,6 @@ export function createLineChart(chartConfig: LineChartConfig): LineChartInstance
       chartData: data,
       ariaLabel: config.ariaLabel,
       caption: config.title ?? config.ariaLabel,
-      pointAxis: 'horizontal',
     });
   }
 
@@ -180,7 +179,7 @@ export function createLineChart(chartConfig: LineChartConfig): LineChartInstance
         elements.push({
           element: markerEl,
           seriesIndex: si,
-          pointIndex: pi,
+          pointIndex: series.points.indexOf(point),
           pointKey: point.categoryCode,
           category: point.label,
           seriesName: series.name,
