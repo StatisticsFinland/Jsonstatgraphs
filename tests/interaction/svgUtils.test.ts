@@ -148,6 +148,30 @@ describe('svgUtils', () => {
     expect(clonedSourceSvg?.querySelector('[data-jsc-series-index]')).toBeNull();
   });
 
+  it('deactivates source links in composite exports', () => {
+    container.innerHTML = [
+      '<svg width="120" height="90" viewBox="0 0 120 90">',
+      '  <g class="jsc-footer"><a href="https://example.com" xlink:href="https://example.com" target="_blank" rel="noopener noreferrer" role="link" tabindex="0" aria-label="Source: Example (opens in new tab)"><text><tspan>Source: Example</tspan></text></a></g>',
+      '</svg>',
+    ].join('');
+
+    const sourceSvg = container.querySelector('svg') as SVGSVGElement;
+    Object.defineProperty(sourceSvg, 'clientWidth', { value: 120, configurable: true });
+    Object.defineProperty(sourceSvg, 'clientHeight', { value: 90, configurable: true });
+    jest.spyOn(sourceSvg, 'getBoundingClientRect').mockReturnValue({
+      x: 0, y: 0, width: 120, height: 90, top: 0, right: 120, bottom: 90, left: 0,
+      toJSON: () => ({}),
+    } as DOMRect);
+
+    const exportableSvg = buildExportableSvg(container);
+    const clonedSourceSvg = exportableSvg?.querySelector('svg');
+
+    expect(clonedSourceSvg?.getAttribute('aria-hidden')).toBe('true');
+    expect(clonedSourceSvg?.querySelector('a')).toBeNull();
+    expect(clonedSourceSvg?.querySelector('[href], [xlink\\:href]')).toBeNull();
+    expect(clonedSourceSvg?.querySelector('g.jsc-footer text')?.textContent).toBe('Source: Example');
+  });
+
   it('uses the chart region name for the exported image', () => {
     container.setAttribute('aria-label', 'Population by region');
     container.innerHTML = '<svg width="120" height="90" viewBox="0 0 120 90"></svg>';

@@ -25,10 +25,23 @@ function removeInteractiveAttributes(svg: SVGSVGElement): void {
   svg.removeAttribute('role');
   svg.removeAttribute('aria-label');
   svg.removeAttribute('aria-description');
-  for (const element of svg.querySelectorAll('[tabindex]')) {
-    element.removeAttribute('tabindex');
-  }
   for (const element of svg.querySelectorAll<SVGElement>('*')) {
+    if (element.tagName === 'a') {
+      const group = createSvgElement('g');
+      for (const attribute of Array.from(element.attributes)) {
+        if (!['href', 'xlink:href', 'target', 'rel', 'role', 'tabindex', 'aria-label'].includes(attribute.name)
+          && !attribute.name.startsWith('data-jsc-')) {
+          group.setAttribute(attribute.name, attribute.value);
+        }
+      }
+      while (element.firstChild) {
+        group.appendChild(element.firstChild);
+      }
+      element.replaceWith(group);
+      continue;
+    }
+
+    element.removeAttribute('tabindex');
     for (const attribute of Array.from(element.attributes)) {
       if (attribute.name.startsWith('data-jsc-')) {
         element.removeAttribute(attribute.name);
@@ -48,7 +61,7 @@ function appendLegendToSvg(
   }
 
   const legendGroup = createSvgElement('g');
-  legendGroup.setAttribute('data-jsc-export-legend', 'true');
+  legendGroup.dataset.jscExportLegend = 'true';
 
   for (const item of legendItems) {
     const itemRect = item.getBoundingClientRect();
