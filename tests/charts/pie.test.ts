@@ -141,7 +141,7 @@ describe('createPieChart', () => {
     const list = container.querySelector('[role="list"]');
     const slices = container.querySelectorAll<SVGPathElement>('.jsc-slice');
 
-    expect(container.querySelector('[role="application"]')).toBeNull();
+    expect(container.querySelector('[role="application"]')?.contains(list)).toBe(true);
     expect(list?.contains(slices[0])).toBe(true);
 
     slices[0].focus();

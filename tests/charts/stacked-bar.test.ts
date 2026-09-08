@@ -251,7 +251,7 @@ describe('createStackedBarChart', () => {
   it('ARIA: container has role="region"', () => {
     createStackedBarChart({ container, data: stackedData, config: defaultConfig });
     expect(container.getAttribute('role')).toBe('region');
-    expect(container.querySelector('[role="application"]')).toBeNull();
+    expect(container.querySelector('svg[role="application"]')).not.toBeNull();
   });
 
   it('ARIA: rects have role="listitem" and aria-label', () => {

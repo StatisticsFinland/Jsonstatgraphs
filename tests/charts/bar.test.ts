@@ -95,7 +95,7 @@ describe('createBarChart', () => {
     const list = container.querySelector('[role="list"]');
     const rects = container.querySelectorAll<SVGRectElement>('.jsc-bar');
 
-    expect(container.querySelector('[role="application"]')).toBeNull();
+    expect(container.querySelector('[role="application"]')?.contains(list)).toBe(true);
     expect(list?.contains(rects[0])).toBe(true);
 
     rects[0].focus();

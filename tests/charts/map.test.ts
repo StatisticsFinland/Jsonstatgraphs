@@ -99,11 +99,22 @@ describe('createMapChart text layout', () => {
 });
 
 describe('createMapChart keyboard accessibility', () => {
-  it('does not hide the map svg from assistive technology', () => {
+  it('exposes the map SVG as a named application', () => {
     createMapChart({ container, data: mapData, config: defaultConfig });
     const svg = container.querySelector('svg.jsc-chart');
     expect(svg?.getAttribute('aria-hidden')).toBeNull();
-    expect(svg?.getAttribute('role')).toBe('none');
+    expect(svg?.getAttribute('role')).toBe('application');
+    expect(svg?.getAttribute('aria-label')).toBe('Chart data');
+    expect(svg?.getAttribute('aria-description')).toBeNull();
+  });
+
+  it('updates the map application semantics when the locale changes', () => {
+    const chart = createMapChart({ container, data: mapData, config: defaultConfig });
+
+    chart.update(mapData, { locale: 'sv' });
+
+    const svg = container.querySelector('svg.jsc-chart');
+    expect(svg?.getAttribute('aria-label')).toBe('Diagramdata');
   });
 
   it('groups regions under a role="list" element', () => {

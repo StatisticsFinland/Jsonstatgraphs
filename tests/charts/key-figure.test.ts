@@ -13,6 +13,12 @@ afterEach(() => {
 });
 
 describe('createKeyFigureChart', () => {
+  it('does not use application semantics for document-style content', () => {
+    createKeyFigureChart({ container, value: 42, unit: '', decimals: undefined, config: defaultConfig });
+
+    expect(container.querySelector('[role="application"]')).toBeNull();
+  });
+
   it('renders value with correct formatting', () => {
     createKeyFigureChart({ container, value: 1234567, unit: 'persons', decimals: 0, config: defaultConfig });
     const valueEl = container.querySelector('.jsc-key-figure-value');

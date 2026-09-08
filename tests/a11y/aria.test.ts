@@ -1,5 +1,6 @@
 import {
   applyChartAriaAttributes,
+  applyInteractiveChartAriaAttributes,
   applySeriesGroupAttributes,
   applyDataPointAttributes,
 } from '../../src/a11y/aria';
@@ -35,6 +36,27 @@ describe('applyChartAriaAttributes', () => {
 
     applyChartAriaAttributes(container, 'Befolkning', 'table', 'sv');
     expect(container.getAttribute('aria-roledescription')).toBe('Datatabell');
+  });
+});
+
+describe('applyInteractiveChartAriaAttributes', () => {
+  it('identifies an SVG as a named application without repeated instructions', () => {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('aria-description', 'Previous instructions');
+
+    applyInteractiveChartAriaAttributes(svg);
+
+    expect(svg.getAttribute('role')).toBe('application');
+    expect(svg.getAttribute('aria-label')).toBe('Chart data');
+    expect(svg.getAttribute('aria-description')).toBeNull();
+  });
+
+  it('localizes the application name', () => {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+
+    applyInteractiveChartAriaAttributes(svg, 'fi-FI');
+
+    expect(svg.getAttribute('aria-label')).toBe('Kuvion tiedot');
   });
 });
 
