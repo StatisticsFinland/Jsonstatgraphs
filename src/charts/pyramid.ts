@@ -55,7 +55,6 @@ export function createPyramidChart(chartConfig: PyramidChartConfig): PyramidChar
         seriesLabel: data.splitDimensionLabel,
         yLabel: data.yLabel,
       },
-      pointAxis: 'vertical',
       ariaLabel: config.ariaLabel,
       caption: config.title ?? config.ariaLabel,
     });
@@ -153,8 +152,7 @@ export function createPyramidChart(chartConfig: PyramidChartConfig): PyramidChar
         elements.push({
           element: rectEl,
           seriesIndex: si,
-          pointIndex: pi,
-          navigationPointIndex: nonNullPoints.length - pi - 1,
+          pointIndex: series.points.indexOf(point),
           pointKey: point.categoryCode,
           category: point.label,
           seriesName: series.name,

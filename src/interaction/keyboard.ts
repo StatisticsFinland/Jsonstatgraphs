@@ -6,8 +6,6 @@ export interface FocusableElement {
   pointKey?: string;
 }
 
-export type PointNavigationAxis = 'horizontal' | 'vertical' | 'both';
-
 interface StoredFocusState {
   seriesIndex: number;
   pointIndex: number;
@@ -43,19 +41,9 @@ export class KeyboardNavigator {
   private handleKeyDown: ((e: KeyboardEvent) => void) | null = null;
   private readonly focusHandlers = new Map<SVGElement | HTMLElement, () => void>();
   private readonly container: HTMLElement;
-  private readonly pointAxis: PointNavigationAxis;
-  private readonly nextPointKey: string;
-  private readonly previousPointKey: string;
-  private readonly nextSeriesKey: string;
-  private readonly previousSeriesKey: string;
 
-  constructor(container: HTMLElement, pointAxis: PointNavigationAxis = 'horizontal') {
+  constructor(container: HTMLElement) {
     this.container = container;
-    this.pointAxis = pointAxis;
-    this.nextPointKey = pointAxis === 'horizontal' ? 'ArrowRight' : 'ArrowDown';
-    this.previousPointKey = pointAxis === 'horizontal' ? 'ArrowLeft' : 'ArrowUp';
-    this.nextSeriesKey = pointAxis === 'horizontal' ? 'ArrowDown' : 'ArrowRight';
-    this.previousSeriesKey = pointAxis === 'horizontal' ? 'ArrowUp' : 'ArrowLeft';
   }
 
   setElements(elements: FocusableElement[][]): void {
@@ -195,14 +183,10 @@ export class KeyboardNavigator {
   private navigate(key: string): { s: number; p: number } | null {
     if (this.elements.length === 0) return null;
 
-    if (this.pointAxis === 'both') {
-      if (key === 'ArrowRight' || key === 'ArrowDown') return this.navigatePoint(1);
-      if (key === 'ArrowLeft' || key === 'ArrowUp') return this.navigatePoint(-1);
-    }
-    if (key === this.nextPointKey) return this.navigatePoint(1);
-    if (key === this.previousPointKey) return this.navigatePoint(-1);
-    if (key === this.previousSeriesKey) return this.navigateSeries(-1);
-    if (key === this.nextSeriesKey) return this.navigateSeries(1);
+    if (key === 'ArrowRight') return this.navigatePoint(1);
+    if (key === 'ArrowLeft') return this.navigatePoint(-1);
+    if (key === 'ArrowUp') return this.navigateSeries(-1);
+    if (key === 'ArrowDown') return this.navigateSeries(1);
     if (key === 'Home') return { s: this.currentSeries, p: 0 };
     if (key === 'End') return this.navigateToEnd();
     return null;
@@ -212,16 +196,43 @@ export class KeyboardNavigator {
     const pointCount = this.elements[this.currentSeries].length;
     if (pointCount === 0) return null;
     const nextPoint = this.currentPoint + delta;
-    if (nextPoint < 0 || nextPoint >= pointCount) return null;
-    return { s: this.currentSeries, p: nextPoint };
+    if (nextPoint >= 0 && nextPoint < pointCount) {
+      return { s: this.currentSeries, p: nextPoint };
+    }
+    if (delta === 1) {
+      const nextSeries = this.findNonEmptySeries(this.currentSeries, 1);
+      return nextSeries === null ? null : { s: nextSeries, p: 0 };
+    }
+    const previousSeries = this.findNonEmptySeries(this.currentSeries, -1);
+    if (previousSeries === null) return null;
+    return { s: previousSeries, p: this.elements[previousSeries].length - 1 };
   }
 
   private navigateSeries(delta: 1 | -1): { s: number; p: number } | null {
-    const nextSeries = this.currentSeries + delta;
-    if (nextSeries < 0 || nextSeries >= this.elements.length) return null;
-    const pointCount = this.elements[nextSeries].length;
-    if (pointCount === 0) return null;
-    return { s: nextSeries, p: Math.min(this.currentPoint, pointCount - 1) };
+    const nextSeries = this.findNonEmptySeries(this.currentSeries, delta);
+    if (nextSeries === null) return null;
+
+    const targetSeries = this.elements[nextSeries];
+    const currentElement = this.elements[this.currentSeries][this.currentPoint];
+    const samePoint = targetSeries.findIndex(item => item.pointKey === currentElement.pointKey);
+    if (currentElement.pointKey !== undefined && samePoint >= 0) {
+      return { s: nextSeries, p: samePoint };
+    }
+
+    const nearestPoint = targetSeries.reduce((nearestIndex, item, index) =>
+      Math.abs(item.pointIndex - currentElement.pointIndex)
+        < Math.abs(targetSeries[nearestIndex].pointIndex - currentElement.pointIndex)
+        ? index
+        : nearestIndex,
+    0);
+    return { s: nextSeries, p: nearestPoint };
+  }
+
+  private findNonEmptySeries(startSeries: number, delta: 1 | -1): number | null {
+    for (let series = startSeries + delta; series >= 0 && series < this.elements.length; series += delta) {
+      if (this.elements[series].length > 0) return series;
+    }
+    return null;
   }
 
   private navigateToEnd(): { s: number; p: number } | null {

@@ -83,22 +83,6 @@ describe('KeyboardNavigator', () => {
     removeElements(elements);
   });
 
-  it('moves between unordered points with arrows on either axis', () => {
-    navigator = new KeyboardNavigator(container, 'both');
-    const elements = createMockElements(1, 3);
-    navigator.setElements(elements);
-    navigator.attach();
-
-    container.append(...elements[0].map(item => item.element));
-    dispatchKey(elements[0][0].element, 'ArrowDown');
-    expect(document.activeElement).toBe(elements[0][1].element);
-
-    dispatchKey(elements[0][1].element, 'ArrowUp');
-    expect(document.activeElement).toBe(elements[0][0].element);
-
-    removeElements(elements);
-  });
-
   it('ArrowLeft moves to previous point', () => {
     navigator = new KeyboardNavigator(container);
     const elements = createMockElements(1, 3);
@@ -132,6 +116,38 @@ describe('KeyboardNavigator', () => {
 
     expect(spy).not.toHaveBeenCalled();
     expect(event.defaultPrevented).toBe(true);
+
+    removeElements(elements);
+  });
+
+  it('ArrowRight advances to the first point of the next series', () => {
+    navigator = new KeyboardNavigator(container);
+    const elements = createMockElements(2, 2);
+    navigator.setElements(elements);
+    navigator.attach();
+    container.append(...elements.flat().map(item => item.element));
+
+    elements[0][1].element.focus();
+    dispatchKey(elements[0][1].element, 'ArrowRight');
+
+    expect(document.activeElement).toBe(elements[1][0].element);
+    expect(elements[1][0].element.getAttribute('tabindex')).toBe('0');
+
+    removeElements(elements);
+  });
+
+  it('ArrowLeft moves to the last point of the previous series', () => {
+    navigator = new KeyboardNavigator(container);
+    const elements = createMockElements(2, 2);
+    navigator.setElements(elements);
+    navigator.attach();
+    container.append(...elements.flat().map(item => item.element));
+
+    elements[1][0].element.focus();
+    dispatchKey(elements[1][0].element, 'ArrowLeft');
+
+    expect(document.activeElement).toBe(elements[0][1].element);
+    expect(elements[0][1].element.getAttribute('tabindex')).toBe('0');
 
     removeElements(elements);
   });
@@ -242,6 +258,31 @@ describe('KeyboardNavigator', () => {
     removeElements(elements);
   });
 
+  it('ArrowUp/Down preserves the current point key when it exists in the target series', () => {
+    navigator = new KeyboardNavigator(container);
+    const elements: FocusableElement[][] = [
+      [
+        { element: document.createElement('div'), seriesIndex: 0, pointIndex: 0, pointKey: 'jan' },
+        { element: document.createElement('div'), seriesIndex: 0, pointIndex: 1, pointKey: 'feb' },
+      ],
+      [
+        { element: document.createElement('div'), seriesIndex: 1, pointIndex: 0, pointKey: 'jan' },
+        { element: document.createElement('div'), seriesIndex: 1, pointIndex: 2, pointKey: 'mar' },
+        { element: document.createElement('div'), seriesIndex: 1, pointIndex: 1, pointKey: 'feb' },
+      ],
+    ];
+    navigator.setElements(elements);
+    navigator.attach();
+    container.append(...elements.flat().map(item => item.element));
+
+    elements[0][1].element.focus();
+    dispatchKey(elements[0][1].element, 'ArrowDown');
+
+    expect(document.activeElement).toBe(elements[1][2].element);
+
+    removeElements(elements);
+  });
+
   it('detach() removes keydown listener', () => {
     navigator = new KeyboardNavigator(container);
     const elements = createMockElements(1, 3);
@@ -302,22 +343,6 @@ describe('KeyboardNavigator', () => {
 
     expect(elements[0][0].element.getAttribute('tabindex')).toBe('-1');
     expect(elements[0][2].element.getAttribute('tabindex')).toBe('0');
-
-    removeElements(elements);
-  });
-
-  it('uses Up and Down for points on a vertical category axis', () => {
-    navigator = new KeyboardNavigator(container, 'vertical');
-    const elements = createMockElements(1, 3);
-    navigator.setElements(elements);
-    navigator.attach();
-    container.append(...elements[0].map(item => item.element));
-
-    dispatchKey(elements[0][0].element, 'ArrowDown');
-    expect(document.activeElement).toBe(elements[0][1].element);
-
-    dispatchKey(elements[0][1].element, 'ArrowUp');
-    expect(document.activeElement).toBe(elements[0][0].element);
 
     removeElements(elements);
   });

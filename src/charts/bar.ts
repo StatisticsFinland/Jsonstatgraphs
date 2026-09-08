@@ -70,7 +70,6 @@ export function createBarChart(chartConfig: BarChartConfig): BarChartInstance {
       theme: lastTheme!,
       locale: config.locale,
       chartData: renderData,
-      pointAxis: resolvedChartType === 'horizontalBar' ? 'vertical' : 'horizontal',
       ariaLabel: config.ariaLabel,
       caption: config.title ?? config.ariaLabel,
     });
@@ -178,7 +177,7 @@ export function createBarChart(chartConfig: BarChartConfig): BarChartInstance {
       elements.push({
         element: rectEl,
         seriesIndex: si,
-        pointIndex: pi,
+        pointIndex: series.points.indexOf(point),
         pointKey: point.categoryCode,
         category: point.label,
         seriesName: series.name,

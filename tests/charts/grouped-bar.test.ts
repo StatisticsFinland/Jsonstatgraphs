@@ -171,10 +171,10 @@ describe('createGroupedBarChart', () => {
     expect(document.activeElement).toBe(secondSeriesCat1);
   });
 
-  it('navigates between series within a vertical category group', () => {
+  it('navigates to the next data point within a vertical series', () => {
     createGroupedBarChart({ container, data: twoSeriesData, config: defaultConfig });
     const firstSeriesCat1 = container.querySelector<SVGRectElement>('.jsc-series-0 .jsc-bar');
-    const secondSeriesCat1 = container.querySelector<SVGRectElement>('.jsc-series-1 .jsc-bar');
+    const firstSeriesCat2 = container.querySelectorAll<SVGRectElement>('.jsc-series-0 .jsc-bar')[1];
 
     firstSeriesCat1?.focus();
     firstSeriesCat1?.dispatchEvent(new KeyboardEvent('keydown', {
@@ -183,7 +183,7 @@ describe('createGroupedBarChart', () => {
       cancelable: true,
     }));
 
-    expect(document.activeElement).toBe(secondSeriesCat1);
+    expect(document.activeElement).toBe(firstSeriesCat2);
   });
 
   it('keeps the category identity when a group has a missing series value', () => {
