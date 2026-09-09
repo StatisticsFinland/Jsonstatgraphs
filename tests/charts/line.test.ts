@@ -354,6 +354,16 @@ describe('createLineChart', () => {
       }
     });
 
+    it('does not render the category dimension as an x-axis title', () => {
+      createLineChart({
+        container,
+        data: { ...singleSeriesData, xLabel: 'Year' },
+        config: defaultConfig,
+      });
+
+      expect(container.querySelector('.jsc-axis-title-x')).toBeNull();
+    });
+
     it('RightMargin zone is allocated for line charts', () => {
       // Use ChartScaffold directly to access the layout result
       const scaffold = new ChartScaffold({

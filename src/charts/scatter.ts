@@ -142,8 +142,8 @@ export function createScatterChart(chartConfig: ScatterChartConfig): ScatterChar
     seriesCount: 1,
     xValueRange: xRange,
     yValueRange: yRange,
-    xLabel: data.xUnit ?? data.xLabel,
-    yLabel: data.yUnit ?? data.yLabel,
+    xLabel: data.xLabel,
+    yLabel: data.yLabel,
     paddingMode: 'symmetric',
   });
 
@@ -265,8 +265,8 @@ export function createScatterChart(chartConfig: ScatterChartConfig): ScatterChar
         seriesCount: 1,
         xValueRange: newXRange,
         yValueRange: newYRange,
-        xLabel: data.xUnit ?? data.xLabel,
-        yLabel: data.yUnit ?? data.yLabel,
+        xLabel: data.xLabel,
+        yLabel: data.yLabel,
         paddingMode: 'symmetric',
       });
     },

@@ -109,6 +109,38 @@ describe('createBarChart', () => {
     expect(document.activeElement?.getAttribute('aria-label')).toBe('2021, 150');
   });
 
+  it('uses category labels rather than category codes on the x-axis', () => {
+    const dataWithLabels: ChartData = {
+      ...singleSeriesData,
+      categories: ['cat-a', 'cat-b', 'cat-c'],
+      categoryLabels: ['First category', 'Second category', 'Third category'],
+      series: [{
+        ...singleSeriesData.series[0],
+        points: [
+          { value: 10, label: 'First category', categoryCode: 'cat-a' },
+          { value: 20, label: 'Second category', categoryCode: 'cat-b' },
+          { value: 30, label: 'Third category', categoryCode: 'cat-c' },
+        ],
+      }],
+    };
+
+    createBarChart({ container, data: dataWithLabels, config: defaultConfig });
+
+    const labels = Array.from(container.querySelectorAll('.jsc-axis-x .tick text'))
+      .map(label => label.textContent?.replace(/\s+/g, ' ').trim());
+    expect(labels).toEqual(dataWithLabels.categoryLabels);
+  });
+
+  it('does not render the category dimension as an x-axis title', () => {
+    createBarChart({
+      container,
+      data: { ...singleSeriesData, xLabel: 'Year' },
+      config: defaultConfig,
+    });
+
+    expect(container.querySelector('.jsc-axis-title-x')).toBeNull();
+  });
+
   it.each([
     ['verticalBar', undefined],
     ['horizontalBar', 'horizontalBar'],

@@ -67,6 +67,13 @@ describe('createScatterChart', () => {
     expect(container.querySelector('.jsc-axis-y')).not.toBeNull();
   });
 
+  it('renders metric labels as numeric axis titles', () => {
+    createScatterChart({ container, data: scatterData, config: defaultConfig });
+
+    expect(container.querySelector('.jsc-axis-title-x')?.textContent).toBe('GDP per capita');
+    expect(container.querySelector('.jsc-axis-title-y')?.textContent).toBe('Life expectancy');
+  });
+
   it('applies ARIA attributes to container', () => {
     createScatterChart({ container, data: scatterData, config: defaultConfig });
     expect(container.getAttribute('role')).toBe('region');

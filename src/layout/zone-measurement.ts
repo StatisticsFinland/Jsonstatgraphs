@@ -237,11 +237,10 @@ export function measureCategoricalXAxisLabels(
     PLOT_AREA_MIN_SIZE,
     containerWidth - yAxisWidth - rightMargin,
   );
-  const availableWidth = isLine ? estimatedPlotWidth : containerWidth;
-  const slotWidth = availableWidth / slotDivisor;
+  const slotWidth = estimatedPlotWidth / slotDivisor;
   const fitResult = fitLabels(
     options.categoryLabels ?? options.categories,
-    availableWidth,
+    estimatedPlotWidth,
     slotWidth,
     AXIS_CHAR_WIDTH,
     options.timeSeriesLabels,
@@ -257,7 +256,7 @@ export function measureCategoricalAxisTitles(
   const yAxisTitle = options.isHorizontal && HORIZONTAL_BAR_CHART_TYPES.has(options.chartType)
     ? undefined
     : (options.isHorizontal ? options.xLabel : options.yLabel);
-  const xAxisTitle = options.isHorizontal ? options.yLabel : options.xLabel;
+  const xAxisTitle = options.isHorizontal ? options.yLabel : undefined;
   const axisTitleHeight = Math.ceil(
     (Number.parseFloat(context.theme.fontSizeLabel) || 14) * 1.5,
   );

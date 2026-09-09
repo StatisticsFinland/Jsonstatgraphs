@@ -12,6 +12,7 @@ import { createZones, applyMeasuredSizes } from '../layout/zones';
 import { computeLayout } from '../layout/layout-engine';
 import { formatNumber } from '../locale/number';
 import { getLocaleStrings } from '../locale/strings';
+import { PIE_CALLOUT_MIN_PLOT_WIDTH } from './pie';
 import {
   buildCategoricalScales,
   getCategoricalValuePadding,
@@ -671,7 +672,7 @@ export class ChartScaffold {
     if (xAxisTitleRect) {
       const xAxisTitle = isHorizontal
         ? this.scaffoldConfig.yLabel
-        : this.scaffoldConfig.xLabel;
+        : (this.scaffoldConfig.mode === 'numeric' ? this.scaffoldConfig.xLabel : undefined);
 
       if (xAxisTitle) {
         this.svg
@@ -771,8 +772,9 @@ export class ChartScaffold {
     const { config, seriesCount, seriesNames } = this.scaffoldConfig;
     const showLegend = config.showLegend ?? true;
     const isPie = this.scaffoldConfig.chartType === 'pie';
-    // Numeric charts are never pie, so this safely handles both branches
-    const legendVisible = isPie ? showLegend : (showLegend && seriesCount > 1);
+    const legendVisible = isPie
+      ? showLegend && containerWidth < PIE_CALLOUT_MIN_PLOT_WIDTH
+      : showLegend && seriesCount > 1;
     if (!legendVisible) return undefined;
 
     const names = (seriesNames && seriesNames.length > 0)
@@ -1269,6 +1271,7 @@ export class ChartScaffold {
       showHeader: this.scaffoldConfig.config.showHeader ?? false,
       showLegend: this.scaffoldConfig.config.showLegend ?? true,
       seriesCount: this.scaffoldConfig.seriesCount,
+      containerWidth: width,
       hasBurgerMenu: this.scaffoldConfig.config.burgerMenuVisible,
       hasHeaderContent: this.scaffoldConfig.config.showHeader !== false && Boolean(
         this.scaffoldConfig.config.title?.trim() || this.scaffoldConfig.config.subtitle?.trim(),
