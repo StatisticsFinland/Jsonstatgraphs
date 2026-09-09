@@ -84,7 +84,7 @@ export function createPieChart(chartConfig: PieChartConfig): PieChartInstance {
       chartType: 'pie' as const,
       config,
       seriesCount: 1,
-      seriesNames: seriesNames.length > 0 ? [seriesNames[0]] : ['Pie'],
+      seriesNames: seriesNames.length > 0 ? seriesNames : ['Pie'],
       categories: data.categories,
       categoryLabels: data.categoryLabels,
       valueRange: [0, 1] as [number, number],

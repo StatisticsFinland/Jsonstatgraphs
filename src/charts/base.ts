@@ -771,8 +771,9 @@ export class ChartScaffold {
     const { config, seriesCount, seriesNames } = this.scaffoldConfig;
     const showLegend = config.showLegend ?? true;
     const isPie = this.scaffoldConfig.chartType === 'pie';
-    // Numeric charts are never pie, so this safely handles both branches
-    const legendVisible = isPie ? showLegend : (showLegend && seriesCount > 1);
+    const legendVisible = isPie
+      ? showLegend && containerWidth < 480
+      : showLegend && seriesCount > 1;
     if (!legendVisible) return undefined;
 
     const names = (seriesNames && seriesNames.length > 0)
@@ -1269,6 +1270,7 @@ export class ChartScaffold {
       showHeader: this.scaffoldConfig.config.showHeader ?? false,
       showLegend: this.scaffoldConfig.config.showLegend ?? true,
       seriesCount: this.scaffoldConfig.seriesCount,
+      containerWidth: width,
       hasBurgerMenu: this.scaffoldConfig.config.burgerMenuVisible,
       hasHeaderContent: this.scaffoldConfig.config.showHeader !== false && Boolean(
         this.scaffoldConfig.config.title?.trim() || this.scaffoldConfig.config.subtitle?.trim(),

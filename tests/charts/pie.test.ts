@@ -89,7 +89,8 @@ describe('createPieChart', () => {
 
     expect(radius).toBeGreaterThan(100);
     expect(container.querySelectorAll('.jsc-pie-callout-label')).toHaveLength(0);
-    expect(container.querySelectorAll('.jsc-legend-item')).toHaveLength(0);
+    expect(Array.from(container.querySelectorAll('.jsc-legend-item')).map(item => item.textContent?.trim()))
+      .toEqual(['Helsinki', 'Tampere', 'Turku']);
   });
 
   it('null values are excluded from slices', () => {
