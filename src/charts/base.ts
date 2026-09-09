@@ -12,6 +12,7 @@ import { createZones, applyMeasuredSizes } from '../layout/zones';
 import { computeLayout } from '../layout/layout-engine';
 import { formatNumber } from '../locale/number';
 import { getLocaleStrings } from '../locale/strings';
+import { PIE_CALLOUT_MIN_PLOT_WIDTH } from './pie';
 import {
   buildCategoricalScales,
   getCategoricalValuePadding,
@@ -772,7 +773,7 @@ export class ChartScaffold {
     const showLegend = config.showLegend ?? true;
     const isPie = this.scaffoldConfig.chartType === 'pie';
     const legendVisible = isPie
-      ? showLegend && containerWidth < 480
+      ? showLegend && containerWidth < PIE_CALLOUT_MIN_PLOT_WIDTH
       : showLegend && seriesCount > 1;
     if (!legendVisible) return undefined;
 

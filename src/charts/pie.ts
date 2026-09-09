@@ -23,7 +23,7 @@ const PIE_MARGIN = 10;
 const PIE_LABEL_MAX_CHARS = 20;
 const PIE_LABEL_CHAR_WIDTH = 8;
 const PIE_LABEL_LINE_GAP = 12;
-const PIE_CALLOUT_MIN_PLOT_WIDTH = 480;
+export const PIE_CALLOUT_MIN_PLOT_WIDTH = 480;
 
 function truncatePieLabel(label: string): string {
   if (label.length <= PIE_LABEL_MAX_CHARS) return label;
