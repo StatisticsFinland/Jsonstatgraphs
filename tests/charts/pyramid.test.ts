@@ -113,17 +113,17 @@ describe('createPyramidChart', () => {
     expect(tabStops[0].getAttribute('aria-label')).toBe('0-9, Male: 100');
   });
 
-  it('uses up and down arrows to move between series at the same category', () => {
+  it('uses up and down arrows to move forward and backward through data points', () => {
     createPyramidChart({ container, data: pyramidData, config: defaultConfig });
     const bars = Array.from(container.querySelectorAll<SVGRectElement>('.jsc-bar-left'));
     const firstBar = bars[0];
-    const matchingRightBar = container.querySelector<SVGRectElement>('.jsc-bar-right');
+    const nextBar = bars[1];
 
     firstBar.focus();
     firstBar.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
-    expect(document.activeElement).toBe(matchingRightBar);
+    expect(document.activeElement).toBe(nextBar);
 
-    matchingRightBar?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
+    nextBar.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
     expect(document.activeElement).toBe(firstBar);
   });
 

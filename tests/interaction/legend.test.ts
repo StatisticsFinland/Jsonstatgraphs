@@ -57,6 +57,16 @@ describe('Legend', () => {
     expect(container.querySelector('.jsc-legend')).not.toBeNull();
   });
 
+  it('identifies the interactive series controls as a toolbar', () => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    new Legend(container, seriesNames, mockTheme);
+
+    const toolbar = container.querySelector('.jsc-legend') as HTMLDivElement;
+    expect(toolbar.getAttribute('role')).toBe('toolbar');
+    expect(toolbar.getAttribute('aria-label')).toBe('Series controls');
+  });
+
   it('render() creates buttons for each series', () => {
     container = document.createElement('div');
     document.body.appendChild(container);
