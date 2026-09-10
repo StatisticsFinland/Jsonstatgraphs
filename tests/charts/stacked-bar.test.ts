@@ -120,7 +120,7 @@ describe('createStackedBarChart', () => {
     expect(document.activeElement).toBe(nextPoint);
   });
 
-  it('navigates vertical stack series while preserving the category', () => {
+  it('moves backward and forward through vertical stack data points', () => {
     createStackedBarChart({
       container,
       data: twoSeriesData,
@@ -128,7 +128,7 @@ describe('createStackedBarChart', () => {
       chartType: 'stackedVerticalBar',
     });
     const lowerSegment = container.querySelector<SVGRectElement>('.jsc-series-0 .jsc-bar');
-    const upperSegment = container.querySelector<SVGRectElement>('.jsc-series-1 .jsc-bar');
+    const nextSegment = container.querySelectorAll<SVGRectElement>('.jsc-series-0 .jsc-bar')[1];
 
     lowerSegment?.focus();
     lowerSegment?.dispatchEvent(new KeyboardEvent('keydown', {
@@ -136,9 +136,9 @@ describe('createStackedBarChart', () => {
       bubbles: true,
       cancelable: true,
     }));
-    expect(document.activeElement).toBe(upperSegment);
+    expect(document.activeElement).toBe(nextSegment);
 
-    upperSegment?.dispatchEvent(new KeyboardEvent('keydown', {
+    nextSegment?.dispatchEvent(new KeyboardEvent('keydown', {
       key: 'ArrowUp',
       bubbles: true,
       cancelable: true,
@@ -228,23 +228,22 @@ describe('createStackedBarChart', () => {
     }).not.toThrow();
 
     const agricultureRects = container.querySelectorAll('.jsc-series-0 .jsc-bar');
-    const industryRects = container.querySelectorAll('.jsc-series-1 .jsc-bar');
     expect(agricultureRects).toHaveLength(2);
 
-    // A missing corresponding category falls back to the nearest point.
-    (industryRects[1] as SVGElement).focus();
+    // ArrowDown skips the missing value to the next rendered data point.
+    (agricultureRects[0] as SVGElement).focus();
     expect(() => {
-      industryRects[1].dispatchEvent(
-        new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true, cancelable: true }),
+      agricultureRects[0].dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }),
       );
     }).not.toThrow();
-    expect(document.activeElement?.getAttribute('aria-label')).toBe('2020, Agriculture: 10');
+    expect(document.activeElement?.getAttribute('aria-label')).toBe('2022, Agriculture: 30');
 
     (agricultureRects[1] as SVGElement).focus();
     agricultureRects[1].dispatchEvent(
-      new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }),
+      new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true, cancelable: true }),
     );
-    expect(document.activeElement?.getAttribute('aria-label')).toBe('2022, Industry: 20');
+    expect(document.activeElement?.getAttribute('aria-label')).toBe('2020, Agriculture: 10');
   });
 
 

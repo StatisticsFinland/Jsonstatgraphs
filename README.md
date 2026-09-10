@@ -598,7 +598,7 @@ const results = getChartTypesForDataset(dataset, { mapAvailable: true });
 - Visual charts use a named `role="region"`; the chart title or configured `ariaLabel` is announced without nested image semantics.
 - The interactive SVG inside that region uses a localized, named `role="application"`, prompting screen readers such as NVDA to enter focus mode when focus reaches chart data. Table and key-figure views keep native document semantics.
 - Focusable datapoints use a localized `aria-roledescription` and roving `tabindex`.
-- Vertical charts and line charts use Left/Right for categories and Up/Down for series. Horizontal bars and pyramids use Up/Down for categories and Left/Right for series. Pie and scatter charts use Left/Right as a single point sequence.
+- Right and Down arrows move forward through data points; Left and Up arrows move backward. This order follows the chart's data sequence across series.
 - Arrow navigation stops at chart boundaries. Home/End move within the current point sequence, and Tab/Shift+Tab leave the chart normally.
 - The library does not generate hidden data tables. Applications should expose the chart menu's explicit table view or provide a visible table when an alternate data presentation is required.
 - Interactive legend with `aria-pressed` toggle
