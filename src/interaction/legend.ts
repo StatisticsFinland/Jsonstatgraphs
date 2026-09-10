@@ -56,6 +56,7 @@ export class Legend {
     el.style.padding = '4px 0';
     el.style.fontFamily = theme.fontFamily;
     el.style.fontSize = theme.fontSizeLabel;
+    el.style.letterSpacing = theme.letterSpacing;
     el.setAttribute('role', 'toolbar');
     el.setAttribute('aria-label', getLocaleStrings(this.options.locale).seriesControls);
 

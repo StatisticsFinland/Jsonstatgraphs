@@ -53,4 +53,21 @@ describe('createSvgTextMeasurement', () => {
     style.remove();
     svg.remove();
   });
+
+  it('scales fallback character width to the resolved font size', () => {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    document.body.appendChild(svg);
+
+    const measurement = createSvgTextMeasurement(select(svg), {
+      parentClass: 'jsc-axis-x',
+      fontFamily: 'sans-serif',
+      fontSize: '24px',
+      fallbackCharWidth: 8,
+    });
+
+    expect(measurement.measureText('2019')).toBeCloseTo(57.6);
+
+    measurement.destroy();
+    svg.remove();
+  });
 });

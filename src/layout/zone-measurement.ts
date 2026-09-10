@@ -176,11 +176,13 @@ export function measureCategoricalYAxisLabels(
     theme.fontSizeTick,
     options.zeroBaselineForced,
   );
-  const maxTickLength = ticks.reduce(
-    (max, tick) => Math.max(max, formatNumber(tick, config.locale).length),
+  const measureText = context.yAxisTextMetrics?.measureText
+    ?? ((text: string) => text.length * AXIS_CHAR_WIDTH);
+  const maxTickWidth = ticks.reduce(
+    (max, tick) => Math.max(max, measureText(formatNumber(tick, config.locale))),
     0,
   );
-  return maxTickLength * AXIS_CHAR_WIDTH + AXIS_TICK_MARGIN;
+  return maxTickWidth + AXIS_TICK_MARGIN;
 }
 
 export function measureCategoricalRightMargin(
@@ -194,7 +196,15 @@ export function measureCategoricalRightMargin(
     const preMarginPlotWidth = containerWidth - yAxisWidth;
     if (categories.length <= 1 || preMarginPlotWidth <= 0) return 0;
     const slotWidth = preMarginPlotWidth / (categories.length - 1);
-    return Math.max(0, Math.min(Math.ceil(slotWidth / 2), RIGHT_MARGIN_CAP));
+    const labels = options.categoryLabels ?? categories;
+    const lastLabel = labels.at(-1) ?? '';
+    const measureText = context.xAxisTextMetrics?.measureText
+      ?? ((text: string) => text.length * AXIS_CHAR_WIDTH);
+    return Math.max(
+      0,
+      Math.min(Math.ceil(slotWidth / 2), RIGHT_MARGIN_CAP),
+      Math.ceil(measureText(lastLabel) / 2),
+    );
   }
   if (!HORIZONTAL_CHART_TYPES.has(chartType)) return 0;
 

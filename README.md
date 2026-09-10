@@ -366,6 +366,7 @@ The default series palette, in order, is `#1A56EC`, `#F2644C`, `#1B3160`, `#9C8D
 | `--jsc-font-size-tick` | `0.75rem` | Axis tick labels and footer text |
 | `--jsc-font-size-label` | `0.875rem` | Legend items, axis titles, subtitles |
 | `--jsc-font-size-title` | `1rem` | Chart title |
+| `--jsc-letter-spacing` | `0` | Space between characters in all chart text |
 | `--jsc-font-weight-normal` | `400` | Normal-weight text |
 | `--jsc-font-weight-bold` | `700` | Bold text (title, tooltip values) |
 

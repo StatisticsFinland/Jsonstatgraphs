@@ -87,6 +87,21 @@ describe('fitLabels', () => {
 
   // 6. Skip interval
   describe('skip interval when too many labels for available width', () => {
+    it('skips labels when they fit only without a readable gap', () => {
+      const labels = ['2019', '2020', '2021', '2022', '2023'];
+      const result = fitLabels(labels, 305, 61, 8, undefined, {
+        lineHeight: 29,
+        measureText: () => 59,
+      });
+
+      expect(result.skipInterval).toBe(2);
+      expect(result.labels.filter(label => !label.skip).map(label => label.original)).toEqual([
+        '2019',
+        '2021',
+        '2023',
+      ]);
+    });
+
     it('sets skipInterval=2 and marks odd-indexed labels as skip when many labels', () => {
       // 10 labels "ABCD" (4 chars, 32px) with slotWidth=30 → truncated to "AB…" (3 chars, 24px)
       // totalEffectiveWidth = 10 * 24 = 240 > 150

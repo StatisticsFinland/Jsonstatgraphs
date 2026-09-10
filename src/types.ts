@@ -155,6 +155,7 @@ export interface ThemeConfig {
   fontSizeTick?: string;
   fontSizeLabel?: string;
   fontSizeTitle?: string;
+  letterSpacing?: string;
   fontWeightNormal?: number;
   fontWeightBold?: number;
   colorBackground?: string;
@@ -226,6 +227,7 @@ export interface ResolvedTheme {
   fontSizeTick: string;
   fontSizeLabel: string;
   fontSizeTitle: string;
+  letterSpacing: string;
   fontWeightNormal: number;
   fontWeightBold: number;
   colorBackground: string;

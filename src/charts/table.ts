@@ -254,6 +254,7 @@ function renderTable(
   const headerEl = document.createElement('div');
   headerEl.className = 'jsc-table-heading';
   headerEl.style.boxSizing = 'border-box';
+  headerEl.style.letterSpacing = theme.letterSpacing;
   const hasHeaderContent = Boolean(config.title?.trim() || config.subtitle?.trim());
   headerEl.style.minHeight = burgerMenuVisible && !hasHeaderContent ? '3rem' : '2.5rem';
   headerEl.style.paddingLeft = '20px';
@@ -302,6 +303,7 @@ function renderTable(
   table.style.width = '100%';
   table.style.fontFamily = theme.fontFamily;
   table.style.fontSize = theme.fontSizeLabel;
+  table.style.letterSpacing = theme.letterSpacing;
   table.style.color = theme.colorText;
 
   // Caption — visually hidden, for screen readers only

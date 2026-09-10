@@ -25,6 +25,17 @@ function createScaffoldConfig(overrides: Partial<CategoricalScaffoldConfig> = {}
 
 describe('ChartScaffold', () => {
   describe('runtime text spacing', () => {
+    it('applies theme letter spacing to the SVG root', () => {
+      const scaffold = new ChartScaffold(createScaffoldConfig({
+        config: { theme: { letterSpacing: '0.12em' } },
+      }));
+
+      scaffold.render();
+
+      expect(document.querySelector('svg.jsc-chart')?.getAttribute('letter-spacing')).toBe('0.12em');
+      scaffold.destroy();
+    });
+
     it('rerenders when inherited text metrics change', async () => {
       jest.useFakeTimers();
       const container = createContainer(500, 400);
@@ -327,6 +338,7 @@ describe('ChartScaffold', () => {
     scaffold.render();
     const footerText = document.querySelector('.jsc-footer-text');
     expect(footerText).not.toBeNull();
+    expect(footerText?.getAttribute('x')).toBe('20');
   });
 
   it('wraps long footer values when the available chart width is narrow', () => {
