@@ -28,6 +28,7 @@ const mockTheme: ResolvedTheme = {
   fontSizeTick: '12px',
   fontSizeLabel: '14px',
   fontSizeTitle: '18px',
+  letterSpacing: '0',
   fontWeightNormal: 400,
   fontWeightBold: 700,
   colorBackground: '#ffffff',

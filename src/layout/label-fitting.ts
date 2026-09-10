@@ -1,6 +1,7 @@
 const LINE_HEIGHT_PX = 16;
 const DEFAULT_CHAR_WIDTH = 8;
 const MAX_LINES = 3;
+const MIN_LABEL_GAP_PX = 8;
 
 export interface LabelTextMetrics {
   measureText(text: string): number;
@@ -148,7 +149,7 @@ export function fitLabels(
           }
         }
         if (visibleCount === 0) continue;
-        if (visibleWidthSum <= availableWidth) {
+        if (visibleWidthSum + Math.max(0, visibleCount - 1) * MIN_LABEL_GAP_PX <= availableWidth) {
           skipInterval = n;
           break;
         }
@@ -188,7 +189,7 @@ export function fitLabels(
       return sum + maxLineWidth;
     }, 0);
 
-    if (totalEffectiveWidth > availableWidth) {
+    if (totalEffectiveWidth + Math.max(0, labels.length - 1) * MIN_LABEL_GAP_PX > availableWidth) {
       if (niceSkipOptions) {
         const { intervals, firstAbsoluteIndex } = niceSkipOptions;
         for (const n of intervals) {
