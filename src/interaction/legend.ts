@@ -39,6 +39,7 @@ export class Legend {
   private readonly theme: ResolvedTheme;
   private readonly options: LegendOptions;
   private onToggle: LegendToggleCallback | null = null;
+  private activeIndex = 0;
 
   constructor(container: HTMLElement, seriesNames: string[], theme: ResolvedTheme, options?: LegendOptions) {
     this.container = container;
@@ -55,6 +56,8 @@ export class Legend {
     el.style.padding = '4px 0';
     el.style.fontFamily = theme.fontFamily;
     el.style.fontSize = theme.fontSizeLabel;
+    el.setAttribute('role', 'toolbar');
+    el.setAttribute('aria-label', getLocaleStrings(this.options.locale).seriesControls);
 
     container.appendChild(el);
     this.element = el;
@@ -82,13 +85,16 @@ export class Legend {
   render(): void {
     const el = this.element;
     const strings = getLocaleStrings(this.options.locale);
+    const restoreFocus = document.activeElement instanceof HTMLElement && el.contains(document.activeElement);
     while (el.firstChild) {
       el.firstChild.remove();
     }
 
-    for (const item of this.items) {
+    for (let index = 0; index < this.items.length; index++) {
+      const item = this.items[index];
       const btn = document.createElement('button');
       btn.className = 'jsc-legend-item';
+      btn.tabIndex = index === this.activeIndex ? 0 : -1;
       btn.style.background = 'none';
       btn.style.border = 'none';
       btn.style.cursor = 'pointer';
@@ -168,19 +174,48 @@ export class Legend {
       btn.appendChild(swatch);
       btn.appendChild(label);
 
+      btn.addEventListener('focus', () => {
+        this.setActiveIndex(item.index, false);
+      });
+
+      btn.addEventListener('keydown', (event) => {
+        if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+
+        event.preventDefault();
+        const delta = event.key === 'ArrowRight' ? 1 : -1;
+        const nextIndex = (item.index + delta + this.items.length) % this.items.length;
+        this.setActiveIndex(nextIndex, true);
+      });
+
       btn.addEventListener('click', () => {
         item.active = !item.active;
         const activeIndex = item.index;
         this.render();
-        const buttons = this.element.querySelectorAll('.jsc-legend-item');
-        const targetBtn = buttons[activeIndex] as HTMLElement | undefined;
-        targetBtn?.focus();
+        this.setActiveIndex(activeIndex, true);
         if (this.onToggle) {
           this.onToggle(item.index, item.active);
         }
       });
 
       el.appendChild(btn);
+    }
+
+    if (restoreFocus) {
+      this.setActiveIndex(this.activeIndex, true);
+    }
+  }
+
+  private setActiveIndex(index: number, focus: boolean): void {
+    if (this.items.length === 0) return;
+
+    this.activeIndex = Math.max(0, Math.min(index, this.items.length - 1));
+    const buttons = this.element.querySelectorAll('.jsc-legend-item');
+    buttons.forEach((button, buttonIndex) => {
+      (button as HTMLButtonElement).tabIndex = buttonIndex === this.activeIndex ? 0 : -1;
+    });
+
+    if (focus) {
+      (buttons[this.activeIndex] as HTMLButtonElement | undefined)?.focus();
     }
   }
 

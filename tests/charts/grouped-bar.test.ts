@@ -151,7 +151,7 @@ describe('createGroupedBarChart', () => {
     expect(rects).toHaveLength(6);
   });
 
-  it('navigates between series within a horizontal category group', () => {
+  it('moves forward through data points with ArrowDown', () => {
     createGroupedBarChart({
       container,
       data: twoSeriesData,
@@ -159,7 +159,7 @@ describe('createGroupedBarChart', () => {
       chartType: 'groupedHorizontalBar',
     });
     const firstSeriesCat1 = container.querySelector<SVGRectElement>('.jsc-series-0 .jsc-bar');
-    const secondSeriesCat1 = container.querySelector<SVGRectElement>('.jsc-series-1 .jsc-bar');
+    const firstSeriesCat2 = container.querySelectorAll<SVGRectElement>('.jsc-series-0 .jsc-bar')[1];
 
     firstSeriesCat1?.focus();
     firstSeriesCat1?.dispatchEvent(new KeyboardEvent('keydown', {
@@ -168,13 +168,13 @@ describe('createGroupedBarChart', () => {
       cancelable: true,
     }));
 
-    expect(document.activeElement).toBe(secondSeriesCat1);
+    expect(document.activeElement).toBe(firstSeriesCat2);
   });
 
-  it('navigates between series within a vertical category group', () => {
+  it('navigates to the next data point within a vertical series', () => {
     createGroupedBarChart({ container, data: twoSeriesData, config: defaultConfig });
     const firstSeriesCat1 = container.querySelector<SVGRectElement>('.jsc-series-0 .jsc-bar');
-    const secondSeriesCat1 = container.querySelector<SVGRectElement>('.jsc-series-1 .jsc-bar');
+    const firstSeriesCat2 = container.querySelectorAll<SVGRectElement>('.jsc-series-0 .jsc-bar')[1];
 
     firstSeriesCat1?.focus();
     firstSeriesCat1?.dispatchEvent(new KeyboardEvent('keydown', {
@@ -183,10 +183,10 @@ describe('createGroupedBarChart', () => {
       cancelable: true,
     }));
 
-    expect(document.activeElement).toBe(secondSeriesCat1);
+    expect(document.activeElement).toBe(firstSeriesCat2);
   });
 
-  it('keeps the category identity when a group has a missing series value', () => {
+  it('moves forward past missing values with ArrowDown', () => {
     createGroupedBarChart({
       container,
       data: dataWithNull,
@@ -194,7 +194,7 @@ describe('createGroupedBarChart', () => {
       chartType: 'groupedHorizontalBar',
     });
     const seriesACat1 = container.querySelector<SVGRectElement>('.jsc-series-0 .jsc-bar');
-    const seriesBCat1 = container.querySelector<SVGRectElement>('.jsc-series-1 .jsc-bar');
+    const seriesACat3 = container.querySelectorAll<SVGRectElement>('.jsc-series-0 .jsc-bar')[1];
 
     seriesACat1?.focus();
     seriesACat1?.dispatchEvent(new KeyboardEvent('keydown', {
@@ -203,8 +203,8 @@ describe('createGroupedBarChart', () => {
       cancelable: true,
     }));
 
-    expect(document.activeElement).toBe(seriesBCat1);
-    expect(document.activeElement?.getAttribute('aria-label')).toContain('Cat1');
+    expect(document.activeElement).toBe(seriesACat3);
+    expect(document.activeElement?.getAttribute('aria-label')).toContain('Cat3');
   });
 
   it('uses series order for top-to-bottom order in horizontal groups and legend', () => {

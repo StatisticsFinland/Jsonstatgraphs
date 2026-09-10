@@ -69,8 +69,7 @@ export function renderSvgFooter(params: SvgFooterParams): void {
   const maxWidth = params.maxWidth ?? Number.POSITIVE_INFINITY;
   let lineIndex = 0;
 
-  for (let i = 0; i < footerItems.length; i++) {
-    const item = footerItems[i];
+  for (const item of footerItems) {
     const itemText = getFooterItemText(item);
     const useLink = item.type === 'source' && !!sourceLink && isValidLink(sourceLink);
 

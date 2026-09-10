@@ -860,7 +860,6 @@ export function createMapChart(chartConfig: MapChartConfig): MapChartInstance {
       theme,
       locale: config.locale,
       ariaLabel,
-      pointAxis: 'both',
     });
 
     if (config.showLegend !== false) {

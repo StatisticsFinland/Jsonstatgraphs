@@ -139,14 +139,14 @@ describe('createMapChart keyboard accessibility', () => {
     expect(regions[1].getAttribute('tabindex')).toBe('-1');
   });
 
-  it('moves focus to the next region with an arrow on either axis', () => {
+  it('moves focus to the next region with ArrowRight', () => {
     createMapChart({ container, data: multiRegionMapData, config: defaultConfig });
     const regions = container.querySelectorAll<SVGElement>('.jsc-map-region');
     regions[0].focus();
     expect(document.activeElement).toBe(regions[0]);
 
     regions[0].dispatchEvent(new KeyboardEvent('keydown', {
-      key: 'ArrowDown',
+      key: 'ArrowRight',
       bubbles: true,
       cancelable: true,
     }));

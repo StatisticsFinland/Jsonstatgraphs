@@ -66,7 +66,6 @@ export function createGroupedBarChart(chartConfig: GroupedBarChartConfig): Group
       theme: lastTheme!,
       locale: config.locale,
       chartData: visibleData,
-      pointAxis: resolvedChartType === 'groupedHorizontalBar' ? 'vertical' : 'horizontal',
       ariaLabel: config.ariaLabel,
       caption: config.title ?? config.ariaLabel,
     });
@@ -95,7 +94,6 @@ export function createGroupedBarChart(chartConfig: GroupedBarChartConfig): Group
     const plotAreaGroup = svg.select<SVGGElement>('.jsc-plot-area');
     const interactionGroup = plotAreaGroup.append('g');
     const elements: DataElementInfo[] = [];
-    const categoryIndexByCode = new Map(data.categories.map((code, index) => [code, index]));
 
     if (config.accessibilityMode) {
       const defs = ensureDefs(svg);
@@ -157,11 +155,8 @@ export function createGroupedBarChart(chartConfig: GroupedBarChartConfig): Group
           elements.push({
             element: rectEl,
             seriesIndex: si,
-            pointIndex: pi,
+            pointIndex: series.points.indexOf(point),
             pointKey: point.categoryCode,
-            navigationGroupIndex: categoryIndexByCode.get(point.categoryCode),
-            navigationPointIndex: si,
-            navigationPointKey: `${point.categoryCode}:${series.code}`,
             category: point.label,
             seriesName: series.name,
             value: point.value,
@@ -218,11 +213,8 @@ export function createGroupedBarChart(chartConfig: GroupedBarChartConfig): Group
           elements.push({
             element: rectEl,
             seriesIndex: si,
-            pointIndex: pi,
+            pointIndex: series.points.indexOf(point),
             pointKey: point.categoryCode,
-            navigationGroupIndex: categoryIndexByCode.get(point.categoryCode),
-            navigationPointIndex: si,
-            navigationPointKey: `${point.categoryCode}:${series.code}`,
             category: point.label,
             seriesName: series.name,
             value: point.value,

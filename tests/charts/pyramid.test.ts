@@ -103,17 +103,28 @@ describe('createPyramidChart', () => {
     expect(allBars).toHaveLength(5);
   });
 
-  it('uses up and down arrows to move focus in the visual vertical direction', () => {
+  it('makes the first point of the first series the initial tab stop', () => {
+    createPyramidChart({ container, data: pyramidData, config: defaultConfig });
+    const firstSeriesBars = container.querySelectorAll<SVGRectElement>('.jsc-series-0 .jsc-bar');
+    const tabStops = container.querySelectorAll<SVGRectElement>('.jsc-bar[tabindex="0"]');
+
+    expect(tabStops).toHaveLength(1);
+    expect(tabStops[0]).toBe(firstSeriesBars[0]);
+    expect(tabStops[0].getAttribute('aria-label')).toBe('0-9, Male: 100');
+  });
+
+  it('uses up and down arrows to move forward and backward through data points', () => {
     createPyramidChart({ container, data: pyramidData, config: defaultConfig });
     const bars = Array.from(container.querySelectorAll<SVGRectElement>('.jsc-bar-left'));
-    const middleBar = bars[1];
+    const firstBar = bars[0];
+    const nextBar = bars[1];
 
-    middleBar.focus();
-    middleBar.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
-    expect(document.activeElement).toBe(bars[0]);
+    firstBar.focus();
+    firstBar.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    expect(document.activeElement).toBe(nextBar);
 
-    bars[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
-    expect(document.activeElement).toBe(middleBar);
+    nextBar.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
+    expect(document.activeElement).toBe(firstBar);
   });
 
   it('ARIA: container has role="region"', () => {

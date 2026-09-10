@@ -69,7 +69,6 @@ export function createPieChart(chartConfig: PieChartConfig): PieChartInstance {
       theme: lastTheme!,
       locale: config.locale,
       chartData: visibleData,
-      pointAxis: 'horizontal',
       ariaLabel: config.ariaLabel,
       caption: config.title ?? config.ariaLabel,
     });
