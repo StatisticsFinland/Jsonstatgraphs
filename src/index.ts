@@ -946,7 +946,7 @@ export function createChart(
         resolvedConfig.title = ds.label;
       }
     }
-    if (resolvedConfig.showHeader && resolvedConfig.subtitle === undefined) {
+    if (resolvedConfig.showHeader && effectiveType !== 'keyFigure' && resolvedConfig.subtitle === undefined) {
       const selectableDimensionCodes = new Set(Object.keys(activeCategoryCodes));
       const autoSubtitle = buildSubtitle(dimMeta, selectableDimensionCodes, activeCategoryCodes);
       if (autoSubtitle) resolvedConfig.subtitle = autoSubtitle;

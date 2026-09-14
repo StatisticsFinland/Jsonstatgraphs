@@ -47,6 +47,12 @@ describe('buildSubtitle', () => {
     })).toBe('One-room flat');
   });
 
+  test('treats duplicate selected category codes as one active category', () => {
+    expect(buildSubtitle(dimensions, new Set(['region']), {
+      region: ['hel', 'hel'],
+    })).toBe('Greater Helsinki');
+  });
+
   test('ignores unknown selected category codes and non-selectable dimensions', () => {
     expect(buildSubtitle(dimensions, new Set(['region']), {
       region: ['unknown'],

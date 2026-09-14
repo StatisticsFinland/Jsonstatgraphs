@@ -72,7 +72,7 @@ Decisions are numbered sequentially. Once recorded, a decision is not deleted â€
 
 **Context:** JSON-stat datasets carry dimension labels, source info, and update timestamps. Manually crafting titles duplicates metadata already present in the data.
 
-**Decision:** The header pipeline constructs titles automatically from dataset metadata and builds subtitles from localized category names for selectable dimensions with exactly one active category. Values are joined with ` | ` in dimension order; dimensions with zero or multiple active categories are omitted. Users can override the generated title or subtitle via config.
+**Decision:** The header pipeline constructs titles automatically from dataset metadata and builds subtitles from localized category names for selectable dimensions with exactly one active category, except for key figures, which do not have a subtitle presentation. Values are joined with ` | ` in dimension order; dimensions with zero or multiple active categories are omitted. Users can override the generated title or subtitle via config for renderers that support those fields.
 
 **Consequences:** Title quality depends on dataset metadata quality. The builder must handle missing or minimal metadata gracefully.
 

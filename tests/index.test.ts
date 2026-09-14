@@ -270,6 +270,18 @@ describe('createChart', () => {
     expect(container.querySelector('.jsc-key-figure-title')?.textContent).toBe('Population by Gender');
   });
 
+  it('does not generate a subtitle for key figures', () => {
+    createChart(
+      container,
+      selectableTitleDataset,
+      { chartType: 'keyFigure' },
+      { gender: ['male'] },
+    );
+
+    expect(container.querySelector('.jsc-key-figure-title')?.textContent).toBe('Population, Male');
+    expect(container.querySelector('.jsc-key-figure-subtitle')).toBeNull();
+  });
+
   it('builds a subtitle from a single selected selectable category', () => {
     createChart(
       container,

@@ -10,9 +10,10 @@ export function buildSubtitle(
     .filter(dimension => selectableDimensionCodes.has(dimension.code))
     .map(dimension => {
       const selectedCodes = selectedCategoryCodes[dimension.code] ?? [];
-      if (selectedCodes.length !== 1) return '';
+      const distinctSelectedCodes = [...new Set(selectedCodes)];
+      if (distinctSelectedCodes.length !== 1) return '';
 
-      return dimension.values?.find(value => value.code === selectedCodes[0])?.name ?? '';
+      return dimension.values?.find(value => value.code === distinctSelectedCodes[0])?.name ?? '';
     })
     .filter(Boolean)
     .join(' | ');

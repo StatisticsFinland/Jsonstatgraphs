@@ -189,7 +189,7 @@ An explicitly empty selection uses a non-empty default when available; otherwise
 
 Selectable filtering is supported by categorical charts, tables, maps, scatter plots, pyramids, and key figures. During automatic chart selection, the scatter metric/content dimension and pyramid split dimension cannot be selectable because those dimensions define the renderer's required structure. Selected categories are reflected in automatic titles, map geometry requests, and chart-type switches.
 
-When `subtitle` is omitted, the chart automatically builds a subtitle from selectable dimensions. A dimension contributes its localized selected category name only when exactly one category is active; dimensions with no selection or multiple selections are omitted. Values are joined in selectable-dimension order with ` | `. Category names are read from dataset metadata and fall back to the category code when a label is unavailable. An explicitly configured `subtitle` always takes precedence, and generated subtitles are rebuilt when selections change through `chart.update()`.
+When `subtitle` is omitted, the chart automatically builds a subtitle from selectable dimensions, except for key figures, which have no subtitle presentation. A dimension contributes its localized selected category name only when exactly one category is active; dimensions with no selection or multiple selections are omitted. Values are joined in selectable-dimension order with ` | `. Category names are read from dataset metadata and fall back to the category code when a label is unavailable. An explicitly configured `subtitle` always takes precedence for chart types that render subtitles, and generated subtitles are rebuilt when selections change through `chart.update()`.
 
 ## Missing Values
 
