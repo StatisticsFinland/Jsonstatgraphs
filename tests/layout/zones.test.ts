@@ -1,5 +1,6 @@
 import { createZones, applyMeasuredSizes, CreateZonesOptions, PLOT_AREA_MIN_SIZE, ZONE_PRIORITIES } from '../../src/layout/zones';
 import { ZoneType } from '../../src/types';
+import { PIE_CALLOUT_MIN_PLOT_WIDTH } from '../../src/charts/pie';
 
 function makeOptions(overrides: Partial<CreateZonesOptions> = {}): CreateZonesOptions {
   return {
@@ -197,9 +198,24 @@ describe('createZones', () => {
       expect(getZone(zones, ZoneType.Legend).visible).toBe(false);
     });
 
-    it('is hidden for pie charts regardless of series count', () => {
-      const zones = createZones(makeOptions({ chartType: 'pie', showLegend: true, seriesCount: 2 }));
+    it('is hidden for wide pie charts', () => {
+      const zones = createZones(makeOptions({
+        chartType: 'pie',
+        showLegend: true,
+        seriesCount: 2,
+        containerWidth: PIE_CALLOUT_MIN_PLOT_WIDTH,
+      }));
       expect(getZone(zones, ZoneType.Legend).visible).toBe(false);
+    });
+
+    it('is visible for narrow pie charts when showLegend=true', () => {
+      const zones = createZones(makeOptions({
+        chartType: 'pie',
+        showLegend: true,
+        seriesCount: 1,
+        containerWidth: PIE_CALLOUT_MIN_PLOT_WIDTH - 1,
+      }));
+      expect(getZone(zones, ZoneType.Legend).visible).toBe(true);
     });
 
     it('is hidden for pie chart when showLegend=false', () => {
