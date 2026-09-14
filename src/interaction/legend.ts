@@ -223,6 +223,17 @@ export class Legend {
     return this.element.offsetHeight;
   }
 
+  getFocusedItemIndex(): number | null {
+    const activeElement = document.activeElement;
+    return activeElement instanceof HTMLElement && this.element.contains(activeElement)
+      ? this.activeIndex
+      : null;
+  }
+
+  focusItem(index: number): void {
+    this.setActiveIndex(index, true);
+  }
+
   destroy(): void {
     legendStyleRefCount = Math.max(0, legendStyleRefCount - 1);
     if (legendStyleRefCount === 0) {

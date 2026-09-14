@@ -6,6 +6,7 @@ import { bindInteractions, DataElementInfo, BoundInteractions } from './bindInte
 import { applyChartAriaAttributes, applySeriesGroupAttributes } from '../a11y/aria';
 import { getSeriesColor } from '../theme/palette';
 import { ensureDefs, getPatternFillUrl, injectPatternDefs } from '../a11y/patterns';
+import { collectIndexedNonNullPoints } from './point-collection';
 
 export interface BarChartConfig {
   container: HTMLElement;
@@ -127,22 +128,21 @@ export function createBarChart(chartConfig: BarChartConfig): BarChartInstance {
     seriesGroupElements.set(si, seriesGroupEl);
 
     type BarPoint = { value: number; categoryCode: string; label: string };
-    const nonNullPoints = series.points.filter(
-      (p): p is BarPoint => p.value !== null
-    );
+    type IndexedBarPoint = { point: BarPoint; pointIndex: number };
+    const nonNullPoints: IndexedBarPoint[] = collectIndexedNonNullPoints(series.points);
 
     if (resolvedChartType === 'horizontalBar') {
       const xScale = ctx.xScale as ScaleLinear<number, number>;
       const yScale = ctx.yScale as ScaleBand<string>;
 
       seriesGroup
-        .selectAll<SVGRectElement, BarPoint>('rect')
+        .selectAll<SVGRectElement, IndexedBarPoint>('rect')
         .data(nonNullPoints)
         .join('rect')
         .attr('class', 'jsc-bar')
-        .attr('x', d => d.value >= 0 ? xScale(0) : xScale(d.value))
-        .attr('y', d => yScale(d.categoryCode)!)
-        .attr('width', d => Math.abs(xScale(d.value) - xScale(0)))
+        .attr('x', d => d.point.value >= 0 ? xScale(0) : xScale(d.point.value))
+        .attr('y', d => yScale(d.point.categoryCode)!)
+        .attr('width', d => Math.abs(xScale(d.point.value) - xScale(0)))
         .attr('height', yScale.bandwidth())
         .attr('fill', config.accessibilityMode ? getPatternFillUrl(si) : color)
         .attr('stroke', theme.colorBorder)
@@ -153,14 +153,14 @@ export function createBarChart(chartConfig: BarChartConfig): BarChartInstance {
       const yScale = ctx.yScale as ScaleLinear<number, number>;
 
       seriesGroup
-        .selectAll<SVGRectElement, BarPoint>('rect')
+        .selectAll<SVGRectElement, IndexedBarPoint>('rect')
         .data(nonNullPoints)
         .join('rect')
         .attr('class', 'jsc-bar')
-        .attr('x', d => xScale(d.categoryCode)!)
-        .attr('y', d => d.value >= 0 ? yScale(d.value) : yScale(0))
+        .attr('x', d => xScale(d.point.categoryCode)!)
+        .attr('y', d => d.point.value >= 0 ? yScale(d.point.value) : yScale(0))
         .attr('width', xScale.bandwidth())
-        .attr('height', d => Math.abs(yScale(0) - yScale(d.value)))
+        .attr('height', d => Math.abs(yScale(0) - yScale(d.point.value)))
         .attr('fill', config.accessibilityMode ? getPatternFillUrl(si) : color)
         .attr('stroke', theme.colorBorder)
         .attr('stroke-width', '1')
@@ -168,16 +168,16 @@ export function createBarChart(chartConfig: BarChartConfig): BarChartInstance {
     }
 
     // Collect elements for interactions
-    const rects = seriesGroup.selectAll<SVGRectElement, BarPoint>('rect').nodes();
+    const rects = seriesGroup.selectAll<SVGRectElement, IndexedBarPoint>('rect').nodes();
     for (let pi = 0; pi < nonNullPoints.length; pi++) {
-      const point = nonNullPoints[pi];
+      const { point, pointIndex } = nonNullPoints[pi];
       const rectEl = rects[pi];
       if (!rectEl) continue;
 
       elements.push({
         element: rectEl,
         seriesIndex: si,
-        pointIndex: series.points.indexOf(point),
+        pointIndex,
         pointKey: point.categoryCode,
         category: point.label,
         seriesName: series.name,

@@ -35,6 +35,7 @@ beforeEach(() => {
   document.body.appendChild(container);
 });
 afterEach(() => {
+  jest.restoreAllMocks();
   container.remove();
 });
 
@@ -101,6 +102,17 @@ describe('createPyramidChart', () => {
     // right series has 1 null → 2 rects; left has 0 nulls → 3 rects
     const allBars = container.querySelectorAll('.jsc-bar');
     expect(allBars).toHaveLength(5);
+  });
+
+  it('collects non-null points without rescanning source arrays', () => {
+    const leftIndexOfSpy = jest.spyOn(pyramidData.leftSeries.points, 'indexOf');
+    const rightIndexOfSpy = jest.spyOn(pyramidData.rightSeries.points, 'indexOf');
+
+    createPyramidChart({ container, data: pyramidData, config: defaultConfig });
+
+    expect(leftIndexOfSpy).not.toHaveBeenCalled();
+    expect(rightIndexOfSpy).not.toHaveBeenCalled();
+    expect(container.querySelectorAll('.jsc-bar')).toHaveLength(5);
   });
 
   it('makes the first point of the first series the initial tab stop', () => {

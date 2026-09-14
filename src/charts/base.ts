@@ -1250,6 +1250,7 @@ export class ChartScaffold {
   }
 
   render(): ScaffoldRenderContext {
+    const focusedLegendIndex = this.legend?.getFocusedItemIndex() ?? null;
     this.theme = resolveTheme(this.container, this.config.theme);
     // colorFocusRing is consumed via var(--jsc-color-focus-ring) in injected <style>
     // elements (bindInteractions.ts, legend.ts). Only set the inline property when the
@@ -1326,6 +1327,10 @@ export class ChartScaffold {
 
     if (this.renderCallback !== null) {
       this.renderCallback(context);
+    }
+
+    if (focusedLegendIndex !== null) {
+      activeLegend?.focusItem(focusedLegendIndex);
     }
 
     this.textMetricFingerprint = this.captureTextMetricFingerprint();

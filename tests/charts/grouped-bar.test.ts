@@ -96,6 +96,7 @@ beforeEach(() => {
   document.body.appendChild(container);
 });
 afterEach(() => {
+  jest.restoreAllMocks();
   container.remove();
 });
 
@@ -138,6 +139,19 @@ describe('createGroupedBarChart', () => {
     // Series A: 2 non-null (cat1, cat3), Series B: 2 non-null (cat1, cat2) = 4 total
     const rects = container.querySelectorAll('.jsc-bar');
     expect(rects).toHaveLength(4);
+  });
+
+  it.each([
+    ['vertical', undefined],
+    ['horizontal', 'groupedHorizontalBar'],
+  ] as const)('collects %s points without rescanning source arrays', (_orientation, chartType) => {
+    const indexOfSpies = dataWithNull.series.map(series => jest.spyOn(series.points, 'indexOf'));
+
+    createGroupedBarChart({ container, data: dataWithNull, config: defaultConfig, chartType });
+
+    for (const indexOfSpy of indexOfSpies) {
+      expect(indexOfSpy).not.toHaveBeenCalled();
+    }
   });
 
   it('horizontal grouped bar creates rects', () => {
