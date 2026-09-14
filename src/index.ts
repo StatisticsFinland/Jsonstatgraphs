@@ -39,7 +39,7 @@ export type {
   GeoJsonFeatureCollection,
 } from './types';
 
-import { buildHeader } from './data/header-builder';
+import { buildHeader, buildSubtitle } from './data/header-builder';
 export { getSeriesColor } from './theme/palette';
 
 // Internal imports
@@ -945,6 +945,11 @@ export function createChart(
       } else if (ds.label) {
         resolvedConfig.title = ds.label;
       }
+    }
+    if (resolvedConfig.showHeader && resolvedConfig.subtitle === undefined) {
+      const selectableDimensionCodes = new Set(Object.keys(activeCategoryCodes));
+      const autoSubtitle = buildSubtitle(dimMeta, selectableDimensionCodes, activeCategoryCodes);
+      if (autoSubtitle) resolvedConfig.subtitle = autoSubtitle;
     }
 
     // Auto-populate footer from dataset metadata
