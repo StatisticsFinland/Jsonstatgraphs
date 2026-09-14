@@ -57,6 +57,16 @@ describe('Legend', () => {
     expect(container.querySelector('.jsc-legend')).not.toBeNull();
   });
 
+  it('identifies the interactive series controls as a toolbar', () => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    new Legend(container, seriesNames, mockTheme);
+
+    const toolbar = container.querySelector('.jsc-legend') as HTMLDivElement;
+    expect(toolbar.getAttribute('role')).toBe('toolbar');
+    expect(toolbar.getAttribute('aria-label')).toBe('Series controls');
+  });
+
   it('render() creates buttons for each series', () => {
     container = document.createElement('div');
     document.body.appendChild(container);
@@ -247,6 +257,82 @@ describe('Legend', () => {
     const focusedEl = document.activeElement as HTMLElement;
     const buttons = container.querySelectorAll('.jsc-legend-item');
     expect(focusedEl).toBe(buttons[1]);
+  });
+
+  it('uses a roving tab stop for legend buttons', () => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    const legend = new Legend(container, seriesNames, mockTheme);
+    legend.render();
+
+    const buttons = container.querySelectorAll('.jsc-legend-item');
+    expect(Array.from(buttons).map(button => (button as HTMLButtonElement).tabIndex)).toEqual([0, -1, -1]);
+  });
+
+  it('moves focus between legend buttons with horizontal arrow keys', () => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    const legend = new Legend(container, seriesNames, mockTheme);
+    legend.render();
+
+    const buttons = container.querySelectorAll('.jsc-legend-item') as NodeListOf<HTMLButtonElement>;
+    buttons[0].focus();
+    const rightEvent = new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true });
+    buttons[0].dispatchEvent(rightEvent);
+
+    expect(rightEvent.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(buttons[1]);
+    expect(Array.from(buttons).map(button => button.tabIndex)).toEqual([-1, 0, -1]);
+
+    const leftEvent = new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true, cancelable: true });
+    buttons[1].dispatchEvent(leftEvent);
+
+    expect(leftEvent.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(buttons[0]);
+  });
+
+  it('wraps horizontal arrow navigation at both ends', () => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    const legend = new Legend(container, seriesNames, mockTheme);
+    legend.render();
+
+    const buttons = container.querySelectorAll('.jsc-legend-item') as NodeListOf<HTMLButtonElement>;
+    buttons[0].focus();
+    buttons[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+    expect(document.activeElement).toBe(buttons[2]);
+
+    buttons[2].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    expect(document.activeElement).toBe(buttons[0]);
+  });
+
+  it('does not intercept Tab navigation', () => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    const legend = new Legend(container, seriesNames, mockTheme);
+    legend.render();
+
+    const button = container.querySelector('.jsc-legend-item') as HTMLButtonElement;
+    const tabEvent = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+    button.dispatchEvent(tabEvent);
+
+    expect(tabEvent.defaultPrevented).toBe(false);
+  });
+
+  it('keeps the focused item and tab stop after chart state re-renders the legend', () => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    const legend = new Legend(container, seriesNames, mockTheme);
+    legend.render();
+
+    let button = container.querySelectorAll('.jsc-legend-item')[1] as HTMLButtonElement;
+    button.focus();
+    legend.setItemStates([false, true, true]);
+
+    button = container.querySelectorAll('.jsc-legend-item')[1] as HTMLButtonElement;
+    expect(document.activeElement).toBe(button);
+    expect(button.tabIndex).toBe(0);
+    expect((container.querySelectorAll('.jsc-legend-item')[0] as HTMLButtonElement).tabIndex).toBe(-1);
   });
 
   it('renders line marker symbol in swatch when accessibility mode is enabled for line chart', () => {

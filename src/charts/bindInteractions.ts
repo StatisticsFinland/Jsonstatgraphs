@@ -1,6 +1,6 @@
 import { ResolvedTheme, ChartData } from '../types';
 import { Tooltip, TooltipData } from '../interaction/tooltip';
-import { KeyboardNavigator, FocusableElement, PointNavigationAxis } from '../interaction/keyboard';
+import { KeyboardNavigator, FocusableElement } from '../interaction/keyboard';
 import { applyDataPointAttributes } from '../a11y/aria';
 
 export interface DataElementInfo {
@@ -9,9 +9,6 @@ export interface DataElementInfo {
   pointIndex: number;
   /** Stable identity (e.g. category code) used to keep focus on the same datapoint across redraws, even if its positional index shifts. */
   pointKey?: string;
-  navigationGroupIndex?: number;
-  navigationPointIndex?: number;
-  navigationPointKey?: string;
   category: string;
   seriesName: string;
   value: number | null;
@@ -30,7 +27,6 @@ export interface BindInteractionsConfig {
   chartData?: ChartData;
   ariaLabel?: string;
   caption?: string;
-  pointAxis?: PointNavigationAxis;
 }
 
 export interface BoundInteractions {
@@ -126,10 +122,10 @@ function formatTooltipValue(
 
 export function bindInteractions(config: BindInteractionsConfig): BoundInteractions {
   ensureFocusStyles();
-  const { container, elements, theme, locale, chartData, pointAxis } = config;
+  const { container, elements, theme, locale, chartData } = config;
 
   const tooltip = new Tooltip(container, theme);
-  const keyboard = new KeyboardNavigator(container, pointAxis);
+  const keyboard = new KeyboardNavigator(container);
 
   // AbortController lets us remove all listeners in one shot on destroy()
   const controller = new AbortController();
@@ -262,18 +258,13 @@ export function bindInteractions(config: BindInteractionsConfig): BoundInteracti
     }
   }, { signal });
 
-  // Group elements by series for keyboard navigator. Points are sorted (not
-  // indexed) by pointIndex so gaps left by filtered-out values (e.g. null
-  // segments) never leave sparse array holes for the navigator to dereference.
+  // Group elements by dataset series for keyboard navigation. Points are sorted
+  // (not indexed) by pointIndex so null values do not leave sparse array holes.
   const bySeriesIndex = new Map<number, FocusableElement[]>();
   for (const info of elements) {
-    const seriesIndex = info.navigationGroupIndex ?? info.seriesIndex;
-    const pointIndex = info.navigationPointIndex ?? info.pointIndex;
-    const pointKey = info.navigationPointKey ?? info.pointKey;
-    const { element } = info;
-    const series = bySeriesIndex.get(seriesIndex) ?? [];
-    series.push({ element, seriesIndex, pointIndex, pointKey });
-    bySeriesIndex.set(seriesIndex, series);
+    const series = bySeriesIndex.get(info.seriesIndex) ?? [];
+    series.push(info);
+    bySeriesIndex.set(info.seriesIndex, series);
   }
   const compactGrouped = Array.from(bySeriesIndex.entries())
     .sort(([a], [b]) => a - b)

@@ -7,6 +7,7 @@ import { applyChartAriaAttributes, applySeriesGroupAttributes } from '../a11y/ar
 import { getSeriesColor } from '../theme/palette';
 import { ensureDefs, getPatternFillUrl, injectPatternDefs } from '../a11y/patterns';
 import { captureChartFocusBeforeRedraw } from '../interaction/keyboard';
+import { collectIndexedNonNullPoints } from './point-collection';
 
 export interface GroupedBarChartConfig {
   container: HTMLElement;
@@ -66,7 +67,6 @@ export function createGroupedBarChart(chartConfig: GroupedBarChartConfig): Group
       theme: lastTheme!,
       locale: config.locale,
       chartData: visibleData,
-      pointAxis: resolvedChartType === 'groupedHorizontalBar' ? 'vertical' : 'horizontal',
       ariaLabel: config.ariaLabel,
       caption: config.title ?? config.ariaLabel,
     });
@@ -95,7 +95,6 @@ export function createGroupedBarChart(chartConfig: GroupedBarChartConfig): Group
     const plotAreaGroup = svg.select<SVGGElement>('.jsc-plot-area');
     const interactionGroup = plotAreaGroup.append('g');
     const elements: DataElementInfo[] = [];
-    const categoryIndexByCode = new Map(data.categories.map((code, index) => [code, index]));
 
     if (config.accessibilityMode) {
       const defs = ensureDefs(svg);
@@ -108,6 +107,7 @@ export function createGroupedBarChart(chartConfig: GroupedBarChartConfig): Group
       .map(s => s.name);
 
     type BarPoint = { value: number; categoryCode: string; label: string };
+    type IndexedBarPoint = { point: BarPoint; pointIndex: number };
 
     if (resolvedChartType === 'groupedHorizontalBar') {
       const xScale = ctx.xScale as ScaleLinear<number, number>;
@@ -130,38 +130,33 @@ export function createGroupedBarChart(chartConfig: GroupedBarChartConfig): Group
         const seriesGroupEl = seriesGroup.node() as SVGGElement;
         applySeriesGroupAttributes(seriesGroupEl, series.name, si, config.locale);
 
-        const nonNullPoints = series.points.filter(
-          (p): p is BarPoint => p.value !== null
-        );
+        const nonNullPoints: IndexedBarPoint[] = collectIndexedNonNullPoints(series.points);
 
         seriesGroup
-          .selectAll<SVGRectElement, BarPoint>('rect')
+          .selectAll<SVGRectElement, IndexedBarPoint>('rect')
           .data(nonNullPoints)
           .join('rect')
           .attr('class', 'jsc-bar')
-          .attr('x', d => d.value >= 0 ? xScale(0) : xScale(d.value))
-          .attr('y', d => yScale(d.categoryCode)! + innerScale(series.name)!)
-          .attr('width', d => Math.abs(xScale(d.value) - xScale(0)))
+          .attr('x', d => d.point.value >= 0 ? xScale(0) : xScale(d.point.value))
+          .attr('y', d => yScale(d.point.categoryCode)! + innerScale(series.name)!)
+          .attr('width', d => Math.abs(xScale(d.point.value) - xScale(0)))
           .attr('height', innerScale.bandwidth())
           .attr('fill', config.accessibilityMode ? getPatternFillUrl(si) : color)
           .attr('stroke', theme.colorBorder)
           .attr('stroke-width', '1')
           .attr('tabindex', '0');
 
-        const rects = seriesGroup.selectAll<SVGRectElement, BarPoint>('rect').nodes();
+        const rects = seriesGroup.selectAll<SVGRectElement, IndexedBarPoint>('rect').nodes();
         for (let pi = 0; pi < nonNullPoints.length; pi++) {
-          const point = nonNullPoints[pi];
+          const { point, pointIndex } = nonNullPoints[pi];
           const rectEl = rects[pi];
           if (!rectEl) continue;
 
           elements.push({
             element: rectEl,
             seriesIndex: si,
-            pointIndex: pi,
+            pointIndex,
             pointKey: point.categoryCode,
-            navigationGroupIndex: categoryIndexByCode.get(point.categoryCode),
-            navigationPointIndex: si,
-            navigationPointKey: `${point.categoryCode}:${series.code}`,
             category: point.label,
             seriesName: series.name,
             value: point.value,
@@ -191,38 +186,33 @@ export function createGroupedBarChart(chartConfig: GroupedBarChartConfig): Group
         const seriesGroupEl = seriesGroup.node() as SVGGElement;
         applySeriesGroupAttributes(seriesGroupEl, series.name, si, config.locale);
 
-        const nonNullPoints = series.points.filter(
-          (p): p is BarPoint => p.value !== null
-        );
+        const nonNullPoints: IndexedBarPoint[] = collectIndexedNonNullPoints(series.points);
 
         seriesGroup
-          .selectAll<SVGRectElement, BarPoint>('rect')
+          .selectAll<SVGRectElement, IndexedBarPoint>('rect')
           .data(nonNullPoints)
           .join('rect')
           .attr('class', 'jsc-bar')
-          .attr('x', d => xScale(d.categoryCode)! + innerScale(series.name)!)
-          .attr('y', d => d.value >= 0 ? yScale(d.value) : yScale(0))
+          .attr('x', d => xScale(d.point.categoryCode)! + innerScale(series.name)!)
+          .attr('y', d => d.point.value >= 0 ? yScale(d.point.value) : yScale(0))
           .attr('width', innerScale.bandwidth())
-          .attr('height', d => Math.abs(yScale(0) - yScale(d.value)))
+          .attr('height', d => Math.abs(yScale(0) - yScale(d.point.value)))
           .attr('fill', config.accessibilityMode ? getPatternFillUrl(si) : color)
           .attr('stroke', theme.colorBorder)
           .attr('stroke-width', '1')
           .attr('tabindex', '0');
 
-        const rects = seriesGroup.selectAll<SVGRectElement, BarPoint>('rect').nodes();
+        const rects = seriesGroup.selectAll<SVGRectElement, IndexedBarPoint>('rect').nodes();
         for (let pi = 0; pi < nonNullPoints.length; pi++) {
-          const point = nonNullPoints[pi];
+          const { point, pointIndex } = nonNullPoints[pi];
           const rectEl = rects[pi];
           if (!rectEl) continue;
 
           elements.push({
             element: rectEl,
             seriesIndex: si,
-            pointIndex: pi,
+            pointIndex,
             pointKey: point.categoryCode,
-            navigationGroupIndex: categoryIndexByCode.get(point.categoryCode),
-            navigationPointIndex: si,
-            navigationPointKey: `${point.categoryCode}:${series.code}`,
             category: point.label,
             seriesName: series.name,
             value: point.value,

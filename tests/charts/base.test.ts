@@ -318,6 +318,28 @@ describe('ChartScaffold', () => {
     expect(legends).toHaveLength(1);
   });
 
+  it('preserves the focused legend item when update replaces the legend', () => {
+    const container = createContainer();
+    const config = createScaffoldConfig({
+      container,
+      seriesCount: 3,
+      seriesNames: ['A', 'B', 'C'],
+      config: { showLegend: true },
+    });
+    const scaffold = new ChartScaffold(config);
+    scaffold.render();
+
+    const originalButtons = container.querySelectorAll<HTMLButtonElement>('.jsc-legend-item');
+    originalButtons[1].focus();
+
+    scaffold.update(config);
+
+    const updatedButtons = container.querySelectorAll<HTMLButtonElement>('.jsc-legend-item');
+    expect(updatedButtons[1]).not.toBe(originalButtons[1]);
+    expect(document.activeElement).toBe(updatedButtons[1]);
+    expect(Array.from(updatedButtons).map(button => button.tabIndex)).toEqual([-1, 0, -1]);
+  });
+
   it('render() renders footer items', () => {
     const scaffold = new ChartScaffold(
       createScaffoldConfig({

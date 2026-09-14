@@ -100,7 +100,7 @@ describe('createStackedBarChart', () => {
     expect(rects).toHaveLength(5);
   });
 
-  it('navigates between segments within a horizontal stack', () => {
+  it('navigates to the next data point within a horizontal series', () => {
     createStackedBarChart({
       container,
       data: twoSeriesData,
@@ -108,7 +108,7 @@ describe('createStackedBarChart', () => {
       chartType: 'stackedHorizontalBar',
     });
     const firstSegment = container.querySelector<SVGRectElement>('.jsc-series-0 .jsc-bar');
-    const secondSegment = container.querySelector<SVGRectElement>('.jsc-series-1 .jsc-bar');
+    const nextPoint = container.querySelectorAll<SVGRectElement>('.jsc-series-0 .jsc-bar')[1];
 
     firstSegment?.focus();
     firstSegment?.dispatchEvent(new KeyboardEvent('keydown', {
@@ -117,10 +117,10 @@ describe('createStackedBarChart', () => {
       cancelable: true,
     }));
 
-    expect(document.activeElement).toBe(secondSegment);
+    expect(document.activeElement).toBe(nextPoint);
   });
 
-  it('navigates vertical stack segments in visual top-to-bottom order', () => {
+  it('moves backward and forward through vertical stack data points', () => {
     createStackedBarChart({
       container,
       data: twoSeriesData,
@@ -128,22 +128,22 @@ describe('createStackedBarChart', () => {
       chartType: 'stackedVerticalBar',
     });
     const lowerSegment = container.querySelector<SVGRectElement>('.jsc-series-0 .jsc-bar');
-    const upperSegment = container.querySelector<SVGRectElement>('.jsc-series-1 .jsc-bar');
+    const nextSegment = container.querySelectorAll<SVGRectElement>('.jsc-series-0 .jsc-bar')[1];
 
-    upperSegment?.focus();
-    upperSegment?.dispatchEvent(new KeyboardEvent('keydown', {
+    lowerSegment?.focus();
+    lowerSegment?.dispatchEvent(new KeyboardEvent('keydown', {
       key: 'ArrowDown',
       bubbles: true,
       cancelable: true,
     }));
-    expect(document.activeElement).toBe(lowerSegment);
+    expect(document.activeElement).toBe(nextSegment);
 
-    lowerSegment?.dispatchEvent(new KeyboardEvent('keydown', {
+    nextSegment?.dispatchEvent(new KeyboardEvent('keydown', {
       key: 'ArrowUp',
       bubbles: true,
       cancelable: true,
     }));
-    expect(document.activeElement).toBe(upperSegment);
+    expect(document.activeElement).toBe(lowerSegment);
   });
 
   it('percent vertical: draws rects and uses 100 as value range upper bound', () => {
@@ -228,23 +228,22 @@ describe('createStackedBarChart', () => {
     }).not.toThrow();
 
     const agricultureRects = container.querySelectorAll('.jsc-series-0 .jsc-bar');
-    const industryRects = container.querySelectorAll('.jsc-series-1 .jsc-bar');
     expect(agricultureRects).toHaveLength(2);
 
-    // The missing segment is skipped while navigation stays in the 2020 stack.
-    (industryRects[0] as SVGElement).focus();
+    // ArrowDown skips the missing value to the next rendered data point.
+    (agricultureRects[0] as SVGElement).focus();
     expect(() => {
-      industryRects[0].dispatchEvent(
+      agricultureRects[0].dispatchEvent(
         new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }),
       );
     }).not.toThrow();
-    expect(document.activeElement?.getAttribute('aria-label')).toBe('2020, Agriculture: 10');
-
-    (industryRects[2] as SVGElement).focus();
-    industryRects[2].dispatchEvent(
-      new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }),
-    );
     expect(document.activeElement?.getAttribute('aria-label')).toBe('2022, Agriculture: 30');
+
+    (agricultureRects[1] as SVGElement).focus();
+    agricultureRects[1].dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true, cancelable: true }),
+    );
+    expect(document.activeElement?.getAttribute('aria-label')).toBe('2020, Agriculture: 10');
   });
 
 

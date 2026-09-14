@@ -55,6 +55,7 @@ beforeEach(() => {
   document.body.appendChild(container);
 });
 afterEach(() => {
+  jest.restoreAllMocks();
   container.remove();
 });
 
@@ -76,6 +77,23 @@ describe('createBarChart', () => {
     const rects = container.querySelectorAll('.jsc-bar');
     // 2 non-null out of 4 points
     expect(rects).toHaveLength(2);
+  });
+
+  it('collects non-null points without rescanning and preserves navigation order', () => {
+    const indexOfSpy = jest.spyOn(dataWithNull.series[0].points, 'indexOf');
+
+    createBarChart({ container, data: dataWithNull, config: defaultConfig });
+
+    expect(indexOfSpy).not.toHaveBeenCalled();
+    const rects = container.querySelectorAll<SVGRectElement>('.jsc-bar');
+    rects[0].focus();
+    rects[0].dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'ArrowRight',
+      bubbles: true,
+      cancelable: true,
+    }));
+    expect(document.activeElement).toBe(rects[1]);
+    expect(document.activeElement?.getAttribute('aria-label')).toBe('Q3, 80');
   });
 
   it('horizontal bar chart creates rects', () => {
