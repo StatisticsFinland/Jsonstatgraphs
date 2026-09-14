@@ -1,4 +1,5 @@
 import { ChartType, ZoneConfig, ZoneType } from '../types';
+import { PIE_CALLOUT_MIN_PLOT_WIDTH } from '../charts/pie';
 
 export interface CreateZonesOptions {
   chartType: ChartType;
@@ -8,6 +9,7 @@ export interface CreateZonesOptions {
   hasFooterContent?: boolean;
   hasBurgerMenu?: boolean;
   hasHeaderContent?: boolean;
+  containerWidth?: number;
 }
 
 export const ZONE_PRIORITIES: Record<ZoneType, number> = {
@@ -53,11 +55,12 @@ export function applyMeasuredSizes(
 }
 
 export function createZones(options: CreateZonesOptions): ZoneConfig[] {
-  const { chartType, showHeader, showLegend, seriesCount, hasBurgerMenu, hasHeaderContent } = options;
+  const { chartType, showHeader, showLegend, seriesCount, hasBurgerMenu, hasHeaderContent, containerWidth } = options;
 
   const isPie = chartType === 'pie';
   const isMap = chartType === 'map';
   const isHorizontal = HORIZONTAL_CHART_TYPES.has(chartType);
+  const isNarrowPie = isPie && (containerWidth ?? Number.POSITIVE_INFINITY) < PIE_CALLOUT_MIN_PLOT_WIDTH;
 
   const yAxisLabelsPreferred = isHorizontal ? 100 : 60;
   const xAxisLabelsPreferred = isHorizontal ? 30 : 40;
@@ -114,7 +117,7 @@ export function createZones(options: CreateZonesOptions): ZoneConfig[] {
     },
     {
       type: ZoneType.Legend,
-      visible: (isMap || isPie) ? showLegend : (showLegend && seriesCount > 1),
+      visible: isPie ? (showLegend && isNarrowPie) : (isMap ? showLegend : (showLegend && seriesCount > 1)),
       minSize: 0,
       preferredSize: 30,
       priority: ZONE_PRIORITIES[ZoneType.Legend],
