@@ -93,6 +93,30 @@ describe('createPieChart', () => {
       .toEqual(['Helsinki', 'Tampere', 'Turku']);
   });
 
+  it('reserves callout space for enlarged labels', () => {
+    Object.defineProperty(container, 'clientWidth', { value: 1200, configurable: true });
+    const dataWithLongLabel: ChartData = {
+      ...pieData,
+      series: [{
+        ...pieData.series[0],
+        points: pieData.series[0].points.map((point, index) => index === 0
+          ? { ...point, label: 'Long label for testing' }
+          : point),
+      }],
+    };
+    createPieChart({
+      container,
+      data: dataWithLongLabel,
+      config: { theme: { fontSizeTick: '24px', letterSpacing: '0.12em' } },
+    });
+
+    const callout = Array.from(container.querySelectorAll<SVGTextElement>('.jsc-pie-callout-label'))
+      .find(label => label.textContent === 'Long label for te...');
+
+    expect(callout).toBeDefined();
+    expect(Math.abs(Number(callout!.getAttribute('x')))).toBeGreaterThan(230);
+  });
+
   it('null values are excluded from slices', () => {
     const dataWithMoreNulls: ChartData = {
       series: [{

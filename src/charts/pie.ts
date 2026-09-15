@@ -7,6 +7,7 @@ import { getSeriesColor } from '../theme/palette';
 import { ensureDefs, getPatternFillUrl, injectPatternDefs } from '../a11y/patterns';
 import { formatNumber } from '../locale/number';
 import { captureChartFocusBeforeRedraw } from '../interaction/keyboard';
+import { createSvgTextMeasurement } from '../layout/text-measurement';
 
 export interface PieChartConfig {
   container: HTMLElement;
@@ -23,6 +24,7 @@ const PIE_MARGIN = 10;
 const PIE_LABEL_MAX_CHARS = 20;
 const PIE_LABEL_CHAR_WIDTH = 8;
 const PIE_LABEL_LINE_GAP = 12;
+const PIE_CALLOUT_GAP = 16;
 export const PIE_CALLOUT_MIN_PLOT_WIDTH = 480;
 
 function truncatePieLabel(label: string): string {
@@ -111,17 +113,26 @@ export function createPieChart(chartConfig: PieChartConfig): PieChartInstance {
 
     const cx = plotArea.width / 2;
     const cy = plotArea.height / 2;
-    const renderCallouts = plotArea.width >= PIE_CALLOUT_MIN_PLOT_WIDTH;
-    const labelWidth = renderCallouts
-      ? Math.min(
-        PIE_LABEL_MAX_CHARS * PIE_LABEL_CHAR_WIDTH,
-        Math.max(0, (plotArea.width - 120) / 2),
-      )
-      : 0;
-    const labelGap = renderCallouts ? 16 : 0;
+    const labelMeasurement = createSvgTextMeasurement(svg, {
+      parentClass: 'jsc-pie-label-measurement',
+      fontFamily: theme.fontFamily,
+      fontSize: theme.fontSizeTick,
+      fallbackCharWidth: PIE_LABEL_CHAR_WIDTH,
+    });
+    const labelWidth = Math.max(
+      0,
+      ...visiblePoints.map(point => labelMeasurement.measureText(truncatePieLabel(point.label))),
+    );
+    labelMeasurement.destroy();
+    const renderCallouts = plotArea.width >= Math.max(
+      PIE_CALLOUT_MIN_PLOT_WIDTH,
+      labelWidth * 2 + PIE_CALLOUT_GAP * 2 + 120,
+    );
+    const labelGap = renderCallouts ? PIE_CALLOUT_GAP : 0;
+    const reservedLabelWidth = renderCallouts ? labelWidth : 0;
     const radius = Math.max(0, Math.min(
       plotArea.height / 2 - PIE_MARGIN,
-      (plotArea.width - (labelWidth * 2) - (labelGap * 2)) / 2,
+      (plotArea.width - (reservedLabelWidth * 2) - (labelGap * 2)) / 2,
     ));
 
     const pieGen = d3Pie<DataPoint>()
@@ -182,15 +193,17 @@ export function createPieChart(chartConfig: PieChartConfig): PieChartInstance {
     lastAllElements = elements;
     rebuildInteractions();
 
-  // On narrow plots the interactive legend provides labels without constraining the pie.
-  if (!renderCallouts) return;
+    // On narrow plots the interactive legend provides labels without constraining the pie.
+    if (!renderCallouts) {
+      return;
+    }
 
     const calloutGroup = svg
       .append('g')
       .attr('class', 'jsc-pie-callouts')
       .attr('aria-hidden', 'true')
       .attr('transform', `translate(${plotArea.x},${plotArea.y})`);
-    const minLabelGap = 16;
+    const minLabelGap = PIE_CALLOUT_GAP;
     const sideItems = [
       { side: -1, items: pieData.map(arc => ({ arc })).filter(item => Math.cos((item.arc.startAngle + item.arc.endAngle) / 2 - Math.PI / 2) < 0) },
       { side: 1, items: pieData.map(arc => ({ arc })).filter(item => Math.cos((item.arc.startAngle + item.arc.endAngle) / 2 - Math.PI / 2) >= 0) },
