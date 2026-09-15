@@ -64,6 +64,7 @@ const chart = createChart(container, dataset, {
   chartType: 'line',           // Override auto-selected chart type
   locale: 'fi',                // Locale for formatting (en, fi, sv)
   title: 'Custom Title',       // Override auto-generated title
+  subtitle: 'By region',       // Override auto-generated selection subtitle
   height: 400,                 // Container height in pixels
   showHeader: true,            // Show auto-generated header (default: true)
   showUnit: false,             // Also show the dataset unit in the footer (default: false)
@@ -101,7 +102,7 @@ const chart = createChart(container, dataset, {
 | `chartType` | `ChartType` | Override the auto-selected chart type |
 | `locale` | `string` | BCP 47 locale used for UI strings and numeric values in axes, labels, tooltips, maps, tables, screen-reader output, and CSV exports |
 | `title` | `string` | Override the auto-generated title |
-| `subtitle` | `string` | Subtitle displayed below the title |
+| `subtitle` | `string` | Subtitle displayed below the title; when omitted, generated from exactly-one selected categories |
 | `height` | `number` | Container height in pixels |
 | `showHeader` | `boolean` | Show auto-generated header (default: `true`) |
 | `showUnit` | `boolean` | Add the dataset unit to the footer (default: `false`; units remain on the y-axis) |
@@ -187,6 +188,8 @@ Resolution precedence is:
 An explicitly empty selection uses a non-empty default when available; otherwise it is rejected. Unknown dimensions, unknown category codes, duplicate layout dimensions, and dimensions assigned to both rows and columns are also rejected at the data-source boundary. When a chart type is explicitly chosen, the library trusts that choice after structural dataset validation; automatic chart selection continues to choose only applicable chart types.
 
 Selectable filtering is supported by categorical charts, tables, maps, scatter plots, pyramids, and key figures. During automatic chart selection, the scatter metric/content dimension and pyramid split dimension cannot be selectable because those dimensions define the renderer's required structure. Selected categories are reflected in automatic titles, map geometry requests, and chart-type switches.
+
+When `subtitle` is omitted, the chart automatically builds a subtitle from selectable dimensions, except for key figures, which have no subtitle presentation. A dimension contributes its localized selected category name only when exactly one category is active; dimensions with no selection or multiple selections are omitted. Values are joined in selectable-dimension order with ` | `. Category names are read from dataset metadata and fall back to the category code when a label is unavailable. An explicitly configured `subtitle` always takes precedence for chart types that render subtitles, and generated subtitles are rebuilt when selections change through `chart.update()`.
 
 ## Missing Values
 
