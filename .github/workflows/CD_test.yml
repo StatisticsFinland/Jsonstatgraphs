@@ -1,0 +1,26 @@
+name: Jsonstatgraphs CD (test)
+
+run-name: CD for ${{ github.event.workflow_run.head_branch }}
+
+on:
+  workflow_run:
+    workflows:
+      - "Jsonstatgraphs CI"
+    types:
+      - completed
+    branches:
+      - test
+
+jobs:
+  publish:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    permissions:
+      id-token: write
+      contents: read
+    uses: ./.github/workflows/cd-publish.yml
+    with:
+      environment: test
+      npm-tag: test
+      prerelease-env: t
+      prerelease: true
+      staged-publish: false
