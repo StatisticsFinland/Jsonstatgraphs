@@ -1,4 +1,4 @@
-name: Jsonstatgraphs CD
+name: Jsonstatgraphs CD (dev)
 
 run-name: CD for ${{ github.event.workflow_run.head_branch }}
 
@@ -17,6 +17,7 @@ jobs:
     uses: ./.github/workflows/cd-publish.yml
     with:
       environment: dev
-      npm-tag: d
+      npm-tag: dev
+      prerelease-env: d
       prerelease: true
       staged-publish: false

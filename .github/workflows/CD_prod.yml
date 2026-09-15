@@ -1,4 +1,4 @@
-name: Jsonstatgraphs CD
+name: Jsonstatgraphs CD (prod)
 
 run-name: CD for ${{ github.event.workflow_run.head_branch }}
 
