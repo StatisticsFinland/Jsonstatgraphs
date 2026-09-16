@@ -87,6 +87,11 @@ describe('resolveTheme', () => {
       expect(result.fontSizeTitle).toBe('24px');
     });
 
+    it('overrides letterSpacing', () => {
+      const result = resolveTheme(null, { letterSpacing: '0.12em' });
+      expect(result.letterSpacing).toBe('0.12em');
+    });
+
     it('overrides gridOpacity (numeric)', () => {
       const result = resolveTheme(null, { gridOpacity: 0.5 });
       expect(result.gridOpacity).toBe(0.5);
@@ -157,6 +162,12 @@ describe('resolveTheme', () => {
       const el = makeElement({ '--jsc-font-family': 'monospace' });
       const result = resolveTheme(el);
       expect(result.fontFamily).toBe('monospace');
+    });
+
+    it('reads --jsc-letter-spacing from CSS', () => {
+      const el = makeElement({ '--jsc-letter-spacing': '0.12em' });
+      const result = resolveTheme(el);
+      expect(result.letterSpacing).toBe('0.12em');
     });
 
     it('whitespace-only CSS value falls back to default', () => {
@@ -233,6 +244,14 @@ describe('resolveTheme', () => {
       el.style.setProperty('--jsc-font-family', 'monospace');
       const result = resolveTheme(el, { fontFamily: 'Georgia' });
       expect(result.fontFamily).toBe('Georgia');
+    });
+
+    it('JS letterSpacing wins over CSS --jsc-letter-spacing', () => {
+      const el = document.createElement('div');
+      document.body.appendChild(el);
+      el.style.setProperty('--jsc-letter-spacing', '0.12em');
+      const result = resolveTheme(el, { letterSpacing: '0.08em' });
+      expect(result.letterSpacing).toBe('0.08em');
     });
 
     it('JS gridOpacity wins over CSS --jsc-grid-opacity', () => {

@@ -38,7 +38,6 @@ const MAP_HEADER_HORIZONTAL_PADDING = 20;
 const MAP_HEADER_VERTICAL_PADDING = 12;
 const MAP_HEADER_CONTENT_GAP = 4;
 const MAP_MENU_ONLY_HEADER_HEIGHT = 48;
-const MAP_FOOTER_HORIZONTAL_PADDING = 8;
 
 function getClassificationBreaks(data: MapChartData): MapClassBreak[] {
   return data.classification.method === 'linear' ? [] : data.classification.breaks;
@@ -719,6 +718,7 @@ export function createMapChart(chartConfig: MapChartConfig): MapChartInstance {
 
   function captureTextMetricFingerprint(): string {
     const theme = resolveTheme(container, config.theme);
+    svg.attr('letter-spacing', theme.letterSpacing);
     const sample = 'Accessibility labels 0123456789';
     const measurements = [
       createSvgTextMeasurement(svg, {
@@ -730,10 +730,13 @@ export function createMapChart(chartConfig: MapChartConfig): MapChartInstance {
       }),
       createFooterMeasurement(theme),
     ];
-    const fingerprint = JSON.stringify(measurements.map(measurement => [
-      Math.round(measurement.measureText(sample) * 100) / 100,
-      Math.round(measurement.lineHeight * 100) / 100,
-    ]));
+    const fingerprint = JSON.stringify([
+      theme.letterSpacing,
+      ...measurements.map(measurement => [
+        Math.round(measurement.measureText(sample) * 100) / 100,
+        Math.round(measurement.lineHeight * 100) / 100,
+      ]),
+    ]);
     measurements.forEach(measurement => measurement.destroy());
     return fingerprint;
   }
@@ -753,6 +756,7 @@ export function createMapChart(chartConfig: MapChartConfig): MapChartInstance {
 
   function render(): void {
     const theme = resolveTheme(container, config.theme);
+    svg.attr('letter-spacing', theme.letterSpacing);
 
     captureChartFocusBeforeRedraw(container);
 
@@ -767,7 +771,7 @@ export function createMapChart(chartConfig: MapChartConfig): MapChartInstance {
       const footerMeasurement = createFooterMeasurement(theme);
       footerHeight = measureSvgFooterHeight(
         config.footerItems,
-        Math.max(1, width - MAP_FOOTER_HORIZONTAL_PADDING * 2),
+        Math.max(1, width - MAP_HEADER_HORIZONTAL_PADDING * 2),
         footerMeasurement,
       );
       footerMeasurement.destroy();
@@ -874,10 +878,10 @@ export function createMapChart(chartConfig: MapChartConfig): MapChartInstance {
         footerItems: config.footerItems,
         sourceLink: config.sourceLink,
         theme,
-        x: footerRect.x + MAP_FOOTER_HORIZONTAL_PADDING,
+        x: footerRect.x + MAP_HEADER_HORIZONTAL_PADDING,
         y: footerRect.y,
         lineHeight: footerMeasurement.lineHeight,
-        maxWidth: Math.max(1, footerRect.width - MAP_FOOTER_HORIZONTAL_PADDING * 2),
+        maxWidth: Math.max(1, footerRect.width - MAP_HEADER_HORIZONTAL_PADDING * 2),
         textMetrics: footerMeasurement,
       });
       footerMeasurement.destroy();

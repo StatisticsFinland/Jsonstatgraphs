@@ -119,6 +119,7 @@ function appendLegendToSvg(
       text.setAttribute('fill', itemStyle.color || '#000000');
       text.setAttribute('font-family', labelStyle.fontFamily);
       text.setAttribute('font-size', String(parseFloat(labelStyle.fontSize) || 12));
+      text.setAttribute('letter-spacing', labelStyle.letterSpacing);
       itemGroup.appendChild(text);
 
       if (labelStyle.textDecorationLine.includes('line-through') && labelRect.width > 0) {

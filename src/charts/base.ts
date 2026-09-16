@@ -12,7 +12,7 @@ import { createZones, applyMeasuredSizes } from '../layout/zones';
 import { computeLayout } from '../layout/layout-engine';
 import { formatNumber } from '../locale/number';
 import { getLocaleStrings } from '../locale/strings';
-import { PIE_CALLOUT_MIN_PLOT_WIDTH } from './pie';
+import { getPieCalloutMinimumWidth } from '../layout/pie-callouts';
 import {
   buildCategoricalScales,
   getCategoricalValuePadding,
@@ -39,6 +39,8 @@ type YScale = ScaleLinear<number, number> | ScaleBand<string> | ScalePoint<strin
 const X_AXIS_TICK_SIZE = 8;
 /** Gap (px) between the X-axis tick mark and the label text. */
 const X_AXIS_TICK_LABEL_GAP = 4;
+/** Shared left and right inset for chart headers and footers. */
+const CHART_HORIZONTAL_PADDING = 20;
 /** Estimated width (px) per character when fitting axis labels without DOM measurement. */
 const AXIS_LABEL_CHAR_WIDTH = 8;
 /** Fallback width (px) available to horizontal category labels when their zone is absent. */
@@ -49,6 +51,8 @@ const HORIZONTAL_LABEL_TICK_MARGIN = 16;
 const HORIZONTAL_LABEL_LINE_HEIGHT = 1.4;
 /** Maximum number of wrapped lines shown for a horizontal category label. */
 const HORIZONTAL_LABEL_MAX_LINES = 3;
+/** Minimum visible gap (px) between adjacent numeric tick labels. */
+const NUMERIC_TICK_LABEL_GAP = 8;
 /** Pyramid labels reserve two estimated line heights per visible category. */
 const PYRAMID_LABEL_HEIGHT_MULTIPLIER = 2;
 /** Maximum imbalance allowed between adjacent pyramid label skip intervals. */
@@ -163,7 +167,8 @@ export class ChartScaffold {
     this.svg
       .attr('class', 'jsc-chart')
       .attr('width', '100%')
-      .attr('height', '100%');
+      .attr('height', '100%')
+      .attr('letter-spacing', this.theme.letterSpacing);
 
     this.resizeObserver = new ResizeObserver(() => {
       if (this.debounceTimer !== null) {
@@ -224,6 +229,7 @@ export class ChartScaffold {
         'fontSizeTitle',
         'fontSizeLabel',
         'fontSizeTick',
+        'letterSpacing',
         'fontWeightNormal',
         'fontWeightBold',
       ];
@@ -275,8 +281,7 @@ export class ChartScaffold {
 
     const CHAR_WIDTH = 8;
     const LINE_HEIGHT = 1.25; // em
-    const PADDING = 20; // px per side
-    const maxWidth = headerRect.width - PADDING * 2 - (
+    const maxWidth = headerRect.width - CHART_HORIZONTAL_PADDING * 2 - (
       this.scaffoldConfig.config.burgerMenuVisible ? BURGER_MENU_CLEARANCE : 0
     );
 
@@ -337,7 +342,7 @@ export class ChartScaffold {
     const totalContentHeight = titleBlockHeight + gap + subtitleBlockHeight;
 
     const contentStartY = headerRect.y + (headerRect.height - totalContentHeight) / 2;
-    const contentStartX = headerRect.x + PADDING;
+    const contentStartX = headerRect.x + CHART_HORIZONTAL_PADDING;
 
     if (titleLines.length > 0) {
       const titleEl = headerGroup
@@ -698,8 +703,7 @@ export class ChartScaffold {
     const footerItems = this.scaffoldConfig.config.footerItems;
     if (!footerItems || footerItems.length === 0) return;
 
-    const plotAreaRect = layout.zones.get(ZoneType.PlotArea);
-    const footerX = plotAreaRect ? plotAreaRect.x : footerRect.x;
+    const footerX = footerRect.x + CHART_HORIZONTAL_PADDING;
     const footerMeasurement = createSvgTextMeasurement(this.svg, {
       parentClass: 'jsc-footer',
       textClass: 'jsc-footer-text',
@@ -708,7 +712,7 @@ export class ChartScaffold {
       fallbackCharWidth: 8,
       fallbackLineHeight: Math.ceil((Number.parseFloat(this.theme.fontSizeTick) || 12) * 1.4),
     });
-    const maxWidth = footerRect.x + footerRect.width - footerX;
+    const maxWidth = Math.max(1, footerRect.width - CHART_HORIZONTAL_PADDING * 2);
 
     renderSvgFooter({
       parent: this.svg,
@@ -771,15 +775,48 @@ export class ChartScaffold {
   private measureLegendZone(containerWidth: number): number | undefined {
     const { config, seriesCount, seriesNames } = this.scaffoldConfig;
     const showLegend = config.showLegend ?? true;
-    const isPie = this.scaffoldConfig.chartType === 'pie';
-    const legendVisible = isPie
-      ? showLegend && containerWidth < PIE_CALLOUT_MIN_PLOT_WIDTH
-      : showLegend && seriesCount > 1;
-    if (!legendVisible) return undefined;
-
     const names = (seriesNames && seriesNames.length > 0)
       ? seriesNames
       : Array.from({ length: seriesCount }, (_, i) => `Series ${i + 1}`);
+    const isPie = this.scaffoldConfig.chartType === 'pie';
+    const legendVisible = isPie
+      ? showLegend && this.shouldShowPieLegend(containerWidth, names)
+      : showLegend && seriesCount > 1;
+    if (!legendVisible) return undefined;
+
+    const legend = new Legend(this.container, names, this.theme, {
+      accessibilityMode: this.config.accessibilityMode,
+      chartType: this.scaffoldConfig.chartType,
+      locale: this.config.locale,
+    });
+    const legendEl = this.container.querySelector('.jsc-legend') as HTMLDivElement;
+    legendEl.style.position = 'absolute';
+    legendEl.style.visibility = 'hidden';
+    legendEl.style.pointerEvents = 'none';
+    legendEl.style.width = `${containerWidth}px`;
+    legendEl.style.boxSizing = 'border-box';
+    legend.render();
+    const measuredHeight = legend.getHeight();
+    legend.destroy();
+
+    if (measuredHeight > 0) return Math.ceil(measuredHeight) + 4;
+
+    return this.estimateLegendHeight(names, containerWidth);
+  }
+
+  private shouldShowPieLegend(containerWidth: number, labels: string[]): boolean {
+    const measurement = createSvgTextMeasurement(this.svg, {
+      parentClass: 'jsc-pie-label-measurement',
+      fontFamily: this.theme.fontFamily,
+      fontSize: this.theme.fontSizeTick,
+      fallbackCharWidth: AXIS_LABEL_CHAR_WIDTH,
+    });
+    const minimumWidth = getPieCalloutMinimumWidth(labels, measurement.measureText);
+    measurement.destroy();
+    return containerWidth < minimumWidth;
+  }
+
+  private estimateLegendHeight(names: string[], containerWidth: number): number {
     const labelFontSize = Number.parseFloat(this.theme.fontSizeLabel) || 14;
     const LEGEND_CHAR_WIDTH = Math.ceil(labelFontSize * 0.57); // ~8px at default 14px label font
     const ITEM_PADDING = Math.ceil(labelFontSize * 2.85); // swatch + margins + button padding (~40px at 14px)
@@ -828,8 +865,15 @@ export class ChartScaffold {
   ): Partial<Record<ZoneType, number>> {
     const cfg = this.scaffoldConfig as NumericScaffoldConfig;
     const tickFontSize = Number.parseFloat(this.theme.fontSizeTick) || 12;
-    const CHAR_WIDTH = Math.max(8, tickFontSize * 0.5);
+    const fallbackCharWidth = Math.max(8, tickFontSize * 0.5);
     const measurements: Partial<Record<ZoneType, number>> = {};
+    const axisMeasurement = createSvgTextMeasurement(this.svg, {
+      parentClass: 'jsc-axis-y',
+      fontFamily: this.theme.fontFamily,
+      fontSize: this.theme.fontSizeTick,
+      fallbackCharWidth,
+      fallbackLineHeight: tickFontSize * 1.2,
+    });
 
     // Header zone — same logic as categorical
     measurements[ZoneType.Header] = this.measureHeaderZone(containerWidth);
@@ -846,8 +890,11 @@ export class ChartScaffold {
 
     const estimatedAxisHeight = containerHeight * 0.6;
     const yTicks = getTickPositions(yPadded[0], yPadded[1], estimatedAxisHeight, undefined, this.theme.fontSizeTick, yForceZeroBaseline);
-    const maxYTickLen = yTicks.reduce((max, t) => Math.max(max, formatNumber(t, this.config.locale).length), 0);
-    measurements[ZoneType.YAxisLabels] = maxYTickLen * CHAR_WIDTH + 16;
+    const maxYTickWidth = yTicks.reduce(
+      (max, tick) => Math.max(max, axisMeasurement.measureText(formatNumber(tick, this.config.locale))),
+      0,
+    );
+    measurements[ZoneType.YAxisLabels] = Math.ceil(maxYTickWidth + 16);
 
     // X-axis labels — single line of numeric ticks
     measurements[ZoneType.XAxisLabels] = Math.ceil(tickFontSize * 1.2 + 12);
@@ -858,7 +905,7 @@ export class ChartScaffold {
     const xTicks = getTickPositions(xPadded[0], xPadded[1], estimatedPlotWidth, undefined, this.theme.fontSizeTick, true);
     if (xTicks.length > 0) {
       const lastTickStr = formatNumber(xTicks.at(-1)!, this.config.locale);
-      measurements[ZoneType.RightMargin] = Math.ceil(lastTickStr.length * CHAR_WIDTH / 2);
+      measurements[ZoneType.RightMargin] = Math.ceil(axisMeasurement.measureText(lastTickStr) / 2);
     } else {
       measurements[ZoneType.RightMargin] = 0;
     }
@@ -879,8 +926,10 @@ export class ChartScaffold {
     // Footer zone
     measurements[ZoneType.FooterText] = this.measureFooterZone(
       containerWidth,
-      measurements[ZoneType.YAxisLabels] ?? 0,
+      CHART_HORIZONTAL_PADDING,
     );
+
+    axisMeasurement.destroy();
 
     return measurements;
   }
@@ -984,7 +1033,7 @@ export class ChartScaffold {
     // Footer zone — always stacked
     measurements[ZoneType.FooterText] = this.measureFooterZone(
       containerWidth,
-      measurements[ZoneType.YAxisLabels] ?? 0,
+      CHART_HORIZONTAL_PADDING,
     );
 
     xAxisMeasurement.destroy();
@@ -1102,6 +1151,34 @@ export class ChartScaffold {
     };
   }
 
+  private fitHorizontalNumericTicks(
+    tickValues: number[],
+    xScale: ScaleLinear<number, number>,
+    textMetrics: LabelTextMetrics,
+  ): number[] {
+    if (tickValues.length <= 2) return tickValues;
+
+    const labels = tickValues.map(value => ({
+      value,
+      center: xScale(value),
+      width: textMetrics.measureText(formatNumber(value, this.config.locale)),
+    }));
+    const selected = [labels[0]];
+    const lastLabel = labels.at(-1)!;
+
+    for (const label of labels.slice(1, -1)) {
+      const previous = selected.at(-1)!;
+      const gapFromPrevious = label.center - label.width / 2 - (previous.center + previous.width / 2);
+      const gapToLast = lastLabel.center - lastLabel.width / 2 - (label.center + label.width / 2);
+      if (gapFromPrevious >= NUMERIC_TICK_LABEL_GAP && gapToLast >= NUMERIC_TICK_LABEL_GAP) {
+        selected.push(label);
+      }
+    }
+
+    selected.push(lastLabel);
+    return selected.map(label => label.value);
+  }
+
   private renderCategoricalContent(
     layout: LayoutResult,
     plotAreaRect: ZoneRect,
@@ -1179,9 +1256,17 @@ export class ChartScaffold {
       );
     }
 
+    const renderedTickValues = isHorizontal
+      ? this.fitHorizontalNumericTicks(
+        tickValues,
+        xScale as ScaleLinear<number, number>,
+        axisTextMeasurement,
+      )
+      : tickValues;
+
     this.renderHeader(layout);
     if (this.scaffoldConfig.chartType !== 'pie') {
-      this.renderGrid(isHorizontal, xScale, yScale, plotAreaRect, tickValues);
+      this.renderGrid(isHorizontal, xScale, yScale, plotAreaRect, renderedTickValues);
     }
     this.renderAxes(
       isHorizontal,
@@ -1189,7 +1274,7 @@ export class ChartScaffold {
       yScale,
       layout,
       plotAreaRect,
-      { tickValues, fittedLabels, textMetrics: axisTextMeasurement },
+      { tickValues: renderedTickValues, fittedLabels, textMetrics: axisTextMeasurement },
     );
     axisTextMeasurement.destroy();
     this.renderAxisTitles(isHorizontal, layout);
@@ -1252,6 +1337,7 @@ export class ChartScaffold {
   render(): ScaffoldRenderContext {
     const focusedLegendIndex = this.legend?.getFocusedItemIndex() ?? null;
     this.theme = resolveTheme(this.container, this.config.theme);
+    this.svg.attr('letter-spacing', this.theme.letterSpacing);
     // colorFocusRing is consumed via var(--jsc-color-focus-ring) in injected <style>
     // elements (bindInteractions.ts, legend.ts). Only set the inline property when the
     // user explicitly provides it via JS config, so CSS-only theming remains authoritative.
@@ -1266,6 +1352,10 @@ export class ChartScaffold {
     const width = this.container.clientWidth;
     const height = this.container.clientHeight;
     const isHorizontal = HORIZONTAL_CHART_TYPES.has(this.scaffoldConfig.chartType);
+    const pieNames = this.scaffoldConfig.seriesNames ?? [];
+    const pieLegendVisible = this.scaffoldConfig.chartType === 'pie'
+      && (this.config.showLegend ?? true)
+      && this.shouldShowPieLegend(width, pieNames);
 
     const zones = createZones({
       chartType: this.scaffoldConfig.chartType,
@@ -1277,6 +1367,7 @@ export class ChartScaffold {
       hasHeaderContent: this.scaffoldConfig.config.showHeader !== false && Boolean(
         this.scaffoldConfig.config.title?.trim() || this.scaffoldConfig.config.subtitle?.trim(),
       ),
+      pieLegendVisible,
     });
     const measurements = this.measureZoneSizes(width, height, isHorizontal);
     const measuredZones = applyMeasuredSizes(zones, measurements);

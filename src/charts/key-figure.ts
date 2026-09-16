@@ -34,9 +34,10 @@ function renderKeyFigure(
   const container = document.createElement('div');
   container.className = 'jsc-key-figure';
   container.style.fontFamily = theme.fontFamily;
+  container.style.letterSpacing = theme.letterSpacing;
   container.style.color = theme.colorText;
   container.style.textAlign = 'center';
-  container.style.padding = '24px 16px';
+  container.style.padding = '24px 20px';
   container.style.display = 'flex';
   container.style.flexDirection = 'column';
   container.style.alignItems = 'center';
@@ -102,6 +103,9 @@ function renderKeyFigure(
       footerItems,
       sourceLink: config.sourceLink,
       theme,
+      align: 'left',
+      horizontalPadding: '0',
+      stretch: true,
     });
   }
 
