@@ -3,7 +3,7 @@
   "class": "dataset",
   "id": ["timeperiod_y", "ikaryhma_10_20180101", "contentscode"],
   "label": "12dz -- Deltagande i vuxenutbildning (inkl. arbets- eller yrkesinriktad, personalutbildning samt annan vuxenutbildning än arbetsrelaterad) efter ålder, 1990-2022",
-  "note": ["<A HREF='https://stat.fi/sv/statistik/dokumentation/aku' TARGET=_blank>Dokumentation för statistiken</A>"],
+  "note": ["<A HREF='https://example.org/documentation' TARGET=_blank>Dokumentation för statistiken</A>"],
   "source": "Statistikcentralen, deltagande i vuxenutbildning",
   "updated": "2023-10-06T08:00:00",
   "dimension": {

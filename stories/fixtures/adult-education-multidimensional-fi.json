@@ -3,7 +3,7 @@
   "class": "dataset",
   "id": ["timeperiod_y", "ikaryhma_10_20180101", "contentscode"],
   "label": "12dz -- Aikuiskoulutukseen osallistuminen (ml. työhön tai ammattiin liittyvä, henkilöstökoulutus sekä muu kuin työhön liittyvä aikuiskoulutus) ikäluokittain, 1990-2022",
-  "note": ["<A HREF='https://stat.fi/tilasto/dokumentaatio/aku' TARGET=_blank>Tilaston dokumentaatio</A>"],
+  "note": ["<A HREF='https://example.org/documentation' TARGET=_blank>Tilaston dokumentaatio</A>"],
   "source": "Tilastokeskus, aikuiskoulutukseen osallistuminen",
   "updated": "2023-10-06T08:00:00",
   "dimension": {
