@@ -1,0 +1,34 @@
+{
+  "version": "2.0",
+  "class": "dataset",
+  "id": ["timeperiod_y", "ikaryhma_10_20180101", "contentscode"],
+  "label": "12dz -- Deltagande i vuxenutbildning (inkl. arbets- eller yrkesinriktad, personalutbildning samt annan vuxenutbildning än arbetsrelaterad) efter ålder, 1990-2022",
+  "note": ["<A HREF='https://stat.fi/sv/statistik/dokumentation/aku' TARGET=_blank>Dokumentation för statistiken</A>"],
+  "source": "Statistikcentralen, deltagande i vuxenutbildning",
+  "updated": "2023-10-06T08:00:00",
+  "dimension": {
+    "timeperiod_y": {
+      "label": "År",
+      "category": {
+        "index": ["1990", "1995", "2000", "2006", "2012", "2017", "2022"],
+        "label": { "1990": "1990", "1995": "1995", "2000": "2000", "2006": "2006", "2012": "2012", "2017": "2017", "2022": "2022" }
+      }
+    },
+    "ikaryhma_10_20180101": {
+      "label": "Ålder",
+      "category": { "index": ["SSS"], "label": { "SSS": "Totalt" } }
+    },
+    "contentscode": {
+      "label": "Uppgifter",
+      "category": {
+        "index": ["akuo_lkm"],
+        "label": { "akuo_lkm": "Deltagare i vuxenutbildning, antal" },
+        "note": { "akuo_lkm": ["Deltagare i vuxenutbildning bland befolkningen i åldern 18-64 år.#Med vuxenutbildning avses utbildning som är anordnad och organiserad speciellt för vuxna. Omfattar studier utomlands exkl. år 1990. Fram till 2017 bara sådan utbildning räknas med som man deltagit i sammanlagt minst sex timmar."] },
+        "unit": { "akuo_lkm": { "label": "antal", "decimals": 0 } }
+      }
+    }
+  },
+  "value": [1526457, 1555554, 1754057, 1706728, 1715520, 1584069, 1452840],
+  "size": [7, 1, 1],
+  "role": { "time": ["timeperiod_y"], "metric": ["contentscode"] }
+}
