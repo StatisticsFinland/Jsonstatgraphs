@@ -1,0 +1,34 @@
+{
+  "version": "2.0",
+  "class": "dataset",
+  "id": ["timeperiod_y", "ikaryhma_10_20180101", "contentscode"],
+  "label": "12dz -- Aikuiskoulutukseen osallistuminen (ml. työhön tai ammattiin liittyvä, henkilöstökoulutus sekä muu kuin työhön liittyvä aikuiskoulutus) ikäluokittain, 1990-2022",
+  "note": ["<A HREF='https://example.org/documentation' TARGET=_blank>Tilaston dokumentaatio</A>"],
+  "source": "Tilastokeskus, aikuiskoulutukseen osallistuminen",
+  "updated": "2023-10-06T08:00:00",
+  "dimension": {
+    "timeperiod_y": {
+      "label": "Vuosi",
+      "category": {
+        "index": ["1990", "1995", "2000", "2006", "2012", "2017", "2022"],
+        "label": { "1990": "1990", "1995": "1995", "2000": "2000", "2006": "2006", "2012": "2012", "2017": "2017", "2022": "2022" }
+      }
+    },
+    "ikaryhma_10_20180101": {
+      "label": "Ikä",
+      "category": { "index": ["SSS"], "label": { "SSS": "Yhteensä" } }
+    },
+    "contentscode": {
+      "label": "Tiedot",
+      "category": {
+        "index": ["akuo_lkm"],
+        "label": { "akuo_lkm": "Aikuiskoulutukseen osallistuneet, lkm" },
+        "note": { "akuo_lkm": ["Aikuiskoulutukseen osallistuneet 18-64-vuotias väestö.#Aikuiskoulutuksella tarkoitetaan erityisesti aikuisia varten järjestettyä ja organisoitua koulutusta. Sisältää opiskelun ulkomailla pl. vuosi 1990. Vuoteen 2017 asti mukaan on laskettu vain sellainen koulutus, johon on osallistuttu yhteensä vähintään kuusi tuntia."] },
+        "unit": { "akuo_lkm": { "label": "lukumäärä", "decimals": 0 } }
+      }
+    }
+  },
+  "value": [1526457, 1555554, 1754057, 1706728, 1715520, 1584069, 1452840],
+  "size": [7, 1, 1],
+  "role": { "time": ["timeperiod_y"], "metric": ["contentscode"] }
+}
