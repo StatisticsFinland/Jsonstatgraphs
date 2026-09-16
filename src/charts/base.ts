@@ -12,7 +12,7 @@ import { createZones, applyMeasuredSizes } from '../layout/zones';
 import { computeLayout } from '../layout/layout-engine';
 import { formatNumber } from '../locale/number';
 import { getLocaleStrings } from '../locale/strings';
-import { PIE_CALLOUT_MIN_PLOT_WIDTH } from './pie';
+import { getPieCalloutMinimumWidth } from '../layout/pie-callouts';
 import {
   buildCategoricalScales,
   getCategoricalValuePadding,
@@ -775,15 +775,14 @@ export class ChartScaffold {
   private measureLegendZone(containerWidth: number): number | undefined {
     const { config, seriesCount, seriesNames } = this.scaffoldConfig;
     const showLegend = config.showLegend ?? true;
-    const isPie = this.scaffoldConfig.chartType === 'pie';
-    const legendVisible = isPie
-      ? showLegend && containerWidth < PIE_CALLOUT_MIN_PLOT_WIDTH
-      : showLegend && seriesCount > 1;
-    if (!legendVisible) return undefined;
-
     const names = (seriesNames && seriesNames.length > 0)
       ? seriesNames
       : Array.from({ length: seriesCount }, (_, i) => `Series ${i + 1}`);
+    const isPie = this.scaffoldConfig.chartType === 'pie';
+    const legendVisible = isPie
+      ? showLegend && this.shouldShowPieLegend(containerWidth, names)
+      : showLegend && seriesCount > 1;
+    if (!legendVisible) return undefined;
 
     const legend = new Legend(this.container, names, this.theme, {
       accessibilityMode: this.config.accessibilityMode,
@@ -803,6 +802,18 @@ export class ChartScaffold {
     if (measuredHeight > 0) return Math.ceil(measuredHeight) + 4;
 
     return this.estimateLegendHeight(names, containerWidth);
+  }
+
+  private shouldShowPieLegend(containerWidth: number, labels: string[]): boolean {
+    const measurement = createSvgTextMeasurement(this.svg, {
+      parentClass: 'jsc-pie-label-measurement',
+      fontFamily: this.theme.fontFamily,
+      fontSize: this.theme.fontSizeTick,
+      fallbackCharWidth: AXIS_LABEL_CHAR_WIDTH,
+    });
+    const minimumWidth = getPieCalloutMinimumWidth(labels, measurement.measureText);
+    measurement.destroy();
+    return containerWidth < minimumWidth;
   }
 
   private estimateLegendHeight(names: string[], containerWidth: number): number {
@@ -1341,6 +1352,10 @@ export class ChartScaffold {
     const width = this.container.clientWidth;
     const height = this.container.clientHeight;
     const isHorizontal = HORIZONTAL_CHART_TYPES.has(this.scaffoldConfig.chartType);
+    const pieNames = this.scaffoldConfig.seriesNames ?? [];
+    const pieLegendVisible = this.scaffoldConfig.chartType === 'pie'
+      && (this.config.showLegend ?? true)
+      && this.shouldShowPieLegend(width, pieNames);
 
     const zones = createZones({
       chartType: this.scaffoldConfig.chartType,
@@ -1352,6 +1367,7 @@ export class ChartScaffold {
       hasHeaderContent: this.scaffoldConfig.config.showHeader !== false && Boolean(
         this.scaffoldConfig.config.title?.trim() || this.scaffoldConfig.config.subtitle?.trim(),
       ),
+      pieLegendVisible,
     });
     const measurements = this.measureZoneSizes(width, height, isHorizontal);
     const measuredZones = applyMeasuredSizes(zones, measurements);

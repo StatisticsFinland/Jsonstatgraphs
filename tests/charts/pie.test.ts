@@ -117,6 +117,28 @@ describe('createPieChart', () => {
     expect(Math.abs(Number(callout!.getAttribute('x')))).toBeGreaterThan(230);
   });
 
+  it('shows the legend when enlarged labels do not fit as callouts', () => {
+    Object.defineProperty(container, 'clientWidth', { value: 600, configurable: true });
+    const dataWithLongLabel: ChartData = {
+      ...pieData,
+      series: [{
+        ...pieData.series[0],
+        points: pieData.series[0].points.map((point, index) => index === 0
+          ? { ...point, label: 'Long label for testing' }
+          : point),
+      }],
+    };
+    createPieChart({
+      container,
+      data: dataWithLongLabel,
+      config: { theme: { fontSizeTick: '24px', letterSpacing: '0.12em' } },
+    });
+
+    expect(container.querySelectorAll('.jsc-pie-callout-label')).toHaveLength(0);
+    expect(Array.from(container.querySelectorAll('.jsc-legend-item')).map(item => item.textContent?.trim()))
+      .toEqual(['Long label for testing', 'Tampere', 'Turku']);
+  });
+
   it('null values are excluded from slices', () => {
     const dataWithMoreNulls: ChartData = {
       series: [{
