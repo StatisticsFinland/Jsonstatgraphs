@@ -119,6 +119,14 @@ describe('fitLabels', () => {
       });
     });
 
+    it('reserves a readable gap when culling severely truncated labels', () => {
+      const labels = Array.from({ length: 4 }, () => 'AAAAAA');
+      const result = fitLabels(labels, 96, 40, 8);
+
+      expect(result.skipInterval).toBe(4);
+      expect(result.labels.filter(label => !label.skip)).toHaveLength(1);
+    });
+
     it('skipInterval=1 when all labels fit total available width', () => {
       const labels = ['A', 'B', 'C'];
       // charWidth=8, each label=1 char=8px; slotWidth=80; availableWidth=240 → total=24px <= 240
@@ -239,14 +247,13 @@ describe('fitLabels with niceSkipOptions', () => {
     expect(visible).toEqual(['1900', '1999']);
   });
 
-  it('preserves original behavior when niceSkipOptions is not provided', () => {
+  it('reserves readable gaps when niceSkipOptions is not provided', () => {
     const labels = Array.from({ length: 20 }, (_, i) => `L${i}`);
     const result = fitLabels(labels, 80, 20, 8);
-    // Original brute-force: skip=5, showing indices 0, 5, 10, 15
-    expect(result.skipInterval).toBe(5);
+    expect(result.skipInterval).toBe(7);
     expect(result.labels[0].skip).toBe(false);
     expect(result.labels[1].skip).toBe(true);
-    expect(result.labels[5].skip).toBe(false);
+    expect(result.labels[7].skip).toBe(false);
   });
 
   it('does not skip when all labels fit', () => {

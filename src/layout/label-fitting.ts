@@ -161,10 +161,12 @@ export function fitLabels(
       for (let n = 2; n <= labels.length; n++) {
         if (n * labelSlotWidth < maxLabelPx) continue;
         let visibleWidthSum = 0;
+        let visibleCount = 0;
         for (let i = 0; i < labels.length; i += n) {
           visibleWidthSum += originalWidths[i];
+          visibleCount++;
         }
-        if (visibleWidthSum <= availableWidth) {
+        if (visibleWidthSum + Math.max(0, visibleCount - 1) * MIN_LABEL_GAP_PX <= availableWidth) {
           skipInterval = n;
           break;
         }

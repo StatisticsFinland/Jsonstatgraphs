@@ -718,6 +718,7 @@ export function createMapChart(chartConfig: MapChartConfig): MapChartInstance {
 
   function captureTextMetricFingerprint(): string {
     const theme = resolveTheme(container, config.theme);
+    svg.attr('letter-spacing', theme.letterSpacing);
     const sample = 'Accessibility labels 0123456789';
     const measurements = [
       createSvgTextMeasurement(svg, {
@@ -729,10 +730,13 @@ export function createMapChart(chartConfig: MapChartConfig): MapChartInstance {
       }),
       createFooterMeasurement(theme),
     ];
-    const fingerprint = JSON.stringify(measurements.map(measurement => [
-      Math.round(measurement.measureText(sample) * 100) / 100,
-      Math.round(measurement.lineHeight * 100) / 100,
-    ]));
+    const fingerprint = JSON.stringify([
+      theme.letterSpacing,
+      ...measurements.map(measurement => [
+        Math.round(measurement.measureText(sample) * 100) / 100,
+        Math.round(measurement.lineHeight * 100) / 100,
+      ]),
+    ]);
     measurements.forEach(measurement => measurement.destroy());
     return fingerprint;
   }
@@ -752,6 +756,7 @@ export function createMapChart(chartConfig: MapChartConfig): MapChartInstance {
 
   function render(): void {
     const theme = resolveTheme(container, config.theme);
+    svg.attr('letter-spacing', theme.letterSpacing);
 
     captureChartFocusBeforeRedraw(container);
 

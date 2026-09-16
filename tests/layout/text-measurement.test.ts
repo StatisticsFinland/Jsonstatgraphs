@@ -11,6 +11,44 @@ describe('wrapMeasuredText', () => {
 });
 
 describe('createSvgTextMeasurement', () => {
+  it('does not add spacing to native SVG measurements', () => {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    document.body.appendChild(svg);
+    const style = document.createElement('style');
+    style.textContent = '.jsc-axis-x text { letter-spacing: 2px; word-spacing: 3px; }';
+    document.head.appendChild(style);
+    const prototype = SVGElement.prototype as SVGTextElement;
+    const original = prototype.getComputedTextLength;
+    Object.defineProperty(prototype, 'getComputedTextLength', {
+      configurable: true,
+      value: () => 31,
+    });
+
+    try {
+      const measurement = createSvgTextMeasurement(select(svg), {
+        parentClass: 'jsc-axis-x',
+        fontFamily: 'sans-serif',
+        fontSize: '12px',
+        fallbackCharWidth: 8,
+      });
+
+      expect(measurement.measureText('a b')).toBe(31);
+
+      measurement.destroy();
+    } finally {
+      if (original) {
+        Object.defineProperty(prototype, 'getComputedTextLength', {
+          configurable: true,
+          value: original,
+        });
+      } else {
+        delete (prototype as Partial<SVGTextElement>).getComputedTextLength;
+      }
+      style.remove();
+      svg.remove();
+    }
+  });
+
   it('includes computed letter and word spacing in fallback widths', () => {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     document.body.appendChild(svg);

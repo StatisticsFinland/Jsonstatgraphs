@@ -118,10 +118,7 @@ export function createSvgTextMeasurement(
       try {
         const measured = node.getComputedTextLength();
         if (measured > 0) {
-          const spaces = value.match(/\s/g)?.length ?? 0;
-          return measured
-            + Math.max(0, value.length - 1) * letterSpacing
-            + spaces * wordSpacing;
+          return measured;
         }
       } catch {
         // Fall through to deterministic measurement for non-rendering DOMs.

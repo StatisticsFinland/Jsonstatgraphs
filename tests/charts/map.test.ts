@@ -74,6 +74,34 @@ describe('createMapChart accessible name', () => {
 });
 
 describe('createMapChart text layout', () => {
+  it('applies resolved letter spacing to the map SVG', () => {
+    const chart = createMapChart({
+      container,
+      data: mapData,
+      config: { theme: { letterSpacing: '0.12em' } },
+    });
+
+    expect(container.querySelector('svg.jsc-chart')?.getAttribute('letter-spacing')).toBe('0.12em');
+
+    chart.destroy();
+  });
+
+  it('rerenders when the resolved letter spacing CSS variable changes', async () => {
+    jest.useFakeTimers();
+    const chart = createMapChart({ container, data: mapData, config: {} });
+    const originalRegion = container.querySelector('.jsc-map-region');
+
+    container.style.setProperty('--jsc-letter-spacing', '0.12em');
+    await Promise.resolve();
+    jest.advanceTimersByTime(50);
+
+    expect(container.querySelector('.jsc-map-region')).not.toBe(originalRegion);
+    expect(container.querySelector('svg.jsc-chart')?.getAttribute('letter-spacing')).toBe('0.12em');
+
+    chart.destroy();
+    jest.useRealTimers();
+  });
+
   it('wraps long titles and footer values in narrow containers', () => {
     Object.defineProperty(container, 'clientWidth', { value: 240, configurable: true });
     Object.defineProperty(container, 'clientHeight', { value: 600, configurable: true });
