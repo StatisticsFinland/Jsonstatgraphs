@@ -63,6 +63,7 @@ jobs:
       if: inputs.prerelease
       env:
         ENV: ${{ inputs.prerelease-env }}
+        NPM_TAG: ${{ inputs.npm-tag }}
 
     - name: Publish
       run: npm publish --tag ${{ inputs.npm-tag }} --git-tag-version false
