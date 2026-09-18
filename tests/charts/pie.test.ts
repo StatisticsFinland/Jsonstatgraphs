@@ -37,6 +37,15 @@ describe('createPieChart', () => {
     expect(svg).not.toBeNull();
   });
 
+  it('does not render a legend for the single-series visualization', () => {
+    createPieChart({
+      container,
+      data: pieData,
+      config: { ...defaultConfig, showLegend: true },
+    });
+    expect(container.querySelector('.jsc-legend')).toBeNull();
+  });
+
   it('draws correct number of slices — one per non-null value', () => {
     createPieChart({ container, data: pieData, config: defaultConfig });
     const slices = container.querySelectorAll('.jsc-slice');
@@ -80,7 +89,54 @@ describe('createPieChart', () => {
 
     expect(radius).toBeGreaterThan(100);
     expect(container.querySelectorAll('.jsc-pie-callout-label')).toHaveLength(0);
-    expect(container.querySelectorAll('.jsc-legend-item')).toHaveLength(3);
+    expect(Array.from(container.querySelectorAll('.jsc-legend-item')).map(item => item.textContent?.trim()))
+      .toEqual(['Helsinki', 'Tampere', 'Turku']);
+  });
+
+  it('reserves callout space for enlarged labels', () => {
+    Object.defineProperty(container, 'clientWidth', { value: 1200, configurable: true });
+    const dataWithLongLabel: ChartData = {
+      ...pieData,
+      series: [{
+        ...pieData.series[0],
+        points: pieData.series[0].points.map((point, index) => index === 0
+          ? { ...point, label: 'Long label for testing' }
+          : point),
+      }],
+    };
+    createPieChart({
+      container,
+      data: dataWithLongLabel,
+      config: { theme: { fontSizeTick: '24px', letterSpacing: '0.12em' } },
+    });
+
+    const callout = Array.from(container.querySelectorAll<SVGTextElement>('.jsc-pie-callout-label'))
+      .find(label => label.textContent === 'Long label for te...');
+
+    expect(callout).toBeDefined();
+    expect(Math.abs(Number(callout!.getAttribute('x')))).toBeGreaterThan(230);
+  });
+
+  it('shows the legend when enlarged labels do not fit as callouts', () => {
+    Object.defineProperty(container, 'clientWidth', { value: 600, configurable: true });
+    const dataWithLongLabel: ChartData = {
+      ...pieData,
+      series: [{
+        ...pieData.series[0],
+        points: pieData.series[0].points.map((point, index) => index === 0
+          ? { ...point, label: 'Long label for testing' }
+          : point),
+      }],
+    };
+    createPieChart({
+      container,
+      data: dataWithLongLabel,
+      config: { theme: { fontSizeTick: '24px', letterSpacing: '0.12em' } },
+    });
+
+    expect(container.querySelectorAll('.jsc-pie-callout-label')).toHaveLength(0);
+    expect(Array.from(container.querySelectorAll('.jsc-legend-item')).map(item => item.textContent?.trim()))
+      .toEqual(['Long label for testing', 'Tampere', 'Turku']);
   });
 
   it('null values are excluded from slices', () => {
@@ -141,7 +197,7 @@ describe('createPieChart', () => {
     const list = container.querySelector('[role="list"]');
     const slices = container.querySelectorAll<SVGPathElement>('.jsc-slice');
 
-    expect(container.querySelector('[role="application"]')).toBeNull();
+    expect(container.querySelector('[role="application"]')?.contains(list)).toBe(true);
     expect(list?.contains(slices[0])).toBe(true);
 
     slices[0].focus();
@@ -196,44 +252,6 @@ describe('createPieChart', () => {
     expect(slicesAfter).toBe(2);
   });
 
-  it('toggling a slice off reflows the pie — slice is removed from DOM', () => {
-    createPieChart({ container, data: pieData, config: defaultConfig });
-
-    expect(container.querySelectorAll('.jsc-slice')).toHaveLength(3);
-
-    // Legend renders one button per non-null point for pie charts
-    const legendButtons = container.querySelectorAll('.jsc-legend-item');
-    expect(legendButtons).toHaveLength(3);
-
-    // Toggle off slice 0 (Helsinki)
-    (legendButtons[0] as HTMLElement).click();
-
-    // Only 2 slices should be in the DOM — no hidden display:none remnants
-    expect(container.querySelectorAll('.jsc-slice')).toHaveLength(2);
-  });
-
-  it('toggling a slice off then on restores all slices', () => {
-    createPieChart({ container, data: pieData, config: defaultConfig });
-
-    const legendButtons = container.querySelectorAll('.jsc-legend-item');
-    (legendButtons[0] as HTMLElement).click(); // toggle off
-    expect(container.querySelectorAll('.jsc-slice')).toHaveLength(2);
-
-    (container.querySelectorAll('.jsc-legend-item')[0] as HTMLElement).click(); // toggle on
-    expect(container.querySelectorAll('.jsc-slice')).toHaveLength(3);
-  });
-
-  it('update() resets hidden slices so all slices reappear', () => {
-    const instance = createPieChart({ container, data: pieData, config: defaultConfig });
-
-    const legendButtons = container.querySelectorAll('.jsc-legend-item');
-    (legendButtons[0] as HTMLElement).click(); // hide slice 0
-    expect(container.querySelectorAll('.jsc-slice')).toHaveLength(2);
-
-    instance.update(pieData);
-    expect(container.querySelectorAll('.jsc-slice')).toHaveLength(3);
-  });
-
   it('does not create a hidden table for data containing nulls', () => {
     const dataWithNullInMiddle: ChartData = {
       series: [{
@@ -251,23 +269,6 @@ describe('createPieChart', () => {
     createPieChart({ container, data: dataWithNullInMiddle, config: defaultConfig });
     const srTable = container.querySelector('table.jsc-sr-only');
     expect(srTable).toBeNull();
-  });
-
-  it('remaining slices preserve their original colors after a toggle', () => {
-    createPieChart({ container, data: pieData, config: defaultConfig });
-
-    // Record the fill colors of slices 1 and 2 before any toggle
-    const slicesBefore = container.querySelectorAll<SVGPathElement>('.jsc-slice');
-    const fillSlice1Before = slicesBefore[1].getAttribute('fill');
-    const fillSlice2Before = slicesBefore[2].getAttribute('fill');
-
-    // Toggle off slice 0 (Helsinki) — slices 1 and 2 should keep their original colors
-    const legendButtons = container.querySelectorAll('.jsc-legend-item');
-    (legendButtons[0] as HTMLElement).click();
-
-    const slicesAfter = container.querySelectorAll<SVGPathElement>('.jsc-slice');
-    expect(slicesAfter[0].getAttribute('fill')).toBe(fillSlice1Before);
-    expect(slicesAfter[1].getAttribute('fill')).toBe(fillSlice2Before);
   });
 
   it('accessibility mode applies patterned fills to slices', () => {

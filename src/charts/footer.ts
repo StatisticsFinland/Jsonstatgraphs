@@ -69,8 +69,7 @@ export function renderSvgFooter(params: SvgFooterParams): void {
   const maxWidth = params.maxWidth ?? Number.POSITIVE_INFINITY;
   let lineIndex = 0;
 
-  for (let i = 0; i < footerItems.length; i++) {
-    const item = footerItems[i];
+  for (const item of footerItems) {
     const itemText = getFooterItemText(item);
     const useLink = item.type === 'source' && !!sourceLink && isValidLink(sourceLink);
 
@@ -147,6 +146,8 @@ interface HtmlFooterParams {
   sourceLink?: string;
   theme: ResolvedTheme;
   align?: 'center' | 'left';
+  horizontalPadding?: string;
+  stretch?: boolean;
 }
 
 export function renderHtmlFooter(params: HtmlFooterParams): void {
@@ -155,14 +156,21 @@ export function renderHtmlFooter(params: HtmlFooterParams): void {
   const footerEl = document.createElement('div');
   footerEl.className = 'jsc-key-figure-footer';
   footerEl.style.fontSize = theme.fontSizeTick;
+  footerEl.style.letterSpacing = theme.letterSpacing;
   footerEl.style.color = theme.colorTextSecondary;
   footerEl.style.display = 'flex';
 
   if (params.align === 'left') {
+    footerEl.style.textAlign = 'left';
     footerEl.style.flexDirection = 'column';
     footerEl.style.alignItems = 'flex-start';
     footerEl.style.gap = '4px';
     footerEl.style.marginTop = '8px';
+    footerEl.style.padding = `0 ${params.horizontalPadding ?? '20px'}`;
+    footerEl.style.boxSizing = 'border-box';
+    if (params.stretch) {
+      footerEl.style.alignSelf = 'stretch';
+    }
   } else {
     footerEl.style.gap = '16px';
     footerEl.style.flexWrap = 'wrap';

@@ -13,6 +13,16 @@ export function applyChartAriaAttributes(
   container.setAttribute('aria-roledescription', strings.chartTypes[chartType]);
 }
 
+export function applyInteractiveChartAriaAttributes(
+  svg: SVGSVGElement,
+  locale?: string,
+): void {
+  const strings = getLocaleStrings(locale);
+  svg.setAttribute('role', 'application');
+  svg.setAttribute('aria-label', strings.chartData);
+  svg.removeAttribute('aria-description');
+}
+
 export function applySeriesGroupAttributes(
   group: SVGGElement,
   seriesName: string,

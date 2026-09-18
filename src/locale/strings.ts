@@ -21,6 +21,8 @@ export interface LocaleStrings {
   dataPoint: string;
   noData: string;
   chartLoaded: string;
+  chartData: string;
+  seriesControls: string;
   toggleSeries: string;
   regions: string;
   chartTypes: Record<ChartType, string>;
@@ -48,6 +50,8 @@ const STRINGS: Record<string, LocaleStrings> = {
     dataPoint: 'Data point',
     noData: 'No data',
     chartLoaded: 'Chart loaded',
+    chartData: 'Chart data',
+    seriesControls: 'Series controls',
     toggleSeries: 'Toggle series',
     regions: 'regions',
     chartTypes: {
@@ -89,6 +93,8 @@ const STRINGS: Record<string, LocaleStrings> = {
     dataPoint: 'Datapiste',
     noData: 'Ei tietoa',
     chartLoaded: 'Kuvio ladattu',
+    chartData: 'Kuvion tiedot',
+    seriesControls: 'Sarjan valinnat',
     toggleSeries: 'Näytä tai piilota sarja',
     regions: 'aluetta',
     chartTypes: {
@@ -130,6 +136,8 @@ const STRINGS: Record<string, LocaleStrings> = {
     dataPoint: 'Datapunkt',
     noData: 'Ingen uppgift',
     chartLoaded: 'Diagrammet har laddats',
+    chartData: 'Diagramdata',
+    seriesControls: 'Serieinställningar',
     toggleSeries: 'Visa eller dölj serie',
     regions: 'regioner',
     chartTypes: {

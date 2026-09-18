@@ -14,18 +14,6 @@ function createMockElements(seriesCount: number, pointCount: number): FocusableE
   return elements;
 }
 
-function createVariableMockElements(pointCounts: number[]): FocusableElement[][] {
-  return pointCounts.map((count, s) => {
-    const series: FocusableElement[] = [];
-    for (let p = 0; p < count; p++) {
-      const el = document.createElement('div');
-      document.body.appendChild(el);
-      series.push({ element: el, seriesIndex: s, pointIndex: p });
-    }
-    return series;
-  });
-}
-
 function removeElements(elements: FocusableElement[][]): void {
   for (const series of elements) {
     for (const item of series) {
@@ -83,22 +71,6 @@ describe('KeyboardNavigator', () => {
     removeElements(elements);
   });
 
-  it('moves between unordered points with arrows on either axis', () => {
-    navigator = new KeyboardNavigator(container, 'both');
-    const elements = createMockElements(1, 3);
-    navigator.setElements(elements);
-    navigator.attach();
-
-    container.append(...elements[0].map(item => item.element));
-    dispatchKey(elements[0][0].element, 'ArrowDown');
-    expect(document.activeElement).toBe(elements[0][1].element);
-
-    dispatchKey(elements[0][1].element, 'ArrowUp');
-    expect(document.activeElement).toBe(elements[0][0].element);
-
-    removeElements(elements);
-  });
-
   it('ArrowLeft moves to previous point', () => {
     navigator = new KeyboardNavigator(container);
     const elements = createMockElements(1, 3);
@@ -136,6 +108,38 @@ describe('KeyboardNavigator', () => {
     removeElements(elements);
   });
 
+  it('ArrowRight advances to the first point of the next series', () => {
+    navigator = new KeyboardNavigator(container);
+    const elements = createMockElements(2, 2);
+    navigator.setElements(elements);
+    navigator.attach();
+    container.append(...elements.flat().map(item => item.element));
+
+    elements[0][1].element.focus();
+    dispatchKey(elements[0][1].element, 'ArrowRight');
+
+    expect(document.activeElement).toBe(elements[1][0].element);
+    expect(elements[1][0].element.getAttribute('tabindex')).toBe('0');
+
+    removeElements(elements);
+  });
+
+  it('ArrowLeft moves to the last point of the previous series', () => {
+    navigator = new KeyboardNavigator(container);
+    const elements = createMockElements(2, 2);
+    navigator.setElements(elements);
+    navigator.attach();
+    container.append(...elements.flat().map(item => item.element));
+
+    elements[1][0].element.focus();
+    dispatchKey(elements[1][0].element, 'ArrowLeft');
+
+    expect(document.activeElement).toBe(elements[0][1].element);
+    expect(elements[0][1].element.getAttribute('tabindex')).toBe('0');
+
+    removeElements(elements);
+  });
+
   it('ArrowLeft stops at the start of a series', () => {
     navigator = new KeyboardNavigator(container);
     const elements = createMockElements(1, 3);
@@ -153,33 +157,30 @@ describe('KeyboardNavigator', () => {
     removeElements(elements);
   });
 
-  it('ArrowUp moves to previous series', () => {
+  it('ArrowUp moves to the previous point', () => {
     navigator = new KeyboardNavigator(container);
-    const elements = createMockElements(3, 2);
+    const elements = createMockElements(1, 2);
     navigator.setElements(elements);
     navigator.attach();
 
-    // Move to series 1
-    container.append(...elements.flat().map(item => item.element));
-    elements[1][0].element.dispatchEvent(new Event('focus'));
-
+    container.append(...elements[0].map(item => item.element));
+    elements[0][1].element.focus();
     const spy = jest.spyOn(elements[0][0].element as HTMLElement, 'focus');
-    dispatchKey(elements[1][0].element, 'ArrowUp');
+    dispatchKey(elements[0][1].element, 'ArrowUp');
 
     expect(spy).toHaveBeenCalled();
 
     removeElements(elements);
   });
 
-  it('ArrowDown moves to next series', () => {
+  it('ArrowDown moves to the next point', () => {
     navigator = new KeyboardNavigator(container);
-    const elements = createMockElements(3, 2);
+    const elements = createMockElements(1, 2);
     navigator.setElements(elements);
     navigator.attach();
 
-    // currentSeries starts at 0
-    container.append(...elements.flat().map(item => item.element));
-    const spy = jest.spyOn(elements[1][0].element as HTMLElement, 'focus');
+    container.append(...elements[0].map(item => item.element));
+    const spy = jest.spyOn(elements[0][1].element as HTMLElement, 'focus');
     dispatchKey(elements[0][0].element, 'ArrowDown');
 
     expect(spy).toHaveBeenCalled();
@@ -187,57 +188,64 @@ describe('KeyboardNavigator', () => {
     removeElements(elements);
   });
 
-  it('ArrowUp stops at the first series', () => {
+  it('ArrowDown advances to the first point of the next series', () => {
     navigator = new KeyboardNavigator(container);
-    const elements = createMockElements(3, 2);
+    const elements = createMockElements(2, 2);
     navigator.setElements(elements);
     navigator.attach();
 
     container.append(...elements.flat().map(item => item.element));
-    const spy = jest.spyOn(elements[2][0].element as HTMLElement, 'focus');
+    elements[0][1].element.focus();
+    dispatchKey(elements[0][1].element, 'ArrowDown');
+
+    expect(document.activeElement).toBe(elements[1][0].element);
+
+    removeElements(elements);
+  });
+
+  it('ArrowUp moves to the last point of the previous series', () => {
+    navigator = new KeyboardNavigator(container);
+    const elements = createMockElements(2, 2);
+    navigator.setElements(elements);
+    navigator.attach();
+
+    container.append(...elements.flat().map(item => item.element));
+    elements[1][0].element.focus();
+    dispatchKey(elements[1][0].element, 'ArrowUp');
+
+    expect(document.activeElement).toBe(elements[0][1].element);
+
+    removeElements(elements);
+  });
+
+  it('ArrowDown stops at the last data point', () => {
+    navigator = new KeyboardNavigator(container);
+    const elements = createMockElements(1, 2);
+    navigator.setElements(elements);
+    navigator.attach();
+
+    container.append(...elements[0].map(item => item.element));
+    elements[0][1].element.focus();
+    const event = dispatchKey(elements[0][1].element, 'ArrowDown');
+
+    expect(document.activeElement).toBe(elements[0][1].element);
+    expect(event.defaultPrevented).toBe(true);
+
+    removeElements(elements);
+  });
+
+  it('ArrowUp stops at the first data point', () => {
+    navigator = new KeyboardNavigator(container);
+    const elements = createMockElements(1, 2);
+    navigator.setElements(elements);
+    navigator.attach();
+    container.append(...elements[0].map(item => item.element));
+
+    elements[0][0].element.focus();
     const event = dispatchKey(elements[0][0].element, 'ArrowUp');
 
-    expect(spy).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(elements[0][0].element);
     expect(event.defaultPrevented).toBe(true);
-
-    removeElements(elements);
-  });
-
-  it('ArrowDown stops at the last series', () => {
-    navigator = new KeyboardNavigator(container);
-    const elements = createMockElements(3, 2);
-    navigator.setElements(elements);
-    navigator.attach();
-
-    // Move to last series
-    container.append(...elements.flat().map(item => item.element));
-    elements[2][0].element.dispatchEvent(new Event('focus'));
-
-    const spy = jest.spyOn(elements[0][0].element as HTMLElement, 'focus');
-    const event = dispatchKey(elements[2][0].element, 'ArrowDown');
-
-    expect(spy).not.toHaveBeenCalled();
-    expect(event.defaultPrevented).toBe(true);
-
-    removeElements(elements);
-  });
-
-  it('ArrowUp/Down clamps point index when target series is shorter', () => {
-    navigator = new KeyboardNavigator(container);
-    // Series 0: 5 points, Series 1: 3 points
-    const elements = createVariableMockElements([5, 3]);
-    navigator.setElements(elements);
-    navigator.attach();
-
-    // Navigate to series 0, point 4
-    container.append(...elements.flat().map(item => item.element));
-    elements[0][4].element.dispatchEvent(new Event('focus'));
-
-    // ArrowDown: target series 1 has 3 points, clamp to index 2
-    const spy = jest.spyOn(elements[1][2].element as HTMLElement, 'focus');
-    dispatchKey(elements[0][4].element, 'ArrowDown');
-
-    expect(spy).toHaveBeenCalled();
 
     removeElements(elements);
   });
@@ -302,22 +310,6 @@ describe('KeyboardNavigator', () => {
 
     expect(elements[0][0].element.getAttribute('tabindex')).toBe('-1');
     expect(elements[0][2].element.getAttribute('tabindex')).toBe('0');
-
-    removeElements(elements);
-  });
-
-  it('uses Up and Down for points on a vertical category axis', () => {
-    navigator = new KeyboardNavigator(container, 'vertical');
-    const elements = createMockElements(1, 3);
-    navigator.setElements(elements);
-    navigator.attach();
-    container.append(...elements[0].map(item => item.element));
-
-    dispatchKey(elements[0][0].element, 'ArrowDown');
-    expect(document.activeElement).toBe(elements[0][1].element);
-
-    dispatchKey(elements[0][1].element, 'ArrowUp');
-    expect(document.activeElement).toBe(elements[0][0].element);
 
     removeElements(elements);
   });

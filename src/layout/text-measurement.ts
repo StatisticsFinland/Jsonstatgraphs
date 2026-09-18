@@ -109,7 +109,7 @@ export function createSvgTextMeasurement(
   const wordSpacing = computed.wordSpacing === 'normal'
     ? 0
     : resolveCssLength(computed.wordSpacing, fontSize);
-  const fallbackCharWidth = options.fallbackCharWidth ?? fontSize * 0.6;
+  const fallbackCharWidth = Math.max(options.fallbackCharWidth ?? 0, fontSize * 0.6);
 
   return {
     lineHeight,
@@ -117,7 +117,9 @@ export function createSvgTextMeasurement(
       node.textContent = value;
       try {
         const measured = node.getComputedTextLength();
-        if (measured > 0) return measured;
+        if (measured > 0) {
+          return measured;
+        }
       } catch {
         // Fall through to deterministic measurement for non-rendering DOMs.
       }

@@ -18,6 +18,7 @@ const npmFeedVersions = JSON.parse(npmFeedVersionsQuery);
 const localVersion = JSON.parse(packageJsonRaw).version.trim();
 const latest = npmFeedVersions['dist-tags']?.latest;
 const env = process.env.ENV;
+const npmTag = process.env.NPM_TAG;
 
 if (semver.valid(semver.coerce(localVersion)) !== localVersion) {
     console.error(`package.json version should always be in format x.x.x, provided version was: ${localVersion}`);
@@ -32,11 +33,11 @@ switch (args[0]) {
         versionValidation();
         break;
     case 'setpreversion':
-        if (allowed_envs.includes(env)) {
-            const preversion = npmFeedVersions['dist-tags'][env];
+        if (allowed_envs.includes(env) && npmTag) {
+            const preversion = npmFeedVersions['dist-tags'][npmTag];
             setPreVersion(preversion);
         } else {
-            console.error(`setpreversion is allowed only for envs ${allowed_envs.join(',')} provided env was: ${env}`);
+            console.error(`setpreversion requires an env (${allowed_envs.join(',')}) and an npm tag; provided env was: ${env}, npm tag was: ${npmTag}`);
             process.exit(1);
         }
         break;

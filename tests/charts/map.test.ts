@@ -74,6 +74,34 @@ describe('createMapChart accessible name', () => {
 });
 
 describe('createMapChart text layout', () => {
+  it('applies resolved letter spacing to the map SVG', () => {
+    const chart = createMapChart({
+      container,
+      data: mapData,
+      config: { theme: { letterSpacing: '0.12em' } },
+    });
+
+    expect(container.querySelector('svg.jsc-chart')?.getAttribute('letter-spacing')).toBe('0.12em');
+
+    chart.destroy();
+  });
+
+  it('rerenders when the resolved letter spacing CSS variable changes', async () => {
+    jest.useFakeTimers();
+    const chart = createMapChart({ container, data: mapData, config: {} });
+    const originalRegion = container.querySelector('.jsc-map-region');
+
+    container.style.setProperty('--jsc-letter-spacing', '0.12em');
+    await Promise.resolve();
+    jest.advanceTimersByTime(50);
+
+    expect(container.querySelector('.jsc-map-region')).not.toBe(originalRegion);
+    expect(container.querySelector('svg.jsc-chart')?.getAttribute('letter-spacing')).toBe('0.12em');
+
+    chart.destroy();
+    jest.useRealTimers();
+  });
+
   it('wraps long titles and footer values in narrow containers', () => {
     Object.defineProperty(container, 'clientWidth', { value: 240, configurable: true });
     Object.defineProperty(container, 'clientHeight', { value: 600, configurable: true });
@@ -99,11 +127,22 @@ describe('createMapChart text layout', () => {
 });
 
 describe('createMapChart keyboard accessibility', () => {
-  it('does not hide the map svg from assistive technology', () => {
+  it('exposes the map SVG as a named application', () => {
     createMapChart({ container, data: mapData, config: defaultConfig });
     const svg = container.querySelector('svg.jsc-chart');
     expect(svg?.getAttribute('aria-hidden')).toBeNull();
-    expect(svg?.getAttribute('role')).toBe('none');
+    expect(svg?.getAttribute('role')).toBe('application');
+    expect(svg?.getAttribute('aria-label')).toBe('Chart data');
+    expect(svg?.getAttribute('aria-description')).toBeNull();
+  });
+
+  it('updates the map application semantics when the locale changes', () => {
+    const chart = createMapChart({ container, data: mapData, config: defaultConfig });
+
+    chart.update(mapData, { locale: 'sv' });
+
+    const svg = container.querySelector('svg.jsc-chart');
+    expect(svg?.getAttribute('aria-label')).toBe('Diagramdata');
   });
 
   it('groups regions under a role="list" element', () => {
@@ -128,14 +167,14 @@ describe('createMapChart keyboard accessibility', () => {
     expect(regions[1].getAttribute('tabindex')).toBe('-1');
   });
 
-  it('moves focus to the next region with an arrow on either axis', () => {
+  it('moves focus to the next region with ArrowRight', () => {
     createMapChart({ container, data: multiRegionMapData, config: defaultConfig });
     const regions = container.querySelectorAll<SVGElement>('.jsc-map-region');
     regions[0].focus();
     expect(document.activeElement).toBe(regions[0]);
 
     regions[0].dispatchEvent(new KeyboardEvent('keydown', {
-      key: 'ArrowDown',
+      key: 'ArrowRight',
       bubbles: true,
       cancelable: true,
     }));

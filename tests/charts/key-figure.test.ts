@@ -13,6 +13,12 @@ afterEach(() => {
 });
 
 describe('createKeyFigureChart', () => {
+  it('does not use application semantics for document-style content', () => {
+    createKeyFigureChart({ container, value: 42, unit: '', decimals: undefined, config: defaultConfig });
+
+    expect(container.querySelector('[role="application"]')).toBeNull();
+  });
+
   it('renders value with correct formatting', () => {
     createKeyFigureChart({ container, value: 1234567, unit: 'persons', decimals: 0, config: defaultConfig });
     const valueEl = container.querySelector('.jsc-key-figure-value');
@@ -36,6 +42,8 @@ describe('createKeyFigureChart', () => {
     const titleEl = container.querySelector('.jsc-key-figure-title');
     expect(titleEl).not.toBeNull();
     expect(titleEl?.textContent).toBe('Population');
+    expect((titleEl?.parentElement as HTMLElement).style.textAlign).toBe('center');
+    expect((titleEl?.parentElement as HTMLElement).style.padding).toBe('24px 20px');
   });
 
   it('does not render title when empty', () => {
@@ -89,6 +97,10 @@ describe('createKeyFigureChart', () => {
     const updatedEl = container.querySelector('.jsc-key-figure-updated');
     expect(updatedEl).not.toBeNull();
     expect(updatedEl?.textContent).toBe('Updated: 2024-01-01');
+    expect((footerEl as HTMLElement).style.alignItems).toBe('flex-start');
+    expect((footerEl as HTMLElement).style.textAlign).toBe('left');
+    expect((footerEl as HTMLElement).style.padding).toBe('0px');
+    expect((footerEl as HTMLElement).style.alignSelf).toBe('stretch');
   });
 
   it('does not render footer when no footerItems in config', () => {

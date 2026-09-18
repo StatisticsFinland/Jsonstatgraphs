@@ -25,6 +25,17 @@ function createScaffoldConfig(overrides: Partial<CategoricalScaffoldConfig> = {}
 
 describe('ChartScaffold', () => {
   describe('runtime text spacing', () => {
+    it('applies theme letter spacing to the SVG root', () => {
+      const scaffold = new ChartScaffold(createScaffoldConfig({
+        config: { theme: { letterSpacing: '0.12em' } },
+      }));
+
+      scaffold.render();
+
+      expect(document.querySelector('svg.jsc-chart')?.getAttribute('letter-spacing')).toBe('0.12em');
+      scaffold.destroy();
+    });
+
     it('rerenders when inherited text metrics change', async () => {
       jest.useFakeTimers();
       const container = createContainer(500, 400);
@@ -87,12 +98,25 @@ describe('ChartScaffold', () => {
     expect(svg?.getAttribute('viewBox')).toBe('0 0 800 400');
   });
 
-  it('SVG root does not have aria-hidden', () => {
+  it('exposes the SVG root as a named application inside the chart region', () => {
     const scaffold = new ChartScaffold(createScaffoldConfig());
     scaffold.render();
     const svg = document.querySelector('svg.jsc-chart');
     expect(svg?.getAttribute('aria-hidden')).toBeNull();
-    expect(svg?.getAttribute('role')).toBe('none');
+    expect(svg?.getAttribute('role')).toBe('application');
+    expect(svg?.getAttribute('aria-label')).toBe('Chart data');
+    expect(svg?.getAttribute('aria-description')).toBeNull();
+  });
+
+  it('updates the SVG application semantics when the locale changes', () => {
+    const container = createContainer();
+    const scaffold = new ChartScaffold(createScaffoldConfig({ container }));
+    scaffold.render();
+
+    scaffold.update(createScaffoldConfig({ container, config: { locale: 'fi' } }));
+
+    const svg = container.querySelector('svg.jsc-chart');
+    expect(svg?.getAttribute('aria-label')).toBe('Kuvion tiedot');
   });
 
   it('decorative SVG groups have aria-hidden="true"', () => {
@@ -305,6 +329,28 @@ describe('ChartScaffold', () => {
     expect(legends).toHaveLength(1);
   });
 
+  it('preserves the focused legend item when update replaces the legend', () => {
+    const container = createContainer();
+    const config = createScaffoldConfig({
+      container,
+      seriesCount: 3,
+      seriesNames: ['A', 'B', 'C'],
+      config: { showLegend: true },
+    });
+    const scaffold = new ChartScaffold(config);
+    scaffold.render();
+
+    const originalButtons = container.querySelectorAll<HTMLButtonElement>('.jsc-legend-item');
+    originalButtons[1].focus();
+
+    scaffold.update(config);
+
+    const updatedButtons = container.querySelectorAll<HTMLButtonElement>('.jsc-legend-item');
+    expect(updatedButtons[1]).not.toBe(originalButtons[1]);
+    expect(document.activeElement).toBe(updatedButtons[1]);
+    expect(Array.from(updatedButtons).map(button => button.tabIndex)).toEqual([-1, 0, -1]);
+  });
+
   it('render() renders footer items', () => {
     const scaffold = new ChartScaffold(
       createScaffoldConfig({
@@ -314,6 +360,7 @@ describe('ChartScaffold', () => {
     scaffold.render();
     const footerText = document.querySelector('.jsc-footer-text');
     expect(footerText).not.toBeNull();
+    expect(footerText?.getAttribute('x')).toBe('20');
   });
 
   it('wraps long footer values when the available chart width is narrow', () => {

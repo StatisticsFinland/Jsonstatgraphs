@@ -53,6 +53,7 @@ beforeEach(() => {
   document.body.appendChild(container);
 });
 afterEach(() => {
+  jest.restoreAllMocks();
   container.remove();
 });
 
@@ -77,6 +78,17 @@ describe('createLineChart', () => {
   it('null values create gaps without drawing point markers by default', () => {
     createLineChart({ container, data: multiSeriesData, config: defaultConfig });
     expect(container.querySelectorAll('.jsc-marker')).toHaveLength(0);
+  });
+
+  it('collects non-null markers without rescanning source arrays', () => {
+    const indexOfSpies = multiSeriesData.series.map(series => jest.spyOn(series.points, 'indexOf'));
+
+    createLineChart({ container, data: multiSeriesData, config: defaultConfig });
+
+    for (const indexOfSpy of indexOfSpies) {
+      expect(indexOfSpy).not.toHaveBeenCalled();
+    }
+    expect(container.querySelectorAll('.jsc-line-hit-area')).toHaveLength(5);
   });
 
   it('single series — no legend shown by default', () => {
@@ -352,6 +364,16 @@ describe('createLineChart', () => {
       for (const text of visibleTexts) {
         expect(text.getAttribute('text-anchor')).toBe('middle');
       }
+    });
+
+    it('does not render the category dimension as an x-axis title', () => {
+      createLineChart({
+        container,
+        data: { ...singleSeriesData, xLabel: 'Year' },
+        config: defaultConfig,
+      });
+
+      expect(container.querySelector('.jsc-axis-title-x')).toBeNull();
     });
 
     it('RightMargin zone is allocated for line charts', () => {

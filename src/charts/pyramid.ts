@@ -5,6 +5,7 @@ import { bindInteractions, DataElementInfo, BoundInteractions } from './bindInte
 import { applyChartAriaAttributes, applySeriesGroupAttributes } from '../a11y/aria';
 import { getSeriesColor } from '../theme/palette';
 import { ensureDefs, getPatternFillUrl, injectPatternDefs } from '../a11y/patterns';
+import { collectIndexedNonNullPoints } from './point-collection';
 
 export interface PyramidChartConfig {
   container: HTMLElement;
@@ -55,7 +56,6 @@ export function createPyramidChart(chartConfig: PyramidChartConfig): PyramidChar
         seriesLabel: data.splitDimensionLabel,
         yLabel: data.yLabel,
       },
-      pointAxis: 'vertical',
       ariaLabel: config.ariaLabel,
       caption: config.title ?? config.ariaLabel,
     });
@@ -108,20 +108,19 @@ export function createPyramidChart(chartConfig: PyramidChartConfig): PyramidChar
       seriesGroupElements.set(si, seriesGroupEl);
 
       type BarPoint = { value: number; label: string; categoryCode: string };
-      const nonNullPoints = series.points.filter(
-        (p): p is BarPoint => p.value !== null
-      );
+      type IndexedBarPoint = { point: BarPoint; pointIndex: number };
+      const nonNullPoints: IndexedBarPoint[] = collectIndexedNonNullPoints(series.points);
 
       if (isLeft) {
         // Left series: bars extend from -value to 0 (leftward from center)
         seriesGroup
-          .selectAll<SVGRectElement, BarPoint>('rect')
+          .selectAll<SVGRectElement, IndexedBarPoint>('rect')
           .data(nonNullPoints)
           .join('rect')
           .attr('class', 'jsc-bar jsc-bar-left')
-          .attr('x', d => xScale(-d.value))
-          .attr('y', d => yScale(d.categoryCode)!)
-          .attr('width', d => xScale(0) - xScale(-d.value))
+          .attr('x', d => xScale(-d.point.value))
+          .attr('y', d => yScale(d.point.categoryCode)!)
+          .attr('width', d => xScale(0) - xScale(-d.point.value))
           .attr('height', yScale.bandwidth())
           .attr('fill', config.accessibilityMode ? getPatternFillUrl(si) : color)
           .attr('stroke', theme.colorBorder)
@@ -130,13 +129,13 @@ export function createPyramidChart(chartConfig: PyramidChartConfig): PyramidChar
       } else {
         // Right series: bars extend from 0 to value (rightward from center)
         seriesGroup
-          .selectAll<SVGRectElement, BarPoint>('rect')
+          .selectAll<SVGRectElement, IndexedBarPoint>('rect')
           .data(nonNullPoints)
           .join('rect')
           .attr('class', 'jsc-bar jsc-bar-right')
           .attr('x', xScale(0))
-          .attr('y', d => yScale(d.categoryCode)!)
-          .attr('width', d => xScale(d.value) - xScale(0))
+          .attr('y', d => yScale(d.point.categoryCode)!)
+          .attr('width', d => xScale(d.point.value) - xScale(0))
           .attr('height', yScale.bandwidth())
           .attr('fill', config.accessibilityMode ? getPatternFillUrl(si) : color)
           .attr('stroke', theme.colorBorder)
@@ -144,17 +143,16 @@ export function createPyramidChart(chartConfig: PyramidChartConfig): PyramidChar
           .attr('tabindex', '0');
       }
 
-      const rects = seriesGroup.selectAll<SVGRectElement, BarPoint>('rect').nodes();
+      const rects = seriesGroup.selectAll<SVGRectElement, IndexedBarPoint>('rect').nodes();
       for (let pi = 0; pi < nonNullPoints.length; pi++) {
-        const point = nonNullPoints[pi];
+        const { point, pointIndex } = nonNullPoints[pi];
         const rectEl = rects[pi];
         if (!rectEl) continue;
 
         elements.push({
           element: rectEl,
           seriesIndex: si,
-          pointIndex: pi,
-          navigationPointIndex: nonNullPoints.length - pi - 1,
+          pointIndex,
           pointKey: point.categoryCode,
           category: point.label,
           seriesName: series.name,
