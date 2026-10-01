@@ -15,6 +15,10 @@ on:
       - main
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.event_name == 'push' && format('ci-push-{0}', github.ref) || format('ci-run-{0}', github.run_id) }}
+  cancel-in-progress: false
+
 jobs:
   build:
     permissions: read-all
@@ -57,9 +61,6 @@ jobs:
   deploy-dev:
     if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
     needs: build
-    concurrency:
-      group: deploy-${{ github.ref }}
-      cancel-in-progress: true
     permissions:
       id-token: write
       contents: read
@@ -68,9 +69,6 @@ jobs:
   deploy-test:
     if: github.event_name == 'push' && github.ref == 'refs/heads/test'
     needs: build
-    concurrency:
-      group: deploy-${{ github.ref }}
-      cancel-in-progress: true
     permissions:
       id-token: write
       contents: read
@@ -79,9 +77,6 @@ jobs:
   deploy-prod:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: build
-    concurrency:
-      group: deploy-${{ github.ref }}
-      cancel-in-progress: true
     permissions:
       id-token: write
       contents: read
