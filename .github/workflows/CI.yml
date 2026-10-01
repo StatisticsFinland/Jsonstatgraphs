@@ -57,6 +57,9 @@ jobs:
   deploy-dev:
     if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
     needs: build
+    concurrency:
+      group: deploy-${{ github.ref }}
+      cancel-in-progress: true
     permissions:
       id-token: write
       contents: read
@@ -65,6 +68,9 @@ jobs:
   deploy-test:
     if: github.event_name == 'push' && github.ref == 'refs/heads/test'
     needs: build
+    concurrency:
+      group: deploy-${{ github.ref }}
+      cancel-in-progress: true
     permissions:
       id-token: write
       contents: read
@@ -73,6 +79,9 @@ jobs:
   deploy-prod:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: build
+    concurrency:
+      group: deploy-${{ github.ref }}
+      cancel-in-progress: true
     permissions:
       id-token: write
       contents: read
