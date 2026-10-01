@@ -1,0 +1,40 @@
+{
+  "version": "2.0",
+  "class": "dataset",
+  "id": ["timeperiod_y", "ikaryhma_10_20180101", "contentscode"],
+  "label": "12dz -- Deltagande i vuxenutbildning (inkl. arbets- eller yrkesinriktad, personalutbildning samt annan vuxenutbildning än arbetsrelaterad) efter ålder, 1990-2022",
+  "note": ["<A HREF='https://example.org/documentation' TARGET=_blank>Dokumentation för statistiken</A>"],
+  "source": "Statistikcentralen, deltagande i vuxenutbildning",
+  "updated": "2023-10-06T08:00:00",
+  "dimension": {
+    "timeperiod_y": {
+      "label": "År",
+      "category": {
+        "index": ["1990", "2012", "2022"],
+        "label": { "1990": "1990", "2012": "2012", "2022": "2022" }
+      }
+    },
+    "ikaryhma_10_20180101": {
+      "label": "Ålder",
+      "category": {
+        "index": ["SSS", "18-24", "25-34", "35-44", "45-54", "55-64"],
+        "label": { "SSS": "Totalt", "18-24": "18 - 24", "25-34": "25 - 34", "35-44": "35 - 44", "45-54": "45 - 54", "55-64": "55 - 64" }
+      }
+    },
+    "contentscode": {
+      "label": "Uppgifter",
+      "category": {
+        "index": ["akuo_pros"],
+        "label": { "akuo_pros": "Deltagare i vuxenutbildning, %" },
+        "note": { "akuo_pros": ["Deltagare i vuxenutbildning bland befolkningen i åldern 18-64 år.#Med vuxenutbildning avses utbildning som är anordnad och organiserad speciellt för vuxna. Omfattar studier utomlands exkl. år 1990. Fram till 2017 bara sådan utbildning räknas med som man deltagit i sammanlagt minst sex timmar."] },
+        "unit": { "akuo_pros": { "label": "procent", "decimals": 0 } }
+      }
+    }
+  },
+  "value": [47, 43, 55, 57, 48, 25, 52, 42, 58, 63, 58, 36, 47, 44, 48, 53, 54, 38],
+  "extension": {
+    "missingValueDescriptions": { "1": "Uppgift saknas", "2": "Uppgift kan inte förekomma", "3": "Uppgift är sekretessbelagd", "4": "Uppgift inte tillgänglig", "5": "Uppgift inte efterfrågad", "6": "......", "7": "Värdet noll" }
+  },
+  "size": [3, 6, 1],
+  "role": { "time": ["timeperiod_y"], "metric": ["contentscode"] }
+}
