@@ -10,6 +10,19 @@ Install from [npm](https://www.npmjs.com/package/@statisticsfinland/jsonstatgrap
 npm install @statisticsfinland/jsonstatgraphs
 ```
 
+### Dev and Test Packages
+
+Prerelease packages are published under the npm tags `dev` and `test`:
+
+```bash
+npm install @statisticsfinland/jsonstatgraphs@dev
+npm install @statisticsfinland/jsonstatgraphs@test
+```
+
+Dev versions use the suffix `-d.n`, and test versions use `-t.n` (for example, `0.2.3-d.0` and `0.2.3-t.0`).
+
+These packages are intended for development and testing. Use the default installation above for stable releases from the `latest` tag.
+
 ### Local Development
 
 To link a local checkout for development:
