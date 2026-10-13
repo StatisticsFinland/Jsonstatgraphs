@@ -2,19 +2,17 @@
 
 Render JSON-stat 2.0 datasets as interactive, accessible SVG charts.
 
-## Local Installation
+## Installation
 
-This package is not yet published to npm. Install it locally:
+Install from [npm](https://www.npmjs.com/package/@statisticsfinland/jsonstatgraphs):
 
 ```bash
-# In this project directory, build and pack:
-npm run pack
-
-# In your consuming project, install the .tgz:
-npm install ../jsonstatgraphs/statisticsfinland-jsonstatgraphs-0.2.1.tgz
+npm install @statisticsfinland/jsonstatgraphs
 ```
 
-Or link for development:
+### Local Development
+
+To link a local checkout for development:
 
 ```bash
 # In this project:
