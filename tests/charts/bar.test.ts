@@ -55,6 +55,7 @@ beforeEach(() => {
   document.body.appendChild(container);
 });
 afterEach(() => {
+  jest.restoreAllMocks();
   container.remove();
 });
 
@@ -78,6 +79,23 @@ describe('createBarChart', () => {
     expect(rects).toHaveLength(2);
   });
 
+  it('collects non-null points without rescanning and preserves navigation order', () => {
+    const indexOfSpy = jest.spyOn(dataWithNull.series[0].points, 'indexOf');
+
+    createBarChart({ container, data: dataWithNull, config: defaultConfig });
+
+    expect(indexOfSpy).not.toHaveBeenCalled();
+    const rects = container.querySelectorAll<SVGRectElement>('.jsc-bar');
+    rects[0].focus();
+    rects[0].dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'ArrowRight',
+      bubbles: true,
+      cancelable: true,
+    }));
+    expect(document.activeElement).toBe(rects[1]);
+    expect(document.activeElement?.getAttribute('aria-label')).toBe('Q3, 80');
+  });
+
   it('horizontal bar chart creates rects', () => {
     createBarChart({
       container,
@@ -95,7 +113,7 @@ describe('createBarChart', () => {
     const list = container.querySelector('[role="list"]');
     const rects = container.querySelectorAll<SVGRectElement>('.jsc-bar');
 
-    expect(container.querySelector('[role="application"]')).toBeNull();
+    expect(container.querySelector('[role="application"]')?.contains(list)).toBe(true);
     expect(list?.contains(rects[0])).toBe(true);
 
     rects[0].focus();
@@ -107,6 +125,38 @@ describe('createBarChart', () => {
 
     expect(document.activeElement).toBe(rects[1]);
     expect(document.activeElement?.getAttribute('aria-label')).toBe('2021, 150');
+  });
+
+  it('uses category labels rather than category codes on the x-axis', () => {
+    const dataWithLabels: ChartData = {
+      ...singleSeriesData,
+      categories: ['cat-a', 'cat-b', 'cat-c'],
+      categoryLabels: ['First category', 'Second category', 'Third category'],
+      series: [{
+        ...singleSeriesData.series[0],
+        points: [
+          { value: 10, label: 'First category', categoryCode: 'cat-a' },
+          { value: 20, label: 'Second category', categoryCode: 'cat-b' },
+          { value: 30, label: 'Third category', categoryCode: 'cat-c' },
+        ],
+      }],
+    };
+
+    createBarChart({ container, data: dataWithLabels, config: defaultConfig });
+
+    const labels = Array.from(container.querySelectorAll('.jsc-axis-x .tick text'))
+      .map(label => label.textContent?.replace(/\s+/g, ' ').trim());
+    expect(labels).toEqual(dataWithLabels.categoryLabels);
+  });
+
+  it('does not render the category dimension as an x-axis title', () => {
+    createBarChart({
+      container,
+      data: { ...singleSeriesData, xLabel: 'Year' },
+      config: defaultConfig,
+    });
+
+    expect(container.querySelector('.jsc-axis-title-x')).toBeNull();
   });
 
   it.each([

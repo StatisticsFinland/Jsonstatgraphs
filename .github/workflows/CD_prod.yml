@@ -1,0 +1,13 @@
+name: Jsonstatgraphs CD (prod)
+
+on:
+  workflow_call:
+
+jobs:
+  publish:
+    uses: ./.github/workflows/cd-publish.yml
+    with:
+      environment: prod
+      npm-tag: latest
+      prerelease: false
+      staged-publish: true

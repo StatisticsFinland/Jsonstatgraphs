@@ -8,7 +8,7 @@ import { decodeCombo, getMetricUnit, product } from './exportTableUtils';
 import { resolveDatasetSource } from '../data/source';
 
 export function quoteCsv(text: string): string {
-  return `"${text.replace(/"/g, '""')}"`;
+  return `"${text.replaceAll('"', '""')}"`;
 }
 
 export function getCsvDelimiter(locale?: string): string {
@@ -76,9 +76,7 @@ export function createCsvContent(dataset: JsonStatDataset, locale: string, optio
     const rowValues = tableData.values[rowIndex] ?? [];
     for (let colIndex = 0; colIndex < totalCols; colIndex++) {
       const value = rowValues[colIndex];
-      row.push(value === null
-        ? (tableData.missingValueDescriptions?.[rowIndex]?.[colIndex] ?? null)
-        : value);
+      row.push(value ?? (tableData.missingValueDescriptions?.[rowIndex]?.[colIndex] ?? null));
     }
 
     rows.push(row);

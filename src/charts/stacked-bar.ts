@@ -126,9 +126,6 @@ export function createStackedBarChart(chartConfig: StackedBarChartConfig): Stack
       theme: lastTheme!,
       locale: config.locale,
       chartData: visibleData,
-      pointAxis: resolvedChartType === 'stackedHorizontalBar' || resolvedChartType === 'percentHorizontalBar'
-        ? 'horizontal'
-        : 'vertical',
       ariaLabel: config.ariaLabel,
       caption: config.title ?? config.ariaLabel,
     });
@@ -242,9 +239,6 @@ export function createStackedBarChart(chartConfig: StackedBarChartConfig): Stack
             seriesIndex: origIdx,
             pointIndex: catIdx,
             pointKey: cat,
-            navigationGroupIndex: catIdx,
-            navigationPointIndex: origIdx,
-            navigationPointKey: `${cat}:${series.code}`,
             category: originalPoint.label,
             seriesName: series.name,
             value: rawValue,
@@ -304,9 +298,6 @@ export function createStackedBarChart(chartConfig: StackedBarChartConfig): Stack
             seriesIndex: origIdx,
             pointIndex: catIdx,
             pointKey: cat,
-            navigationGroupIndex: catIdx,
-            navigationPointIndex: -origIdx,
-            navigationPointKey: `${cat}:${series.code}`,
             category: originalPoint.label,
             seriesName: series.name,
             value: rawValue,

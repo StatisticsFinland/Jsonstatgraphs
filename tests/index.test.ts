@@ -270,6 +270,53 @@ describe('createChart', () => {
     expect(container.querySelector('.jsc-key-figure-title')?.textContent).toBe('Population by Gender');
   });
 
+  it('does not generate a subtitle for key figures', () => {
+    createChart(
+      container,
+      selectableTitleDataset,
+      { chartType: 'keyFigure' },
+      { gender: ['male'] },
+    );
+
+    expect(container.querySelector('.jsc-key-figure-title')?.textContent).toBe('Population, Male');
+    expect(container.querySelector('.jsc-key-figure-subtitle')).toBeNull();
+  });
+
+  it('builds a subtitle from a single selected selectable category', () => {
+    createChart(
+      container,
+      selectableTitleDataset,
+      { chartType: 'table' },
+      { gender: ['male'] },
+    );
+
+    expect(container.querySelector('.jsc-table-subtitle')?.textContent).toBe('Male');
+  });
+
+  it('updates the generated subtitle when selections change', () => {
+    const instance = createChart(
+      container,
+      selectableTitleDataset,
+      { chartType: 'table' },
+      { gender: ['male'] },
+    );
+
+    instance.update(selectableTitleDataset, undefined, { gender: ['female'] });
+
+    expect(container.querySelector('.jsc-table-subtitle')?.textContent).toBe('Female');
+  });
+
+  it('keeps an explicit subtitle instead of generating one', () => {
+    createChart(
+      container,
+      selectableTitleDataset,
+      { chartType: 'table', subtitle: 'Selected gender' },
+      { gender: ['male'] },
+    );
+
+    expect(container.querySelector('.jsc-table-subtitle')?.textContent).toBe('Selected gender');
+  });
+
   it('includes the burger menu by default', () => {
     createChart(container, validDataset, { chartType: 'table' });
     expect(container.querySelector('.jsc-burger-menu-button')).not.toBeNull();

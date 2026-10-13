@@ -9,6 +9,7 @@ const themeKeys = [
   'fontSizeTick',
   'fontSizeLabel',
   'fontSizeTitle',
+  'letterSpacing',
   'colorBackground',
   'colorText',
   'colorTextSecondary',

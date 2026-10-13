@@ -37,6 +37,7 @@ export class Tooltip {
     el.style.borderRadius = theme.borderRadius;
     el.style.fontFamily = theme.fontFamily;
     el.style.fontSize = theme.fontSizeLabel;
+    el.style.letterSpacing = theme.letterSpacing;
     el.style.padding = theme.tooltipPadding;
     el.style.boxShadow = theme.tooltipBoxShadow;
     el.setAttribute('aria-hidden', 'true');

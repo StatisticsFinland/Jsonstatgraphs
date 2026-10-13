@@ -24,7 +24,7 @@ export function getMaxNumberOfSegments(axisLengthPx: number, dataMin: number, da
     const max = Math.ceil(axisLengthPx / (labelCharCount * CHAR_WIDTH_ESTIMATE + HARD_MARGIN_PX) - 1);
     const clamped = Math.max(max, dataMin < 0 && dataMax > 0 ? 2 : 1);
     // Ensure reasonable bounds
-    const withFloor = axisLengthPx > 200 ? Math.max(clamped, 3) : clamped;
+    const withFloor = axisLengthPx > 200 ? Math.max(clamped, 2) : clamped;
     return Math.min(withFloor, 10);
 }
 

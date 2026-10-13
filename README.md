@@ -2,19 +2,30 @@
 
 Render JSON-stat 2.0 datasets as interactive, accessible SVG charts.
 
-## Local Installation
+## Installation
 
-This package is not yet published to npm. Install it locally:
+Install from [npm](https://www.npmjs.com/package/@statisticsfinland/jsonstatgraphs):
 
 ```bash
-# In this project directory, build and pack:
-npm run pack
-
-# In your consuming project, install the .tgz:
-npm install ../jsonstatgraphs/statisticsfinland-jsonstatgraphs-0.2.1.tgz
+npm install @statisticsfinland/jsonstatgraphs
 ```
 
-Or link for development:
+### Dev and Test Packages
+
+Prerelease packages are published under the npm tags `dev` and `test`:
+
+```bash
+npm install @statisticsfinland/jsonstatgraphs@dev
+npm install @statisticsfinland/jsonstatgraphs@test
+```
+
+Dev versions use the suffix `-d.n`, and test versions use `-t.n` (for example, `0.2.3-d.0` and `0.2.3-t.0`).
+
+These packages are intended for development and testing. Use the default installation above for stable releases from the `latest` tag.
+
+### Local Development
+
+To link a local checkout for development:
 
 ```bash
 # In this project:
@@ -64,6 +75,7 @@ const chart = createChart(container, dataset, {
   chartType: 'line',           // Override auto-selected chart type
   locale: 'fi',                // Locale for formatting (en, fi, sv)
   title: 'Custom Title',       // Override auto-generated title
+  subtitle: 'By region',       // Override auto-generated selection subtitle
   height: 400,                 // Container height in pixels
   showHeader: true,            // Show auto-generated header (default: true)
   showUnit: false,             // Also show the dataset unit in the footer (default: false)
@@ -101,7 +113,7 @@ const chart = createChart(container, dataset, {
 | `chartType` | `ChartType` | Override the auto-selected chart type |
 | `locale` | `string` | BCP 47 locale used for UI strings and numeric values in axes, labels, tooltips, maps, tables, screen-reader output, and CSV exports |
 | `title` | `string` | Override the auto-generated title |
-| `subtitle` | `string` | Subtitle displayed below the title |
+| `subtitle` | `string` | Subtitle displayed below the title; when omitted, generated from exactly-one selected categories |
 | `height` | `number` | Container height in pixels |
 | `showHeader` | `boolean` | Show auto-generated header (default: `true`) |
 | `showUnit` | `boolean` | Add the dataset unit to the footer (default: `false`; units remain on the y-axis) |
@@ -187,6 +199,8 @@ Resolution precedence is:
 An explicitly empty selection uses a non-empty default when available; otherwise it is rejected. Unknown dimensions, unknown category codes, duplicate layout dimensions, and dimensions assigned to both rows and columns are also rejected at the data-source boundary. When a chart type is explicitly chosen, the library trusts that choice after structural dataset validation; automatic chart selection continues to choose only applicable chart types.
 
 Selectable filtering is supported by categorical charts, tables, maps, scatter plots, pyramids, and key figures. During automatic chart selection, the scatter metric/content dimension and pyramid split dimension cannot be selectable because those dimensions define the renderer's required structure. Selected categories are reflected in automatic titles, map geometry requests, and chart-type switches.
+
+When `subtitle` is omitted, the chart automatically builds a subtitle from selectable dimensions, except for key figures, which have no subtitle presentation. A dimension contributes its localized selected category name only when exactly one category is active; dimensions with no selection or multiple selections are omitted. Values are joined in selectable-dimension order with ` | `. Category names are read from dataset metadata and fall back to the category code when a label is unavailable. An explicitly configured `subtitle` always takes precedence for chart types that render subtitles, and generated subtitles are rebuilt when selections change through `chart.update()`.
 
 ## Missing Values
 
@@ -366,6 +380,7 @@ The default series palette, in order, is `#1A56EC`, `#F2644C`, `#1B3160`, `#9C8D
 | `--jsc-font-size-tick` | `0.75rem` | Axis tick labels and footer text |
 | `--jsc-font-size-label` | `0.875rem` | Legend items, axis titles, subtitles |
 | `--jsc-font-size-title` | `1rem` | Chart title |
+| `--jsc-letter-spacing` | `0` | Space between characters in all chart text |
 | `--jsc-font-weight-normal` | `400` | Normal-weight text |
 | `--jsc-font-weight-bold` | `700` | Bold text (title, tooltip values) |
 
@@ -596,10 +611,11 @@ const results = getChartTypesForDataset(dataset, { mapAvailable: true });
 ## Accessibility
 
 - Visual charts use a named `role="region"`; the chart title or configured `ariaLabel` is announced without nested image semantics.
+- The interactive SVG inside that region uses a localized, named `role="application"`, prompting screen readers such as NVDA to enter focus mode when focus reaches chart data. Table and key-figure views keep native document semantics.
 - Focusable datapoints use a localized `aria-roledescription` and roving `tabindex`.
-- Vertical charts and line charts use Left/Right for categories and Up/Down for series. Horizontal bars and pyramids use Up/Down for categories and Left/Right for series. Pie and scatter charts use Left/Right as a single point sequence.
+- Right and Down arrows move forward through data points; Left and Up arrows move backward. This order follows the chart's data sequence across series.
 - Arrow navigation stops at chart boundaries. Home/End move within the current point sequence, and Tab/Shift+Tab leave the chart normally.
-- The library does not generate hidden data tables. Applications that require an alternate data presentation must provide a visible table or use the chart menu's explicit table view.
+- The library does not generate hidden data tables. Applications should expose the chart menu's explicit table view or provide a visible table when an alternate data presentation is required.
 - Interactive legend with `aria-pressed` toggle
 - Tooltips are not `aria-live` regions to avoid duplicate screen-reader announcements
 - Line charts use transparent focus and hover targets for every non-null point when visible accessibility markers are disabled.

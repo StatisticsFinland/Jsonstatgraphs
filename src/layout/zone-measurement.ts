@@ -176,11 +176,13 @@ export function measureCategoricalYAxisLabels(
     theme.fontSizeTick,
     options.zeroBaselineForced,
   );
-  const maxTickLength = ticks.reduce(
-    (max, tick) => Math.max(max, formatNumber(tick, config.locale).length),
+  const measureText = context.yAxisTextMetrics?.measureText
+    ?? ((text: string) => text.length * AXIS_CHAR_WIDTH);
+  const maxTickWidth = ticks.reduce(
+    (max, tick) => Math.max(max, measureText(formatNumber(tick, config.locale))),
     0,
   );
-  return maxTickLength * AXIS_CHAR_WIDTH + AXIS_TICK_MARGIN;
+  return maxTickWidth + AXIS_TICK_MARGIN;
 }
 
 export function measureCategoricalRightMargin(
@@ -194,7 +196,15 @@ export function measureCategoricalRightMargin(
     const preMarginPlotWidth = containerWidth - yAxisWidth;
     if (categories.length <= 1 || preMarginPlotWidth <= 0) return 0;
     const slotWidth = preMarginPlotWidth / (categories.length - 1);
-    return Math.max(0, Math.min(Math.ceil(slotWidth / 2), RIGHT_MARGIN_CAP));
+    const labels = options.categoryLabels ?? categories;
+    const lastLabel = labels.at(-1) ?? '';
+    const measureText = context.xAxisTextMetrics?.measureText
+      ?? ((text: string) => text.length * AXIS_CHAR_WIDTH);
+    return Math.max(
+      0,
+      Math.min(Math.ceil(slotWidth / 2), RIGHT_MARGIN_CAP),
+      Math.ceil(measureText(lastLabel) / 2),
+    );
   }
   if (!HORIZONTAL_CHART_TYPES.has(chartType)) return 0;
 
@@ -237,11 +247,10 @@ export function measureCategoricalXAxisLabels(
     PLOT_AREA_MIN_SIZE,
     containerWidth - yAxisWidth - rightMargin,
   );
-  const availableWidth = isLine ? estimatedPlotWidth : containerWidth;
-  const slotWidth = availableWidth / slotDivisor;
+  const slotWidth = estimatedPlotWidth / slotDivisor;
   const fitResult = fitLabels(
     options.categoryLabels ?? options.categories,
-    availableWidth,
+    estimatedPlotWidth,
     slotWidth,
     AXIS_CHAR_WIDTH,
     options.timeSeriesLabels,
@@ -257,7 +266,7 @@ export function measureCategoricalAxisTitles(
   const yAxisTitle = options.isHorizontal && HORIZONTAL_BAR_CHART_TYPES.has(options.chartType)
     ? undefined
     : (options.isHorizontal ? options.xLabel : options.yLabel);
-  const xAxisTitle = options.isHorizontal ? options.yLabel : options.xLabel;
+  const xAxisTitle = options.isHorizontal ? options.yLabel : undefined;
   const axisTitleHeight = Math.ceil(
     (Number.parseFloat(context.theme.fontSizeLabel) || 14) * 1.5,
   );

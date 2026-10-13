@@ -140,6 +140,12 @@ afterEach(() => {
 });
 
 describe('createTableChart', () => {
+  it('does not use application semantics for native table navigation', () => {
+    createTableChart({ container, data: tableData2D, config: defaultConfig });
+
+    expect(container.querySelector('[role="application"]')).toBeNull();
+  });
+
   // --- Basic rendering ---
 
   it('creates a table in the container', () => {

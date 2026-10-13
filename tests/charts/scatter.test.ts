@@ -67,6 +67,13 @@ describe('createScatterChart', () => {
     expect(container.querySelector('.jsc-axis-y')).not.toBeNull();
   });
 
+  it('renders metric labels as numeric axis titles', () => {
+    createScatterChart({ container, data: scatterData, config: defaultConfig });
+
+    expect(container.querySelector('.jsc-axis-title-x')?.textContent).toBe('GDP per capita');
+    expect(container.querySelector('.jsc-axis-title-y')?.textContent).toBe('Life expectancy');
+  });
+
   it('applies ARIA attributes to container', () => {
     createScatterChart({ container, data: scatterData, config: defaultConfig });
     expect(container.getAttribute('role')).toBe('region');
@@ -137,7 +144,7 @@ describe('createScatterChart', () => {
     expect(listGroup!.getAttribute('aria-label')).toBeTruthy();
   });
 
-  it('keeps screen-reader arrow navigation inside the data point list without an application role', () => {
+  it('keeps screen-reader arrow navigation inside the chart application', () => {
     createScatterChart({
       container,
       data: scatterData,
@@ -146,7 +153,7 @@ describe('createScatterChart', () => {
     const list = container.querySelector('[role="list"]');
     const circles = container.querySelectorAll<SVGCircleElement>('.jsc-scatter-point');
 
-    expect(container.querySelector('[role="application"]')).toBeNull();
+    expect(container.querySelector('[role="application"]')?.contains(list)).toBe(true);
     expect(list).not.toBeNull();
     expect(circles).toHaveLength(3);
 

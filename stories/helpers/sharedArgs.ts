@@ -6,6 +6,7 @@ export const themeArgTypes: ArgTypes = {
   fontSizeTick: { control: 'text', description: 'Tick font size', table: { category: 'Theme' } },
   fontSizeLabel: { control: 'text', description: 'Label font size', table: { category: 'Theme' } },
   fontSizeTitle: { control: 'text', description: 'Title font size', table: { category: 'Theme' } },
+  letterSpacing: { control: 'text', description: 'Space between characters', table: { category: 'Theme' } },
 
   // Color controls
   colorBackground: { control: 'color', description: 'Background color', table: { category: 'Theme' } },
@@ -58,6 +59,7 @@ export const themeArgs = {
   fontSizeTick: '0.75rem',
   fontSizeLabel: '0.875rem',
   fontSizeTitle: '1rem',
+  letterSpacing: '0',
   colorBackground: '#ffffff',
   colorText: '#333333',
   colorTextSecondary: '#666666',

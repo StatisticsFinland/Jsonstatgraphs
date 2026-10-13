@@ -1,0 +1,14 @@
+name: Jsonstatgraphs CD (test)
+
+on:
+  workflow_call:
+
+jobs:
+  publish:
+    uses: ./.github/workflows/cd-publish.yml
+    with:
+      environment: test
+      npm-tag: test
+      prerelease-env: t
+      prerelease: true
+      staged-publish: false

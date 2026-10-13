@@ -7,6 +7,7 @@ import { bindInteractions, DataElementInfo, BoundInteractions } from './bindInte
 import { applyChartAriaAttributes, applySeriesGroupAttributes } from '../a11y/aria';
 import { getSeriesColor } from '../theme/palette';
 import { getMarkerPath } from '../a11y/patterns';
+import { collectIndexedNonNullPoints } from './point-collection';
 
 export interface LineChartConfig {
   container: HTMLElement;
@@ -68,7 +69,6 @@ export function createLineChart(chartConfig: LineChartConfig): LineChartInstance
       chartData: data,
       ariaLabel: config.ariaLabel,
       caption: config.title ?? config.ariaLabel,
-      pointAxis: 'horizontal',
     });
   }
 
@@ -119,6 +119,8 @@ export function createLineChart(chartConfig: LineChartConfig): LineChartInstance
 
       // Build line generator
       type LinePoint = { value: number | null; categoryCode: string; label: string };
+      type NonNullLinePoint = { value: number; categoryCode: string; label: string };
+      type IndexedLinePoint = { point: NonNullLinePoint; pointIndex: number };
       const lineGen = d3Line<LinePoint>()
         .defined(d => d.value !== null)
         .x(d => xScale(d.categoryCode)!)
@@ -137,27 +139,27 @@ export function createLineChart(chartConfig: LineChartConfig): LineChartInstance
         .attr('d', lineGen);
 
       // Draw markers for non-null points
-      const nonNullPoints = series.points.filter(p => p.value !== null);
+      const nonNullPoints: IndexedLinePoint[] = collectIndexedNonNullPoints(series.points);
 
       if (config.accessibilityMode) {
         seriesGroup
-          .selectAll<SVGPathElement, LinePoint>('path.jsc-marker')
+          .selectAll<SVGPathElement, IndexedLinePoint>('path.jsc-marker')
           .data(nonNullPoints)
           .join('path')
           .attr('class', 'jsc-marker')
-          .attr('d', d => getMarkerPath(si, xScale(d.categoryCode)!, yScale(d.value as number)!, 5))
+          .attr('d', d => getMarkerPath(si, xScale(d.point.categoryCode)!, yScale(d.point.value)!, 5))
           .attr('fill', color)
           .attr('stroke', theme.colorSurface)
           .attr('stroke-width', '2')
           .attr('tabindex', '0');
       } else {
         seriesGroup
-          .selectAll<SVGCircleElement, LinePoint>('circle.jsc-line-hit-area')
+          .selectAll<SVGCircleElement, IndexedLinePoint>('circle.jsc-line-hit-area')
           .data(nonNullPoints)
           .join('circle')
           .attr('class', 'jsc-line-hit-area')
-          .attr('cx', d => xScale(d.categoryCode)!)
-          .attr('cy', d => yScale(d.value as number)!)
+          .attr('cx', d => xScale(d.point.categoryCode)!)
+          .attr('cy', d => yScale(d.point.value)!)
           .attr('r', '8')
           .attr('fill', 'transparent')
           .attr('stroke', 'none')
@@ -166,21 +168,19 @@ export function createLineChart(chartConfig: LineChartConfig): LineChartInstance
 
       // Collect elements for bindInteractions
       const markers = seriesGroup
-        .selectAll<SVGElement, LinePoint>(config.accessibilityMode ? '.jsc-marker' : '.jsc-line-hit-area')
+        .selectAll<SVGElement, IndexedLinePoint>(config.accessibilityMode ? '.jsc-marker' : '.jsc-line-hit-area')
         .nodes();
       for (let pi = 0; pi < nonNullPoints.length; pi++) {
-        const point = nonNullPoints[pi];
+        const { point, pointIndex } = nonNullPoints[pi];
         const markerEl = markers[pi];
         if (!markerEl) continue;
 
-        const formattedValue = point.value === null
-          ? '–'
-          : point.value.toLocaleString(config.locale);
+        const formattedValue = point.value.toLocaleString(config.locale);
 
         elements.push({
           element: markerEl,
           seriesIndex: si,
-          pointIndex: pi,
+          pointIndex,
           pointKey: point.categoryCode,
           category: point.label,
           seriesName: series.name,

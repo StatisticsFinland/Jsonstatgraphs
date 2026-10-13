@@ -1,5 +1,83 @@
-import { buildHeader } from '../../src/data/header-builder';
+import { buildHeader, buildSubtitle } from '../../src/data/header-builder';
 import { DimensionMeta } from '../../src/types';
+
+describe('buildSubtitle', () => {
+  const dimensions: DimensionMeta[] = [
+    {
+      code: 'region',
+      type: 'Geo',
+      size: 2,
+      values: [
+        { code: 'hel', name: 'Greater Helsinki' },
+        { code: 'tre', name: 'Tampere' },
+      ],
+    },
+    {
+      code: 'rooms',
+      type: 'Nominal',
+      size: 2,
+      values: [
+        { code: 'one', name: 'One-room flat' },
+        { code: 'two', name: 'Two-room flat' },
+      ],
+    },
+    {
+      code: 'funding',
+      type: 'Nominal',
+      size: 2,
+      values: [
+        { code: 'free', name: 'Free-financed' },
+        { code: 'subsidized', name: 'Subsidized' },
+      ],
+    },
+  ];
+
+  test('joins exactly-one selected category names in dimension order', () => {
+    expect(buildSubtitle(dimensions, new Set(['region', 'rooms']), {
+      region: ['hel'],
+      rooms: ['one'],
+    })).toBe('Greater Helsinki | One-room flat');
+  });
+
+  test('omits dimensions with no or multiple selected categories', () => {
+    expect(buildSubtitle(dimensions, new Set(['region', 'rooms', 'funding']), {
+      region: [],
+      rooms: ['one'],
+      funding: ['free', 'subsidized'],
+    })).toBe('One-room flat');
+  });
+
+  test('treats duplicate selected category codes as one active category', () => {
+    expect(buildSubtitle(dimensions, new Set(['region']), {
+      region: ['hel', 'hel'],
+    })).toBe('Greater Helsinki');
+  });
+
+  test('ignores unknown selected category codes and non-selectable dimensions', () => {
+    expect(buildSubtitle(dimensions, new Set(['region']), {
+      region: ['unknown'],
+      rooms: ['one'],
+    })).toBe('');
+  });
+
+  test('uses the already localized metadata name', () => {
+    const dimensionsWithFallback = dimensions.map(dimension => dimension.code === 'region'
+      ? { ...dimension, values: [{ code: 'hel', name: 'Pääkaupunkiseutu (PKS)' }] }
+      : dimension);
+
+    expect(buildSubtitle(dimensionsWithFallback, new Set(['region']), { region: ['hel'] }))
+      .toBe('Pääkaupunkiseutu (PKS)');
+  });
+
+  test('preserves the category code when it is the metadata fallback name', () => {
+    const dimensionsWithCodeFallback = dimensions.map(dimension => dimension.code === 'region'
+      ? { ...dimension, values: [{ code: 'hel', name: 'hel' }] }
+      : dimension);
+
+    expect(buildSubtitle(dimensionsWithCodeFallback, new Set(['region']), { region: ['hel'] }))
+      .toBe('hel');
+  });
+});
 
 describe('buildHeader', () => {
   test('1. Single content value, no other dims', () => {

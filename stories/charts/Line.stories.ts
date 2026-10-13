@@ -103,6 +103,26 @@ export const MultiSelectableDimension: StoryObj = {
       height: args.height as string | undefined,
     }),
 };
+
+export const SelectionSubtitle: StoryObj = {
+  render: (args) =>
+    renderChart({
+      dataset: multiSourceSelectableData as JsonStatDataset,
+      config: buildConfig(args, {
+        chartType: 'line',
+        layout: { rows: [], columns: ['vuosi'] },
+        multiSelectableDimensionCode: 'alue',
+      }),
+      selectableSelections: {
+        scenario: ['current'],
+        alue: ['MK01', 'MK04', 'MK17'],
+        tiedot: ['GDPcap'],
+      },
+      ...getSelectableStoryInputs(args),
+      width: args.width as string,
+      height: args.height as string | undefined,
+    }),
+};
 export default meta;
 
 export const Default: StoryObj = {

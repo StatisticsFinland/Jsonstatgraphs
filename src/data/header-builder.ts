@@ -1,6 +1,24 @@
 import { DimensionMeta, HeaderBuildOptions, HeaderResult } from '../types';
 import { getLocaleStrings } from '../locale/strings';
 
+export function buildSubtitle(
+  dimensions: DimensionMeta[],
+  selectableDimensionCodes: ReadonlySet<string>,
+  selectedCategoryCodes: Record<string, string[]>,
+): string {
+  return dimensions
+    .filter(dimension => selectableDimensionCodes.has(dimension.code))
+    .map(dimension => {
+      const selectedCodes = selectedCategoryCodes[dimension.code] ?? [];
+      const distinctSelectedCodes = [...new Set(selectedCodes)];
+      if (distinctSelectedCodes.length !== 1) return '';
+
+      return dimension.values?.find(value => value.code === distinctSelectedCodes[0])?.name ?? '';
+    })
+    .filter(Boolean)
+    .join(' | ');
+}
+
 export function buildHeader(dimensions: DimensionMeta[], options: HeaderBuildOptions): HeaderResult {
   const locale = getLocaleStrings(options.locale);
 
