@@ -1,3 +1,4 @@
+import { jest } from '@jest/globals';
 import { BurgerMenu } from '../../src/interaction/burger-menu';
 import { FunctionalMenuItem, LinkMenuItem } from '../../src/types';
 import { DEFAULT_THEME } from '../../src/theme/defaults';

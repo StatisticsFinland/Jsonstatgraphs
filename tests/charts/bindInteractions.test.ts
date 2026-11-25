@@ -1,3 +1,4 @@
+import { jest } from '@jest/globals';
 import { bindInteractions, DataElementInfo } from '../../src/charts/bindInteractions';
 import { resolveTheme } from '../../src/theme/theme';
 import { ChartData } from '../../src/types';

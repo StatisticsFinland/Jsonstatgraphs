@@ -1,3 +1,4 @@
+import { jest } from '@jest/globals';
 import { ChartScaffold, ChartScaffoldConfig, CategoricalScaffoldConfig } from '../../src/charts/base';
 import { getTickPositions } from '../../src/layout/tick-positions';
 import { ZoneType } from '../../src/types';

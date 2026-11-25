@@ -1,3 +1,4 @@
+import { jest } from '@jest/globals';
 import { buildExportFilename, downloadBlob, formatTimestamp, sanitizeFilenameBase } from '../../src/interaction/exportUtils';
 import { JsonStatDataset } from '../../src/types';
 

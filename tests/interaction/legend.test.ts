@@ -1,3 +1,4 @@
+import { jest } from '@jest/globals';
 import { Legend } from '../../src/interaction/legend';
 import { ResolvedTheme } from '../../src/types';
 import { getSeriesColor } from '../../src/theme/palette';

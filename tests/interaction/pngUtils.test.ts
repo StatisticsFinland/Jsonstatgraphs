@@ -1,3 +1,4 @@
+import { jest } from '@jest/globals';
 import { exportPng } from '../../src/interaction/pngUtils';
 import { JsonStatDataset } from '../../src/types';
 

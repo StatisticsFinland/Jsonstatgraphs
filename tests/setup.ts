@@ -1,3 +1,5 @@
+import { jest } from '@jest/globals';
+
 class MockResizeObserver implements ResizeObserver {
   disconnect(): void { return undefined; }
   observe(): void { return undefined; }

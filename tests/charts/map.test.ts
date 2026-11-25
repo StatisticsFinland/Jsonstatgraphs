@@ -1,3 +1,4 @@
+import { jest } from '@jest/globals';
 import { createMapChart } from '../../src/charts/map';
 import { ChartConfig, MapChartData } from '../../src/types';
 

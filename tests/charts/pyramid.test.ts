@@ -1,6 +1,6 @@
+import { jest } from '@jest/globals';
 import { createPyramidChart } from '../../src/charts/pyramid';
 import { PyramidChartData, ChartConfig } from '../../src/types';
-import * as bindInteractionsModule from '../../src/charts/bindInteractions';
 
 const pyramidData: PyramidChartData = {
   leftSeries: {
@@ -185,9 +185,7 @@ describe('createPyramidChart', () => {
     expect(container.querySelectorAll('.jsc-bar')).toHaveLength(2);
   });
 
-  it('passes xLabel and seriesLabel to bindInteractions when dimension labels are set', () => {
-    const spy = jest.spyOn(bindInteractionsModule, 'bindInteractions');
-
+  it('includes dimension labels in datapoint tooltips', () => {
     const dataWithLabels: PyramidChartData = {
       ...pyramidData,
       splitDimensionLabel: 'Sex',
@@ -196,11 +194,11 @@ describe('createPyramidChart', () => {
 
     createPyramidChart({ container, data: dataWithLabels, config: defaultConfig });
 
-    const lastCall = spy.mock.calls[spy.mock.calls.length - 1][0];
-    expect(lastCall.chartData?.seriesLabel).toBe('Sex');
-    expect(lastCall.chartData?.xLabel).toBe('Age');
+    const firstBar = container.querySelector('.jsc-bar-left')!;
+    firstBar.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
 
-    spy.mockRestore();
+    expect(container.querySelector('.jsc-tooltip')?.textContent).toContain('Age: 0-9');
+    expect(container.querySelector('.jsc-tooltip')?.textContent).toContain('Sex: Male');
   });
 
   it('renders without error when dimension labels are omitted', () => {

@@ -1,3 +1,4 @@
+import { jest } from '@jest/globals';
 import { createLineChart, computeValueRange } from '../../src/charts/line';
 import { ChartScaffold } from '../../src/charts/base';
 import { ChartData, ChartConfig, ZoneType } from '../../src/types';
