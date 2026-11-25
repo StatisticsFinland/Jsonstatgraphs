@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { fileURLToPath } from 'node:url';
 import { getSeriesColor } from '../src/theme/palette';
 import { resolveTheme } from '../src/theme/theme';
 import { DEFAULT_THEME, CSS_PROPERTY_MAP } from '../src/theme/defaults';
@@ -504,7 +505,7 @@ describe('CSS_PROPERTY_MAP', () => {
 // ---------------------------------------------------------------------------
 
 describe('README theming sync', () => {
-  const readmePath = path.resolve(__dirname, '../README.md');
+  const readmePath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../README.md');
   const readmeContent = fs.readFileSync(readmePath, 'utf-8');
 
   it('documents every CSS variable from CSS_PROPERTY_MAP', () => {

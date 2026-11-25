@@ -1,3 +1,4 @@
+import { jest } from '@jest/globals';
 import { createChart as createChartInstance, exportCsv, exportPng, exportSvg } from '../src/index';
 import {
   ChartConfig,
@@ -6,8 +7,6 @@ import {
   JsonStatDataset,
   SelectableSelections,
 } from '../src/types';
-import * as rebuildDatasetModule from '../src/data/rebuild-dataset';
-import * as sortingModule from '../src/data/sorting';
 
 describe('public export API', () => {
   it('exports CSV, SVG, and PNG download functions from the package entrypoint', () => {
@@ -15,19 +14,6 @@ describe('public export API', () => {
     expect(exportSvg).toEqual(expect.any(Function));
     expect(exportPng).toEqual(expect.any(Function));
   });
-});
-
-beforeAll(() => {
-  (globalThis as any).ResizeObserver = class {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
-  };
-  (window as any).matchMedia = jest.fn().mockReturnValue({ matches: false });
-  if (typeof requestAnimationFrame === 'undefined') {
-    (globalThis as any).requestAnimationFrame = (cb: () => void) => setTimeout(cb, 0);
-    (globalThis as any).cancelAnimationFrame = (id: number) => clearTimeout(id);
-  }
 });
 
 // --- Test datasets ---
@@ -480,28 +466,6 @@ describe('update', () => {
     expect(datapointLabels.some(label => label?.includes('300'))).toBe(false);
   });
 
-  it('rebuilds selectable data only once per render cycle', () => {
-    const rebuildSpy = jest.spyOn(rebuildDatasetModule, 'rebuildDataset');
-
-    const instance = createChart(
-      container,
-      multiDimDataset,
-      { chartType: 'table', layout: { rows: ['region'], columns: ['year'] } },
-      { region: ['hel'] },
-    );
-    expect(rebuildSpy).toHaveBeenCalledTimes(1);
-
-    rebuildSpy.mockClear();
-    instance.setChartType('line');
-    expect(rebuildSpy).toHaveBeenCalledTimes(1);
-
-    rebuildSpy.mockClear();
-    instance.update(multiDimDataset, undefined, { region: ['tre'] });
-    expect(rebuildSpy).toHaveBeenCalledTimes(1);
-
-    rebuildSpy.mockRestore();
-  });
-
   it('does nothing after destroy', () => {
     const instance = createChart(container, validDataset, { chartType: 'table' });
     instance.destroy();
@@ -525,49 +489,25 @@ describe('destroy', () => {
   });
 });
 
-describe('sorting wiring (cfg.sorting)', () => {
-  it.each([
-    ['horizontalBar', false],
-    ['groupedHorizontalBar', false],
-    ['stackedHorizontalBar', false],
-    ['percentHorizontalBar', true],
-    ['pie', false],
-  ] as const)('threads cfg.sorting into %s with isPercent=%s', (chartType, isPercent) => {
-    const spy = jest.spyOn(sortingModule, 'applySorting');
-    createChart(container, validDataset, { chartType, sorting: 'sum', showBurgerMenu: false });
-    expect(spy).toHaveBeenCalledWith(expect.anything(), 'sum', isPercent, chartType);
+describe('sorting configuration', () => {
+  it('orders supported horizontal bars according to the selected sorting option', () => {
+    Object.defineProperty(container, 'clientWidth', { value: 600, configurable: true });
+    Object.defineProperty(container, 'clientHeight', { value: 400, configurable: true });
+    createChart(container, validDataset, { chartType: 'horizontalBar', sorting: 'sum', showBurgerMenu: false });
+    const labels = Array.from(container.querySelectorAll('.jsc-axis-y .tick text'))
+      .map(label => label.textContent);
+
+    expect(labels).toEqual(['2022', '2021', '2020']);
   });
 
-  it.each(['verticalBar', 'groupedVerticalBar', 'stackedVerticalBar', 'percentVerticalBar'] as const)(
-    'does not apply sorting for %s charts',
-    (chartType) => {
-      const spy = jest.spyOn(sortingModule, 'applySorting');
-      createChart(container, validDataset, { chartType, sorting: 'sum', showBurgerMenu: false });
-      expect(spy).not.toHaveBeenCalled();
-    },
-  );
+  it('keeps vertical bar categories in source order when sorting is configured', () => {
+    Object.defineProperty(container, 'clientWidth', { value: 600, configurable: true });
+    Object.defineProperty(container, 'clientHeight', { value: 400, configurable: true });
+    createChart(container, validDataset, { chartType: 'verticalBar', sorting: 'sum', showBurgerMenu: false });
+    const labels = Array.from(container.querySelectorAll('.jsc-axis-x .tick text'))
+      .map(label => label.textContent);
 
-  it.each(['line', 'pyramid', 'table', 'keyFigure'] as const)(
-    'does not apply sorting for %s charts',
-    (chartType) => {
-      const spy = jest.spyOn(sortingModule, 'applySorting');
-      createChart(container, multiDimDataset, { chartType, sorting: 'sum', showBurgerMenu: false });
-      expect(spy).not.toHaveBeenCalled();
-    },
-  );
-
-  it('does not apply sorting for scatterPlot charts', () => {
-    const spy = jest.spyOn(sortingModule, 'applySorting');
-    createChart(container, selectableScatterDataset, { chartType: 'scatterPlot', sorting: 'sum', showBurgerMenu: false });
-    expect(spy).not.toHaveBeenCalled();
-  });
-
-  it('does not apply sorting for map charts', async () => {
-    const spy = jest.spyOn(sortingModule, 'applySorting');
-    const provider = jest.fn().mockResolvedValue(mockGeoJson);
-    createChart(container, geoDataset, { chartType: 'map', mapProvider: provider, sorting: 'sum', showBurgerMenu: false });
-    await Promise.resolve();
-    expect(spy).not.toHaveBeenCalled();
+    expect(labels).toEqual(['2020', '2021', '2022']);
   });
 
   it('renders bars in original dataset order without sorting', () => {

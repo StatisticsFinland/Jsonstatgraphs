@@ -1,3 +1,4 @@
+import { jest } from '@jest/globals';
 import { KeyboardNavigator, FocusableElement, captureChartFocusBeforeRedraw } from '../../src/interaction/keyboard';
 
 function createMockElements(seriesCount: number, pointCount: number): FocusableElement[][] {

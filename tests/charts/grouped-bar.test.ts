@@ -1,3 +1,4 @@
+import { jest } from '@jest/globals';
 import { createGroupedBarChart } from '../../src/charts/grouped-bar';
 import { ChartData, ChartConfig } from '../../src/types';
 

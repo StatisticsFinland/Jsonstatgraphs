@@ -16,6 +16,9 @@ import type {
   GeoJsonFeatureCollection,
   ResolvedTheme,
 } from '../../src/types';
+import mapFixture from '../../stories/fixtures/map-maakunta-establishments.json' with { type: 'json' };
+
+const fixture = mapFixture as JsonStatDataset;
 
 // ---------------------------------------------------------------------------
 // Shared test fixtures
@@ -673,9 +676,6 @@ describe('transformMapData', () => {
 // ---------------------------------------------------------------------------
 
 describe('transformMapData — integration with maakunta fixture', () => {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const fixture = require('../../stories/fixtures/map-maakunta-establishments.json') as JsonStatDataset;
-
   // Minimal GeoJSON covering MK01, MK02, MK04, and one unmatched region
   const minimalGeoJson: GeoJsonFeatureCollection = {
     type: 'FeatureCollection',
