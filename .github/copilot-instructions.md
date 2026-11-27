@@ -22,11 +22,12 @@ Agent Communication:
 
 Development Commands:
 - `npm test` — run tests
-- `npm run test:ci` — run tests as CI does
+- `npm run test:ci` — run tests without coverage thresholds
+- `npm run test:ci -- --coverage` — run tests with the CI coverage thresholds
 - `npm run lint` — run linter
 - `npm run build` — build library to dist/
 - `npm run storybook` — launch Storybook dev server
-- A code change is not done until `npm run build`, `npm run test:ci`, and `npm run lint` all pass. CI does not run lint, so check it locally.
+- Before considering a change complete, run `npm run build`, `npm run test:ci -- --coverage`, and `npm run lint`. CI runs the same build, coverage-enabled tests, and lint checks. Non-Dependabot PRs also run version validation.
 
 Temporary Files:
 - Agents may write temporary working files to `agent_tmp/` at the project root. This directory is gitignored.
