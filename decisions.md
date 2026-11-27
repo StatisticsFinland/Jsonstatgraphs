@@ -404,7 +404,7 @@ Jenks uses `ckmeans` from `simple-statistics` (improved O(kn log n) DP algorithm
 
 ### ADR-029: Map accessibility via hidden data table, no keyboard navigation on regions
 
-**Status:** accepted
+**Status:** superseded by ADR-039
 **Date:** 2026-05-20
 
 **Context:** The accessibility review flagged that map region `<path>` elements lack keyboard focusability (`tabindex`) and keyboard event handlers, making tooltips unreachable for keyboard/screen-reader users. The question is whether adding keyboard navigation to map regions is the right approach.
