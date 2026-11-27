@@ -12,7 +12,7 @@ Use Jest's built-in coverage instrumentation to measure production TypeScript an
 
 - Use the existing Jest setup and `npm run test:ci`; do not install coverage tools or add dependencies.
 - If `package.json` or `package-lock.json` differs from the selected target, align dependencies with `npm ci` against those exact manifests before measuring; reuse the review's install when this skill is invoked from a review. If the restore is blocked or the target manifests cannot be established, mark coverage unverified. Otherwise, use existing installed dependencies unless a required package is missing.
-- There is no configured coverage threshold in this repository's CI. Do not invent a project-wide pass percentage or describe a measurement as a CI gate.
+- Jest collects all `src/**/*.ts` files and applies these global thresholds when coverage is enabled: 80% branches, 90% functions, 90% lines, and 90% statements. CI runs `npm run test:ci -- --coverage`, so a below-threshold result fails that CI step. A plain test run without `--coverage` does not enforce the thresholds.
 - Run the full suite for full-project coverage. A filtered test run is only a focused measurement and must be labeled as such.
 - Fresh reports require successful execution, at least one test, and a report that includes the intended `src/**/*.ts` scope. Failed/incomplete runs, missing reports, or unresolved source paths make the affected result **unverified**.
 - Coverage runs measure the current working tree. For a committed or staged diff, establish that relevant source, tests, and configuration match the target snapshot; otherwise report changed-line results as unverified. Never claim working-tree coverage proves index or committed coverage.
@@ -31,7 +31,7 @@ Run from the repository root. The command collects all production TypeScript, in
 ```bash
 mkdir -p agent_tmp
 coverage_dir=$(mktemp -d "$PWD/agent_tmp/jest-coverage.XXXXXX")
-npm run test:ci -- --coverage --collectCoverageFrom='src/**/*.ts' --coverageReporters=text --coverageReporters=lcov --coverageDirectory="$coverage_dir"
+npm run test:ci -- --coverage --coverageReporters=text --coverageReporters=lcov --coverageDirectory="$coverage_dir"
 ```
 
 Record the command, working directory, exit code, Jest suite/test counts, and any warnings. Follow the dependency-alignment rule above and do not rerun tests just to produce a second report if a fresh, matching run is already available.
@@ -44,7 +44,7 @@ Require a successful run and nonempty LCOV report (`$coverage_dir/lcov.info`) fo
 - For changed-line analysis, compare executable added/modified lines from the selected diff with the matching `SF` source file and `DA` line hit records in `lcov.info`. Report covered executable lines, uncovered executable lines, and changed lines absent from instrumentation separately. Do not count comments, blank lines, or type-only declarations as uncovered executable code. If paths or line mappings cannot be reconciled, mark changed-line analysis unverified rather than guessing.
 - Branch percentages indicate execution of outcomes, not that assertions verify those outcomes. Inspect relevant `BRDA` records where useful, then read the production path and tests.
 - For every significant gap, describe the scenario, expected observable assertion, and plausible incorrect behavior the test should reject. Prioritize changed behavior, error paths, boundary inputs, data immutability, async cancellation, accessibility, and other relevant contracts. Do not recommend tests merely to raise a percentage.
-- Do not present overall coverage as proof of correctness, accessibility, or security. Do not claim a threshold passed unless the repository explicitly configures one.
+- Do not present overall coverage as proof of correctness, accessibility, or security. Report the configured global thresholds and whether the coverage-enabled run met them; do not treat them as changed-line thresholds.
 
 ## Output and cleanup
 
