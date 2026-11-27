@@ -11,6 +11,15 @@ const config: Config = {
     '^.+\\.js$': ['ts-jest', { useESM: true, tsconfig: { allowJs: true } }],
   },
   extensionsToTreatAsEsm: ['.ts'],
+  collectCoverageFrom: ['src/**/*.ts'],
+  coverageThreshold: {
+    global: {
+      branches: 80,
+      functions: 90,
+      lines: 90,
+      statements: 90,
+    },
+  },
   transformIgnorePatterns: [
     '/node_modules/(?!(d3-array|d3-axis|d3-color|d3-format|d3-geo|d3-interpolate|d3-path|d3-scale|d3-selection|d3-shape|d3-time|d3-time-format|internmap|robust-predicates|delaunator)/)',
   ],

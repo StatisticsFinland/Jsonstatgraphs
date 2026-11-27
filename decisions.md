@@ -2,6 +2,53 @@
 
 Decisions are numbered sequentially. Once recorded, a decision is not deleted — it can be superseded by a later entry that references the original.
 
+## Index
+
+Keep this table in sync when adding or superseding a decision. Find an entry with `### ADR-NNN`.
+
+| ADR | Title | Status |
+|---|---|---|
+| ADR-001 | Vanilla TypeScript with D3 — no framework dependency | accepted |
+| ADR-002 | Automatic chart type selection | accepted |
+| ADR-003 | Zone-based responsive layout | accepted |
+| ADR-004 | Theming via JS config + CSS custom properties | accepted |
+| ADR-005 | Automatic header construction from JSON-stat metadata | accepted |
+| ADR-006 | Font sizes resolved to px at theme resolution time | accepted |
+| ADR-007 | Legend toggle reflows chart via localized redraw | accepted |
+| ADR-008 | Dedicated colorTick theme token for axis contrast | accepted |
+| ADR-009 | Line charts use scalePoint instead of scaleBand | accepted |
+| ADR-010 | Period-type-aware label culling with boundary alignment | accepted |
+| ADR-011 | RightMargin zone for point-scale edge label containment | accepted |
+| ADR-012 | Key figure visualization for single-value datasets | accepted |
+| ADR-013 | Dimension-aware tooltip content | accepted |
+| ADR-014 | Scatter and pyramid dimension-aware tooltips | accepted |
+| ADR-015 | Pre-tick headroom padding on numeric axes | accepted |
+| ADR-016 | sourceLink URL validation and rendering approach | accepted |
+| ADR-017 | Shared footer rendering module | accepted |
+| ADR-018 | FooterItem structured as label + value | accepted |
+| ADR-019 | Scatter chart uses shared ChartScaffold with numeric mode | accepted |
+| ADR-020 | N-dimensional table via dedicated TableData type and table-transform module | superseded by ADR-035 |
+| ADR-021 | Map visualization as standalone renderer (not ChartScaffold) | accepted |
+| ADR-022 | Dedicated mapColors sequential theme token | accepted |
+| ADR-023 | GeoJSON-only for map v1 (TopoJSON deferred) | accepted |
+| ADR-024 | Auto-detection of Statistics Finland geo code prefixes | accepted |
+| ADR-025 | Equal-interval classification with nice boundaries for map legends | superseded by ADR-027 |
+| ADR-026 | Portrait-aware map legend placement via RightMargin zone | accepted |
+| ADR-027 | Four classification methods with discriminated union | accepted |
+| ADR-028 | MapProvider for dynamic map geometry resolution | accepted |
+| ADR-029 | Map accessibility via hidden data table, no keyboard navigation on regions | superseded by ADR-039 |
+| ADR-030 | MapProvider as sole geometry source — remove direct geometry from MapConfig | accepted (supersedes direct geometry support from ADR-028) |
+| ADR-031 | Standalone chart type selection API with tri-state map availability | accepted |
+| ADR-032 | Keep SVG presentation attributes — no switch to CSS custom property injection | accepted |
+| ADR-033 | Storybook story organization — one file per chart type with opt-in shared controls | accepted |
+| ADR-034 | Preserve N-dimensional datasets through selectable rebuilding | accepted |
+| ADR-035 | Unified chart dimension layout | accepted |
+| ADR-036 | Hide singleton dimensions in table orientation | accepted |
+| ADR-037 | Automatic uniform scatter point sizing | accepted |
+| ADR-038 | Named chart regions and host-owned alternate tables | accepted |
+| ADR-039 | Map regions become keyboard-focusable via shared bindInteractions | accepted (supersedes the map-exclusion clause of ADR-038, and ADR-029) |
+| ADR-040 | Application boundary for interactive visual charts | accepted (amends ADR-038 and ADR-039) |
+
 ## Template
 
 ```
@@ -357,7 +404,7 @@ Jenks uses `ckmeans` from `simple-statistics` (improved O(kn log n) DP algorithm
 
 ### ADR-029: Map accessibility via hidden data table, no keyboard navigation on regions
 
-**Status:** accepted
+**Status:** superseded by ADR-039
 **Date:** 2026-05-20
 
 **Context:** The accessibility review flagged that map region `<path>` elements lack keyboard focusability (`tabindex`) and keyboard event handlers, making tooltips unreachable for keyboard/screen-reader users. The question is whether adding keyboard navigation to map regions is the right approach.

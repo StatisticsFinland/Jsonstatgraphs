@@ -90,6 +90,5 @@ The rebuilt dataset removes consumed `extension.selectableConfig` data while pre
 
 | File | Purpose |
 |---|---|
-| [backlog.md](backlog.md) | Work items (new → refined → in progress → done) |
 | [decisions.md](decisions.md) | Architectural Decision Records |
 | [architecture.md](architecture.md) | This file — project overview |

@@ -52,7 +52,10 @@ jobs:
         if-no-files-found: error
 
     - name: Run tests
-      run: npm run test:ci
+      run: npm run test:ci -- --coverage
+
+    - name: Lint
+      run: npm run lint
 
     - name: Validate version bump
       run: npm run version-helper validate
